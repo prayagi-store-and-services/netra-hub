@@ -1,0 +1,6 @@
+{
+  "name": "Netra Human Safety",
+  "description": "Unified Android human safety and emergency response dashboard for real-time monitoring and threat validation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
