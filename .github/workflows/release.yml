@@ -4,8 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag (for example v1.0.0)
+        description: Release tag (must equal v plus versionName in app/build.gradle.kts, for example v1.0.1)
         required: true
+      notes:
+        description: What changed (shown in the in-app update prompt)
+        required: true
+        default: Bug fixes and improvements.
 
 permissions:
   contents: write
@@ -59,9 +63,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
+          NOTES: ${{ inputs.notes }}
         run: |
-          # Named copy for people (APP-vX.Y.Z.apk). app-release.apk stays because installed apps look for that exact name.
-          NAMED="app/build/outputs/apk/release/netra-hub-$TAG.apk"
-          cp app/build/outputs/apk/release/app-release.apk "$NAMED"
-          gh release create "$TAG" app/build/outputs/apk/release/app-release.apk "$NAMED" \
-            --title "$TAG" --notes "Signed release. Download netra-hub-$TAG.apk below." --target "$GITHUB_SHA"
+          set -euo pipefail
+          D=app/build/outputs/apk/release
+          VNAME="$(sed -n 's/^ *versionName = "\(.*\)".*/\1/p' app/build.gradle.kts | head -1)"
+          VCODE="$(sed -n 's/^ *versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -1)"
+          test "$TAG" = "v$VNAME"
+          # Named copy for people. app-release.apk stays because the in-app updater needs that exact name.
+          NAMED="$D/netra-hub-$TAG.apk"
+          cp "$D/app-release.apk" "$NAMED"
+          SHA="$(sha256sum "$D/app-release.apk" | cut -d' ' -f1)"
+          SIZE="$(stat -c %s "$D/app-release.apk")"
+          jq -n --arg tag "$TAG" --arg vn "$VNAME" --argjson vc "$VCODE" --arg sha "$SHA" --argjson size "$SIZE" --arg notes "$NOTES" \
+            '{tag:$tag,versionName:$vn,versionCode:$vc,sha256:$sha,size:$size,notes:$notes}' > "$D/latest.json"
+          gh release create "$TAG" "$D/app-release.apk" "$NAMED" "$D/latest.json" \
+            --title "$TAG" --notes "$NOTES" --target "$GITHUB_SHA"
