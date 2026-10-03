@@ -32,3 +32,9 @@ The always-on safety sensors now listen only while the phone moves at 30 km/h or
 ## Anonymous usage count (new in 1.0.3)
 
 Once per UTC day (and once per month) the app adds 1 to a public counter in Firestore (`netra_active/netra-hub_<yyyyMMdd>` and `_<yyyyMM>`), so the Netra Eco website can show approximate active users. The request contains only the counter document name and "increment by 1". No device ID, install ID, account, location or app data is sent, and the app keeps no ID for this. A local flag stops repeats on the same day; a failed send is retried at the next open. It is on by default and can be turned off with the "Share anonymous usage count" switch. Firestore rules allow only creating a counter with value 1 or raising it by exactly 1; counters are public to read. Anyone could in theory script extra +1s, so the number is approximate, and reinstalling or clearing data can count one person twice.
+
+## Automatic crash reports
+- If the app crashes, it saves a short report on the device. The next time the app opens, it sends that report by itself (no button, no question) and then deletes it. If the send fails, it is kept and retried at the next start.
+- The report contains only: the app name, phone model, Android version, app version, and the crash stack trace (exception class names and code locations; exception messages are dropped on purpose).
+- It contains no name, email, location, files, contacts, device IDs or usage history.
+- It is sent through the same form pipeline as the website forms (FormSubmit) to the developer's email.
