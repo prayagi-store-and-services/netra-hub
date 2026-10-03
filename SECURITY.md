@@ -38,3 +38,6 @@ Once per UTC day (and once per month) the app adds 1 to a public counter in Fire
 - The report contains only: the app name, phone model, Android version, app version, and the crash stack trace (exception class names and code locations; exception messages are dropped on purpose).
 - It contains no name, email, location, files, contacts, device IDs or usage history.
 - It is sent through the same form pipeline as the website forms (FormSubmit) to the developer's email.
+
+## Installer file cleanup
+After an in-app update installs, the app restarts and, on start, deletes every downloaded installer file from its cache folder (`cache/updates/`). Nothing from the update is left in storage. A new download also removes older files first. If the user cancels the install, the file is removed the next time the app starts.
