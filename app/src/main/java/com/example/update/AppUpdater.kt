@@ -78,6 +78,41 @@ object AppUpdater {
         }
     }
 
+    /** Result of a manual check: on the newest version, a newer release exists, or the check could not be done. */
+    sealed class CheckResult {
+        object Latest : CheckResult()
+        data class Newer(val release: AppRelease) : CheckResult()
+        object Failed : CheckResult()
+    }
+
+    /** Pure decision for a latest.json text: newer release, already latest, or unreadable (Failed). */
+    fun classify(json: String, installedCode: Long): CheckResult {
+        parse(json, installedCode)?.let { return CheckResult.Newer(it) }
+        return try {
+            val code = JSONObject(json).getLong("versionCode")
+            if (code <= installedCode) CheckResult.Latest else CheckResult.Failed
+        } catch (e: Exception) {
+            CheckResult.Failed
+        }
+    }
+
+    /** Manual "Check for update": always asks now (ignores the once-a-day limit). Call off the main thread. */
+    fun checkNow(context: Context): CheckResult {
+        return try {
+            val c = open(latestJsonUrl())
+            if (c.responseCode != 200) return CheckResult.Failed
+            val text = c.inputStream.use { it.readBytes() }
+            if (text.size > 1024 * 1024) return CheckResult.Failed
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putLong(KEY_LAST_CHECK, System.currentTimeMillis()).apply()
+            classify(String(text, Charsets.UTF_8), installedCode(context))
+        } catch (e: Exception) {
+            CheckResult.Failed
+        }
+    }
+
+    fun installedVersionName(context: Context): String =
+        try { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "Unavailable" } catch (e: Exception) { "Unavailable" }
+
     fun installedCode(context: Context): Long =
         PackageInfoCompat.getLongVersionCode(context.packageManager.getPackageInfo(context.packageName, 0))
 
