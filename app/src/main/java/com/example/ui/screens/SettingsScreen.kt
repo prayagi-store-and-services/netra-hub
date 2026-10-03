@@ -1282,6 +1282,8 @@ fun SettingsScreen(
             }
         }
 
+        item { com.example.ui.readiness.SpeedGateCard(modifier = Modifier.padding(horizontal = 4.dp)) }
+
         // System Self-Audit & Health Monitor Card
         item {
             Box(
