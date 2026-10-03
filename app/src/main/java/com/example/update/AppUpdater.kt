@@ -78,6 +78,41 @@ object AppUpdater {
         }
     }
 
+    /** Result of a manual check: on the newest version, a newer release exists, or the check could not be done. */
+    sealed class CheckResult {
+        object Latest : CheckResult()
+        data class Newer(val release: AppRelease) : CheckResult()
+        object Failed : CheckResult()
+    }
+
+    /** Pure decision for a latest.json text: newer release, already latest, or unreadable (Failed). */
+    fun classify(json: String, installedCode: Long): CheckResult {
+        parse(json, installedCode)?.let { return CheckResult.Newer(it) }
+        return try {
+            val code = JSONObject(json).getLong("versionCode")
+            if (code <= installedCode) CheckResult.Latest else CheckResult.Failed
+        } catch (e: Exception) {
+            CheckResult.Failed
+        }
+    }
+
+    /** Manual "Check for update": always asks now (ignores the once-a-day limit). Call off the main thread. */
+    fun checkNow(context: Context): CheckResult {
+        return try {
+            val c = open(latestJsonUrl())
+            if (c.responseCode != 200) return CheckResult.Failed
+            val text = c.inputStream.use { it.readBytes() }
+            if (text.size > 1024 * 1024) return CheckResult.Failed
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putLong(KEY_LAST_CHECK, System.currentTimeMillis()).apply()
+            classify(String(text, Charsets.UTF_8), installedCode(context))
+        } catch (e: Exception) {
+            CheckResult.Failed
+        }
+    }
+
+    fun installedVersionName(context: Context): String =
+        try { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "Unavailable" } catch (e: Exception) { "Unavailable" }
+
     fun installedCode(context: Context): Long =
         PackageInfoCompat.getLongVersionCode(context.packageManager.getPackageInfo(context.packageName, 0))
 
@@ -105,6 +140,21 @@ object AppUpdater {
         } catch (e: Exception) {
             null
         }
+    }
+
+    /** Deletes every file in the installer download folder and returns how many were removed. */
+    fun cleanDir(dir: File?): Int {
+        var n = 0
+        dir?.listFiles()?.forEach { if (it.delete()) n++ }
+        return n
+    }
+
+    /**
+     * Called when the app starts. After an in-app update installs, Android restarts the app, so this
+     * removes the downloaded installer file and nothing is left in storage.
+     */
+    fun cleanLeftovers(context: Context) {
+        try { cleanDir(File(context.cacheDir, "updates")) } catch (_: Exception) {}
     }
 
     /** Downloads the APK and verifies size and sha256. Deletes the file and throws if anything is off. */

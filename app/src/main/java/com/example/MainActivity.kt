@@ -26,6 +26,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Remove any installer file left from an in-app update (runs in the background).
+        Thread { com.example.update.AppUpdater.cleanLeftovers(applicationContext) }.start()
         // Anonymous daily usage count (+1 on a public counter, nothing else). The user can turn it off in Settings.
         // Automatic crash reports: a crash saved last time is sent now, in the background. No personal data.
         com.example.stats.CrashReporter.install(this)
