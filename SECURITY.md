@@ -53,3 +53,9 @@ After an in-app update installs, the app restarts and, on start, deletes every d
 - Android does not let apps read other devices' MAC addresses, so brand and MAC are shown as Unavailable. "Possible camera" appears only when a camera-style port answers or the device name contains a word like cam, ipc, dvr or nvr. It is a hint, not proof.
 - Torch: uses the phone's torch only while you press the button, no camera permission. Magnetic meter: reads the phone's magnetic sensor on screen only, nothing is recorded.
 - Permissions: none added. The scan uses INTERNET and ACCESS_NETWORK_STATE, which this app already had. The torch needs no permission. No new library.
+
+## Share location (added in 1.0.8)
+- A "Share location" button in the app header. It runs only when you tap it: it takes one location fix and opens the Android share sheet with a Google Maps link, the accuracy and the time of the fix. You pick who gets it.
+- It is a one-time snapshot, not a live track. The app has no server and nothing is uploaded by the app. If there is no fix it shows "Location Unavailable" and shares nothing.
+- Permissions: none added. It uses the location permission this app already had.
+- No new library.
