@@ -107,6 +107,21 @@ object AppUpdater {
         }
     }
 
+    /** Deletes every file in the installer download folder and returns how many were removed. */
+    fun cleanDir(dir: File?): Int {
+        var n = 0
+        dir?.listFiles()?.forEach { if (it.delete()) n++ }
+        return n
+    }
+
+    /**
+     * Called when the app starts. After an in-app update installs, Android restarts the app, so this
+     * removes the downloaded installer file and nothing is left in storage.
+     */
+    fun cleanLeftovers(context: Context) {
+        try { cleanDir(File(context.cacheDir, "updates")) } catch (_: Exception) {}
+    }
+
     /** Downloads the APK and verifies size and sha256. Deletes the file and throws if anything is off. */
     fun download(context: Context, release: AppRelease): File {
         val dir = File(context.cacheDir, "updates").apply { mkdirs() }
