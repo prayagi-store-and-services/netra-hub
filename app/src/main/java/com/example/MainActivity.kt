@@ -27,6 +27,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Anonymous daily usage count (+1 on a public counter, nothing else). The user can turn it off in Settings.
+        // Automatic crash reports: a crash saved last time is sent now, in the background. No personal data.
+        com.example.stats.CrashReporter.install(this)
         val usageCtx = applicationContext
         Thread { com.example.stats.UsagePing.pingIfDue(usageCtx) }.start()
         enableEdgeToEdge()
