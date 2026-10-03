@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Sensors
@@ -95,7 +96,9 @@ enum class NavigationTab(val title: String, val icon: ImageVector) {
     LIVE_GRAPH("Live Graph", Icons.Default.Timeline),
     HISTORY_LOGS("History & Logs", Icons.Default.Analytics),
     SERVICE_MANAGER("Service Mgr", Icons.Default.Hub),
-    SETTINGS("Settings", Icons.Default.Settings)
+    SETTINGS("Settings", Icons.Default.Settings),
+    /** Opened from the header button, not shown in the bottom bar. */
+    TRAVEL_CHECK("Travel Checking", Icons.Default.Videocam)
 }
 
 @Composable
@@ -215,6 +218,17 @@ fun MainScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(end = 12.dp)
                     ) {
+                        androidx.compose.material3.TextButton(
+                            onClick = { selectedTab = if (selectedTab == NavigationTab.TRAVEL_CHECK) NavigationTab.DASHBOARD else NavigationTab.TRAVEL_CHECK },
+                            modifier = Modifier.testTag("header_travel_checking")
+                        ) {
+                            Text(
+                                text = if (selectedTab == NavigationTab.TRAVEL_CHECK) "Close" else "Travel Checking",
+                                color = BentoGreenPrimary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                         if (isLiteMode) {
                             Surface(
                                 color = BentoAmber.copy(alpha = 0.2f),
@@ -272,7 +286,7 @@ fun MainScreen(
                     .border(androidx.compose.foundation.BorderStroke(1.dp, BentoBorder))
                     .navigationBarsPadding()
             ) {
-                NavigationTab.entries.forEach { tab ->
+                NavigationTab.entries.filter { it != NavigationTab.TRAVEL_CHECK }.forEach { tab ->
                     val isCritical = viewModel.systemSafetyStatus.collectAsStateWithLifecycle().value == com.example.data.engine.IntelligentSafetyStatusEngine.SystemSafetyStatus.CRITICAL
                     val showIndicator = isCritical && tab == NavigationTab.DASHBOARD
                     
@@ -396,6 +410,7 @@ fun MainScreen(
                         NavigationTab.SERVICE_MANAGER -> ServiceManagerContainerScreen(
                             viewModel = viewModel
                         )
+                        NavigationTab.TRAVEL_CHECK -> com.example.camcheck.CameraCheckScreen()
                         NavigationTab.SETTINGS -> SettingsContainerScreen(
                             viewModel = viewModel,
                             monitorThermal = monitorThermal,
