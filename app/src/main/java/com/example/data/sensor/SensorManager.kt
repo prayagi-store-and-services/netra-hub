@@ -246,7 +246,10 @@ class SensorManager(
             val hasSubscribers = subscribers.value[cap.type]?.isNotEmpty() == true
 
             val isCoreSafety = cap.type == Sensor.TYPE_ACCELEROMETER || cap.type == Sensor.TYPE_STEP_DETECTOR || cap.type == Sensor.TYPE_STEP_COUNTER
-            val shouldRun = (isEnabledBySettings && isCoreSafety) || hasSubscribers || isEnabledBySettings
+            // Background listening only while moving at 30 km/h or more (user setting, on by default).
+            // A sensor screen the user has open (a subscriber) still gets live data.
+            val gateAllows = !SpeedGate.isEnabled(context) || speedGate.isOpen
+            val shouldRun = hasSubscribers || (isEnabledBySettings && gateAllows)
             
             if (shouldRun && !sensorJobs.containsKey(cap.type)) {
                 val baseThrottle = _sensorThrottles.value[cap.type] ?: 150L
@@ -289,7 +292,17 @@ class SensorManager(
     private var lastAggregationTime = 0L
     private val AGGREGATION_INTERVAL = 5000L // 5 seconds
 
+    private val speedGate = SpeedGate()
+
+    /** Updates the speed gate from a GNSS reading and re-evaluates the sensor streams when it opens or closes. */
+    private fun updateSpeedGate(reading: RawSensorReading) {
+        if (reading.sensorId != "gnss_location") return
+        val speedKmH: Float? = if (reading.extraDetails["speedKmH"]?.endsWith("km/h") == true && reading.values.size > 2) reading.values[2] else null
+        if (speedGate.update(speedKmH, System.currentTimeMillis())) evaluateSensorStreams()
+    }
+
     private fun handleIncomingReading(reading: RawSensorReading) {
+        updateSpeedGate(reading)
         val seq = (sequenceNumbers[reading.sensorId] ?: 0) + 1
         sequenceNumbers[reading.sensorId] = seq
 

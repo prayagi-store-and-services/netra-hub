@@ -258,6 +258,8 @@ class SensorObservers(private val context: Context) {
                     fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                         if (location != null) {
                             val speedKmH = location.speed * 3.6f
+                            // A cached fix older than 30 s says nothing about the speed now: report it as unavailable.
+                            val fresh = location.hasSpeed() && System.currentTimeMillis() - location.time < 30_000L
                             trySend(
                                 RawSensorReading(
                                     sensorId = "gnss_location",
@@ -270,7 +272,7 @@ class SensorObservers(private val context: Context) {
                                     extraDetails = mapOf(
                                         "latitude" to "%.5f".format(location.latitude),
                                         "longitude" to "%.5f".format(location.longitude),
-                                        "speedKmH" to "%.1f km/h".format(speedKmH),
+                                        "speedKmH" to (if (fresh) "%.1f km/h".format(speedKmH) else "Verified data is currently unavailable."),
                                         "accuracy" to "±%.1f m".format(location.accuracy)
                                     )
                                 )
@@ -337,8 +339,48 @@ class SensorObservers(private val context: Context) {
             }
         }
 
+        // Live speed: lastLocation alone can be old, so also take balanced-power updates every 10 s.
+        // Balanced power does not always report a speed; then the speed stays "Unavailable" and the gate stays closed.
+        val liveCallback = object : LocationCallback() {
+            override fun onLocationResult(result: LocationResult) {
+                val location = result.lastLocation ?: return
+                val hasSpeed = location.hasSpeed()
+                val speedKmH = location.speed * 3.6f
+                trySend(
+                    RawSensorReading(
+                        sensorId = "gnss_location",
+                        name = "GNSS Positioning",
+                        category = SensorCategory.LOCATION,
+                        values = floatArrayOf(location.latitude.toFloat(), location.longitude.toFloat(), if (hasSpeed) speedKmH else 0f, location.accuracy),
+                        unit = "Lat/Lng",
+                        timestamp = System.currentTimeMillis(),
+                        classification = DataClassification.VERIFIED,
+                        extraDetails = mapOf(
+                            "latitude" to "%.5f".format(location.latitude),
+                            "longitude" to "%.5f".format(location.longitude),
+                            "speedKmH" to (if (hasSpeed) "%.1f km/h".format(speedKmH) else "Verified data is currently unavailable."),
+                            "accuracy" to "±%.1f m".format(location.accuracy)
+                        )
+                    )
+                )
+            }
+        }
+        var updatesRequested = false
+        try {
+            val hasFine = androidx.core.content.ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (hasFine) {
+                val req = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10_000L).build()
+                fusedLocationClient.requestLocationUpdates(req, liveCallback, Looper.getMainLooper())
+                updatesRequested = true
+            }
+        } catch (_: Exception) {
+        }
+
         awaitClose {
             permissionPollerJob.cancel()
+            if (updatesRequested) fusedLocationClient.removeLocationUpdates(liveCallback)
         }
     }
 }

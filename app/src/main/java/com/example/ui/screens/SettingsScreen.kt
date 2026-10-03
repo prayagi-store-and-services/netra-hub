@@ -1112,17 +1112,29 @@ fun SettingsScreen(
                 }
             }
 
-            val canExactAlarms = remember {
+            fun readExactAlarms(): Boolean =
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                     val am = context.getSystemService(Context.ALARM_SERVICE) as? android.app.AlarmManager
                     am?.canScheduleExactAlarms() ?: true
                 } else true
-            }
-
-            val notifGranted = remember {
+            fun readNotifGranted(): Boolean =
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                     androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
                 } else true
+            var canExactAlarms by remember { mutableStateOf(readExactAlarms()) }
+            var notifGranted by remember { mutableStateOf(readNotifGranted()) }
+            // Re-read all three after returning from an Android settings screen or a permission pop-up.
+            val recheckAll: () -> Unit = {
+                isIgnoringBatteryOpt = pm?.isIgnoringBatteryOptimizations(context.packageName) ?: false
+                canExactAlarms = readExactAlarms()
+                notifGranted = readNotifGranted()
+            }
+            androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+                val obs2 = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                    if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) recheckAll()
+                }
+                lifecycleOwner.lifecycle.addObserver(obs2)
+                onDispose { lifecycleOwner.lifecycle.removeObserver(obs2) }
             }
 
             val manufacturer = remember { android.os.Build.MANUFACTURER.orEmpty() }
@@ -1253,10 +1265,24 @@ fun SettingsScreen(
                         }
                     }
 
+                    if (!isIgnoringBatteryOpt || !canExactAlarms || !notifGranted || isStrictOem) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        com.example.ui.readiness.ReadinessFixButtons(
+                            batteryOk = isIgnoringBatteryOpt,
+                            alarmsOk = canExactAlarms,
+                            notificationsOk = notifGranted,
+                            showAutostart = isStrictOem,
+                            manufacturer = manufacturer,
+                            onRecheck = recheckAll
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(14.dp))
                 }
             }
         }
+
+        item { com.example.ui.readiness.SpeedGateCard(modifier = Modifier.padding(horizontal = 4.dp)) }
 
         // System Self-Audit & Health Monitor Card
         item {
