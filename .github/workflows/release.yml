@@ -6,7 +6,6 @@ on:
       tag:
         description: Release tag (for example v1.0.0)
         required: true
-        default: v1.0.0
 
 permissions:
   contents: write
@@ -61,5 +60,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
         run: |
-          gh release create "$TAG" app/build/outputs/apk/release/app-release.apk \
-            --title "$TAG" --notes "First signed release. Download app-release.apk below." --target "$GITHUB_SHA"
+          # Named copy for people (APP-vX.Y.Z.apk). app-release.apk stays because installed apps look for that exact name.
+          NAMED="app/build/outputs/apk/release/netra-hub-$TAG.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$NAMED"
+          gh release create "$TAG" app/build/outputs/apk/release/app-release.apk "$NAMED" \
+            --title "$TAG" --notes "Signed release. Download netra-hub-$TAG.apk below." --target "$GITHUB_SHA"

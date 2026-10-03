@@ -52,7 +52,7 @@ function set(i,t){document.getElementById(i).textContent=t}
 fetch("https://api.github.com/repos/"+R+"/releases/latest").then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(x){
  set("rv",x.tag_name||U);
  set("rt",x.published_at?new Date(x.published_at).toLocaleString(undefined,{year:"numeric",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):U);
- var a=(x.assets||[]).find(function(y){return /\.apk$/i.test(y.name)});
+ var al=(x.assets||[]).filter(function(y){return /\.apk$/i.test(y.name)});var a=al.filter(function(y){return y.name!=="app-release.apk"})[0]||al[0];
  if(a){var b=document.getElementById("dl");b.href=a.browser_download_url;b.className="btn";b.textContent="Download "+x.tag_name+" APK";set("rs",(a.size/1048576).toFixed(1)+" MB")}
 }).catch(function(){set("rv","Not released yet");set("rt","Unavailable");set("rs","Unavailable")});
 })();
