@@ -158,3 +158,29 @@ private fun FixRow(label: String, why: String, onClick: () -> Unit) {
         Text(why, fontSize = 10.sp, lineHeight = 13.sp)
     }
 }
+
+/** Settings switch for the speed gate (on by default): background safety sensors listen only at 30 km/h or more. */
+@Composable
+fun SpeedGateCard(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    var enabled by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(com.example.data.sensor.SpeedGate.isEnabled(context)) }
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Safety sensors only above 30 km/h", fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            androidx.compose.material3.Switch(
+                checked = enabled,
+                onCheckedChange = { enabled = it; com.example.data.sensor.SpeedGate.setEnabled(context, it) }
+            )
+        }
+        Text(
+            "When on, the background sensors listen only while you travel at 30 km/h or faster, so walking does not keep them running and drain the battery. " +
+                "They switch off 30 seconds after your speed drops below 30. If the phone cannot give a speed, they stay off. Screens you open yourself still show live data.",
+            fontSize = 11.sp,
+            lineHeight = 14.sp
+        )
+    }
+}
