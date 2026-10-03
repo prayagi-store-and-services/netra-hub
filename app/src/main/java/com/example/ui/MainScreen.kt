@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.filled.DirectionsWalk // Let me try this.
 
 import android.content.Intent
+import kotlinx.coroutines.launch
 import androidx.core.content.FileProvider
 import androidx.compose.ui.platform.LocalContext
 import java.io.File
@@ -185,6 +186,8 @@ fun MainScreen(
     val officialWarning by viewModel.officialWarningState.collectAsStateWithLifecycle()
     val officialLocation by viewModel.officialLocationState.collectAsStateWithLifecycle()
     val isLiteMode by viewModel.isLiteMode.collectAsStateWithLifecycle()
+    val shareScope = androidx.compose.runtime.rememberCoroutineScope()
+    val shareLocationManager = androidx.compose.runtime.remember { com.example.data.service.OfficialLocationContextManager(context) }
 
     Scaffold(
         topBar = {
@@ -218,6 +221,23 @@ fun MainScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(end = 12.dp)
                     ) {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                shareScope.launch {
+                                    val info = shareLocationManager.refreshLocation()
+                                    val msg = com.example.share.LocationShare.message(info.latitude, info.longitude, info.accuracy, info.timestamp)
+                                    if (msg == null) {
+                                        android.widget.Toast.makeText(context, "Location Unavailable - turn on location and allow it, then try again", android.widget.Toast.LENGTH_LONG).show()
+                                    } else {
+                                        val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, msg) }
+                                        context.startActivity(Intent.createChooser(send, "Share my location"))
+                                    }
+                                }
+                            },
+                            modifier = Modifier.testTag("header_share_location")
+                        ) {
+                            Text(text = "Share location", color = BentoGreenPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                         androidx.compose.material3.TextButton(
                             onClick = { selectedTab = if (selectedTab == NavigationTab.TRAVEL_CHECK) NavigationTab.DASHBOARD else NavigationTab.TRAVEL_CHECK },
                             modifier = Modifier.testTag("header_travel_checking")
