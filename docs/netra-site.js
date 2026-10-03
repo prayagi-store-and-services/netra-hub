@@ -117,7 +117,7 @@ function clock(){
 }
 function whatsNew(){
  var box=document.getElementById("whatsnew-list");if(!box)return;
- var repo=(window.NETRA_SITE&&window.NETRA_SITE.repo)||"prayagideepak-collab/netra-eco";
+ var repo=(window.NETRA_SITE&&window.NETRA_SITE.repo)||"prayagi-store-and-services/netra-eco";
  fetch("https://api.github.com/repos/"+repo+"/releases?per_page=5").then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(rel){
   rel=rel.filter(function(x){return !x.draft&&!x.prerelease});box.innerHTML="";
   if(!rel.length){box.textContent="No releases yet.";return}

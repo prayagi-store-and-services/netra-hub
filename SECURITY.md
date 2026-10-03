@@ -2,10 +2,10 @@
 
 ## In-app update (new)
 
-What it does: on app open, at most once a day, the app asks `https://github.com/prayagideepak-collab/netra-hub/releases/latest/download/latest.json` whether a newer version exists. If yes, it shows the version and what changed, and the user taps Update. The app downloads `app-release.apk` from the same release, checks its size and SHA-256 against latest.json, and only then opens the Android package installer. The user confirms with one system tap.
+What it does: on app open, at most once a day, the app asks `https://github.com/prayagi-store-and-services/netra-hub/releases/latest/download/latest.json` whether a newer version exists. If yes, it shows the version and what changed, and the user taps Update. The app downloads `app-release.apk` from the same release, checks its size and SHA-256 against latest.json, and only then opens the Android package installer. The user confirms with one system tap.
 
 What is protected:
-- Only https://github.com/prayagideepak-collab/netra-hub/ release URLs are used; the download URL is built from the release tag, never taken from the metadata.
+- Only https://github.com/prayagi-store-and-services/netra-hub/ release URLs are used; the download URL is built from the release tag, never taken from the metadata.
 - The file is deleted and not installed if its size or SHA-256 does not match.
 - Android installs the update only if it is signed with the same key as the installed app (the Netra release key), so a different signer is rejected by the system.
 - Nothing about the user or device is sent: the check is a plain download of a small public file. No account, no ID, no location.
