@@ -1283,6 +1283,7 @@ fun SettingsScreen(
         }
 
         item { com.example.ui.readiness.SpeedGateCard(modifier = Modifier.padding(horizontal = 4.dp)) }
+        item { com.example.stats.UsageCountCard() }
 
         // System Self-Audit & Health Monitor Card
         item {
