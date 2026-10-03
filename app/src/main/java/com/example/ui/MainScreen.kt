@@ -99,7 +99,8 @@ enum class NavigationTab(val title: String, val icon: ImageVector) {
     SERVICE_MANAGER("Service Mgr", Icons.Default.Hub),
     SETTINGS("Settings", Icons.Default.Settings),
     /** Opened from the header button, not shown in the bottom bar. */
-    TRAVEL_CHECK("Travel Checking", Icons.Default.Videocam)
+    TRAVEL_CHECK("Travel Checking", Icons.Default.Videocam),
+    SOS("SOS shake", Icons.Default.Videocam)
 }
 
 @Composable
@@ -222,6 +223,12 @@ fun MainScreen(
                         modifier = Modifier.padding(end = 12.dp)
                     ) {
                         androidx.compose.material3.TextButton(
+                            onClick = { selectedTab = if (selectedTab == NavigationTab.SOS) NavigationTab.DASHBOARD else NavigationTab.SOS },
+                            modifier = Modifier.testTag("header_sos")
+                        ) {
+                            Text(text = if (selectedTab == NavigationTab.SOS) "Close" else "SOS", color = BentoGreenPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                        androidx.compose.material3.TextButton(
                             onClick = {
                                 shareScope.launch {
                                     val info = shareLocationManager.refreshLocation()
@@ -306,7 +313,7 @@ fun MainScreen(
                     .border(androidx.compose.foundation.BorderStroke(1.dp, BentoBorder))
                     .navigationBarsPadding()
             ) {
-                NavigationTab.entries.filter { it != NavigationTab.TRAVEL_CHECK }.forEach { tab ->
+                NavigationTab.entries.filter { it != NavigationTab.TRAVEL_CHECK && it != NavigationTab.SOS }.forEach { tab ->
                     val isCritical = viewModel.systemSafetyStatus.collectAsStateWithLifecycle().value == com.example.data.engine.IntelligentSafetyStatusEngine.SystemSafetyStatus.CRITICAL
                     val showIndicator = isCritical && tab == NavigationTab.DASHBOARD
                     
@@ -431,6 +438,7 @@ fun MainScreen(
                             viewModel = viewModel
                         )
                         NavigationTab.TRAVEL_CHECK -> com.example.camcheck.CameraCheckScreen()
+                        NavigationTab.SOS -> com.example.sos.SosScreen()
                         NavigationTab.SETTINGS -> SettingsContainerScreen(
                             viewModel = viewModel,
                             monitorThermal = monitorThermal,
