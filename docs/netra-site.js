@@ -60,13 +60,55 @@ function pick(now){
   if(nm.length)best={kind:"soon",theme:themeFor(nm[0]),title:"Aane wala",text:nm.join(", ")+(k===1?" - kal":" - "+k+" din baad")}}
  return best;
 }
+/* ---- Festival open animation: a short, skippable, offline-safe animation matching the occasion (replaces the plain banner look).
+   Shown once per day per occasion, not at all if the visitor prefers reduced motion. India flag is drawn with CSS (no image needed). ---- */
+function festOpen(p){
+ try{
+  if(!/[?&]festpreview=/.test(location.search)&&(!p||p.kind!=="fest"))return;
+  if(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  var key="netra_fo_"+ymd(new Date())+"_"+(p?p.theme:"x");
+  var pv=/[?&]festpreview=([^&]*)/.exec(location.search);
+  if(pv){p={kind:"fest",theme:/india/i.test(pv[1])?"india":"x",text:decodeURIComponent(pv[1])}}
+  else{if(localStorage.getItem(key))return;localStorage.setItem(key,"1")}
+  var t=(p.text||"").toLowerCase(),em=null,flag=false;
+  if(p.theme==="india"||/republic day|independence day/.test(t)&&/india/.test(t))flag=true;
+  if(/durga|navratri|dussehra|dashami|navami|saptami|ashtami|vijaya/.test(t))em="\uD83C\uDF3A";
+  else if(/diwali|deepavali|dhanteras|lakshmi|bhai dooj|govardhan/.test(t))em="\uD83E\uDE94";
+  else if(/holi|holika/.test(t))em="\uD83C\uDFA8";
+  else if(/eid|ramzan|ramadan|muharram|milad/.test(t))em="\uD83C\uDF19";
+  else if(/christmas|new year/.test(t))em="\u2728";
+  else if(/ganesh|chaturthi/.test(t))em="\uD83C\uDF3C";
+  else if(/raksha|rakhi/.test(t))em="\uD83E\uDDFF";
+  else if(/pongal|sankranti|lohri|baisakhi|onam/.test(t))em="\uD83C\uDF3E";
+  else em="\uD83C\uDF89";
+  var st=document.createElement("style");
+  st.textContent="@keyframes nfFall{0%{transform:translateY(-10vh) rotate(0);opacity:0}10%{opacity:1}100%{transform:translateY(110vh) rotate(360deg);opacity:.9}}@keyframes nfWave{0%,100%{transform:skewY(0) rotate(-1deg)}50%{transform:skewY(3deg) rotate(1deg)}}@keyframes nfIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}";
+  var o=document.createElement("div");o.id="netra-fest-open";o.setAttribute("role","dialog");o.setAttribute("aria-label","Festival greeting");
+  o.style.cssText="position:fixed;inset:0;z-index:99999;background:rgba(5,10,20,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;overflow:hidden;font-family:system-ui,Segoe UI,Roboto,sans-serif";
+  for(var i=0;i<26&&!flag;i++){var s=document.createElement("span");s.textContent=em;s.style.cssText="position:absolute;top:0;left:"+(Math.random()*96)+"%;font-size:"+(18+Math.random()*26)+"px;animation:nfFall "+(4+Math.random()*3)+"s linear "+(Math.random()*2.5)+"s infinite;pointer-events:none";o.appendChild(s)}
+  var box=document.createElement("div");box.style.cssText="animation:nfIn .6s ease both;padding:16px;max-width:90vw";
+  if(flag){var f=document.createElement("div");f.style.cssText="width:min(300px,70vw);height:min(200px,46vw);margin:0 auto 18px;border-radius:6px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.5);animation:nfWave 2.4s ease-in-out infinite;display:flex;flex-direction:column;position:relative";
+   ["#FF9933","#FFFFFF","#138808"].forEach(function(c){var b=document.createElement("div");b.style.cssText="flex:1;background:"+c;f.appendChild(b)});
+   var ch=document.createElement("div");ch.style.cssText="position:absolute;left:50%;top:50%;width:18%;aspect-ratio:1;transform:translate(-50%,-50%);border:2px solid #000080;border-radius:50%;background:repeating-conic-gradient(#000080 0 3deg,transparent 3deg 15deg)";f.appendChild(ch);box.appendChild(f)}
+  else{var big=document.createElement("div");big.textContent=em;big.style.cssText="font-size:min(96px,22vw);margin-bottom:10px";box.appendChild(big)}
+  var h=document.createElement("div");h.textContent=p.text.replace(/^Aaj:\s*/,"");h.style.cssText="font-size:clamp(1.3rem,5vw,2.2rem);font-weight:700;margin-bottom:6px";box.appendChild(h);
+  var sub=document.createElement("div");sub.textContent="Shubhkamnayein - Netra by Prayagi Team";sub.style.cssText="opacity:.85";box.appendChild(sub);
+  var sk=document.createElement("button");sk.textContent="Skip";sk.style.cssText="margin-top:18px;padding:8px 22px;border-radius:999px;border:1px solid #fff;background:transparent;color:#fff;font:inherit;cursor:pointer";
+  box.appendChild(sk);o.appendChild(box);
+  function close(){if(o.parentNode)o.parentNode.removeChild(o);if(st.parentNode)st.parentNode.removeChild(st)}
+  sk.onclick=close;o.onclick=function(e){if(e.target===o)close()};document.addEventListener("keydown",function k(e){if(e.key==="Escape"){close();document.removeEventListener("keydown",k)}});
+  document.head.appendChild(st);document.body.appendChild(o);setTimeout(close,6000);
+ }catch(e){}
+}
+
 function render(){
  var el=document.getElementById("festbar"),p=pick(new Date());
  if(!el)return;
- if(!p){el.hidden=true;return}
+ if(!p){el.hidden=true;festOpen(null);return}
  applyTheme(p.theme);
  el.className="festbar "+p.kind;el.hidden=false;
  el.innerHTML="";var b=document.createElement("b");b.textContent=p.title+": ";el.appendChild(b);el.appendChild(document.createTextNode(p.text));
+ festOpen(p);
 }
 function clock(){
  var el=document.getElementById("liveclock");if(!el)return;
