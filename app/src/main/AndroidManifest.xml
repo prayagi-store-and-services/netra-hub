@@ -17,8 +17,10 @@
     <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
     <uses-permission android:name="android.permission.BODY_SENSORS" />
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- Feedback & Notifications -->
@@ -89,6 +91,13 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/netra_battery_widget_info" />
         </receiver>
+
+        <service
+            android:name="com.example.sos.SosService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location"
+            tools:targetApi="upside_down_cake" />
 
         <service
             android:name=".NetraForegroundService"
