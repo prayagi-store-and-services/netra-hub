@@ -59,3 +59,11 @@ After an in-app update installs, the app restarts and, on start, deletes every d
 - It is a one-time snapshot, not a live track. The app has no server and nothing is uploaded by the app. If there is no fix it shows "Location Unavailable" and shares nothing.
 - Permissions: none added. It uses the location permission this app already had.
 - No new library.
+
+## SOS shake (added in 1.0.9)
+- OFF by default. The user turns it on in the SOS screen (header button "SOS"). Switching it on asks for SMS, location and notification permission. If SMS or location is refused it stays OFF.
+- While ON, a foreground service (type location) keeps a visible notification and reads the phone's motion sensor. This uses some battery. Switching it OFF, or the notification's "Turn off" button, stops it fully.
+- Three hard shakes within 1.5 seconds start a 10 second countdown with a Cancel button. If not cancelled, one SMS per saved contact is sent with a Google Maps link of the current location, or the words "Location Unavailable" when there is no fix.
+- Emergency contacts (up to 5) are stored only on the phone. Nothing is uploaded.
+- Limits: SMS needs mobile network and the app cannot confirm delivery. It does not call anyone. After one SOS, shakes are ignored for 60 seconds.
+- New permission: SEND_SMS (sensitive; requested only when SOS is switched on). The telephony hardware feature is declared optional so tablets are still supported. Foreground service type location uses the location permission this app already had. No new library.
