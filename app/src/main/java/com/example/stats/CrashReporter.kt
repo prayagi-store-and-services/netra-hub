@@ -26,7 +26,7 @@ object CrashReporter {
         var depth = 0
         while (cur != null && depth < 5) {
             sb.append(if (depth == 0) "" else "Caused by: ").append(cur.javaClass.name).append('\n')
-            for (frame in cur.stackTrace) sb.append("  at ").append(frame.toString()).append('\n')
+            for (frame in cur.stackTrace.take(25)) sb.append("  at ").append(frame.toString()).append('\n')
             cur = cur.cause
             depth++
         }
