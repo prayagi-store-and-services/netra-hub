@@ -9,12 +9,8 @@ class HealthAuditWorker(context: Context, params: WorkerParameters) : CoroutineW
     override suspend fun doWork(): Result {
         LoggingManager.info("HealthAudit", "AUDIT_START", "Starting 5-minute self-audit.", "Automated.")
         
-        // TODO: Perform actual health audit across all modules
-        // For each module:
-        //    if unhealthy: HealthAuditManager.updateModuleHealth(name, ModuleState.WARNING)
-        //    else: HealthAuditManager.updateModuleHealth(name, ModuleState.HEALTHY)
-        
-        LoggingManager.info("HealthAudit", "AUDIT_COMPLETE", "Self-audit complete.", "Automated.")
+        // No module checks exist in this version, so no health state is written and none is claimed.
+        LoggingManager.info("HealthAudit", "AUDIT_NOT_AVAILABLE", "No module health checks exist in this version; nothing was verified.", "Automated.")
         return Result.success()
     }
 }
