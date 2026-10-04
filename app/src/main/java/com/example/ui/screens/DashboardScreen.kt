@@ -188,6 +188,7 @@ fun DashboardScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item { topActions() }
+        item { com.example.stats.StepsCard() }
 
         // --- Global Safety Status Indicator (Phase 3) ---
         item {

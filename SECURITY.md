@@ -114,3 +114,11 @@ Everything below was found by auditing the code against what the app says it doe
 
 ## Driving detection is not available yet (1.0.14)
 The app has no working "driving detected" detection in this version. The dashboard card and the assistant used to show "Idle / Stationary" or "No Drive Detected", which was misleading. They now say drive detection is not available. GPS speed is still shown as measured. A real, battery-aware driving detection is planned as a separate, clearly labelled heuristic.
+
+## Steps today card (version 1.1.3)
+
+- New Home card "Steps today" reads the phone's own step counter sensor, only while the Home screen is visible (no background work, no service). Steps taken while the app was closed are included, because the phone keeps counting; the app only stores a start point for the day.
+- Permission added: ACTIVITY_RECOGNITION (Physical activity). Android requires it to read the step counter. It is requested only when you tap "Allow step counting".
+- Stored on the device only: the day, the counter start value and the time of the first reading. Nothing about steps is sent anywhere.
+- Honest limit: steps before the first reading of the day are not known, so the card says "Counted since <time>" and the real total can be higher. If there is no step sensor or no permission it shows Unavailable.
+- Not built yet: age-based daily target from date of birth and the achievement message (planned, next part).
