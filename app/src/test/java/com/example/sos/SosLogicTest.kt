@@ -44,4 +44,31 @@ class SosLogicTest {
         assertFalse(SosLogic.canTrigger(10_000L, 1000L))
         assertTrue(SosLogic.canTrigger(70_000L, 1000L))
     }
+
+    @Test fun ageCountsWholeYears() {
+        assertEquals(30, SosLogic.ageYears("1996-10-04", 2026, 10, 4))
+        assertEquals(29, SosLogic.ageYears("1996-10-05", 2026, 10, 4))
+        assertEquals(null, SosLogic.ageYears("2027-01-01", 2026, 10, 4))
+        assertEquals(null, SosLogic.ageYears("1996-02-30", 2026, 10, 4))
+        assertEquals(null, SosLogic.ageYears("abc", 2026, 10, 4))
+        assertEquals(null, SosLogic.ageYears("1800-01-01", 2026, 10, 4))
+    }
+    @Test fun bloodGroupIsOptionalAndChecked() {
+        assertEquals("", SosLogic.cleanBlood("  "))
+        assertEquals("AB+", SosLogic.cleanBlood("ab+"))
+        assertEquals(null, SosLogic.cleanBlood("C+"))
+    }
+    @Test fun profileLineUsesOnlyWhatIsKnown() {
+        assertEquals(null, SosLogic.profileLine("", null, ""))
+        assertEquals("Name: Ravi, Age: 30, Blood group: O+", SosLogic.profileLine(" Ravi ", 30, "O+"))
+        assertEquals("Age: 30", SosLogic.profileLine("", 30, ""))
+    }
+    @Test fun smsBodyAddsProfileAndBatteryBeforeLocation() {
+        val b = SosLogic.smsBody("link", "Name: Ravi", 42)
+        assertTrue(b.contains("Name: Ravi"))
+        assertTrue(b.contains("Phone battery: 42%"))
+        assertTrue(b.endsWith("link"))
+        assertTrue(!SosLogic.smsBody("link", null, null).contains("battery"))
+        assertTrue(!SosLogic.smsBody("link", null, 150).contains("battery"))
+    }
 }

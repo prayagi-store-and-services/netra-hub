@@ -67,3 +67,9 @@ After an in-app update installs, the app restarts and, on start, deletes every d
 - Emergency contacts (up to 5) are stored only on the phone. Nothing is uploaded.
 - Limits: SMS needs mobile network and the app cannot confirm delivery. It does not call anyone. After one SOS, shakes are ignored for 60 seconds.
 - New permission: SEND_SMS (sensitive; requested only when SOS is switched on). The telephony hardware feature is declared optional so tablets are still supported. Foreground service type location uses the location permission this app already had. No new library.
+
+## Emergency profile in the SOS message (added in 1.0.10)
+
+- Optional name, date of birth and blood group, typed in the SOS screen and kept only on this phone (the same private app storage as the emergency contacts). They are never uploaded or shared by the app.
+- They leave the phone in one way only: written into the SOS SMS that you triggered yourself with the shake and did not cancel. Empty fields are left out. Age is worked out from the date of birth at that moment. The SMS also adds the phone battery percent when Android gives it.
+- Honest limits: nothing here is checked against any record, it is exactly what you typed. SMS is plain text on the mobile network, so anyone who can read your contacts' SMS can read it. No new permission and no new library.

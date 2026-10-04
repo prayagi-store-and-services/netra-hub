@@ -36,10 +36,43 @@ object SosLogic {
         return (if (plus) "+" else "") + digits
     }
 
-    /** The emergency SMS. locationMessage is the LocationShare text, or null when there is no fix. */
-    fun smsBody(locationMessage: String?): String {
+    val BLOOD_GROUPS = listOf("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
+
+    /** Blank is allowed (blood group is optional). Otherwise one of the eight standard groups. */
+    fun cleanBlood(raw: String): String? {
+        val t = raw.trim().uppercase()
+        if (t.isEmpty()) return ""
+        return if (t in BLOOD_GROUPS) t else null
+    }
+
+    /** Whole years from a date of birth written yyyy-MM-dd to today. Null for a bad, future or over 120 year old date. */
+    fun ageYears(dob: String, year: Int, month: Int, day: Int): Int? {
+        val m = Regex("^(\\d{4})-(\\d{2})-(\\d{2})$").matchEntire(dob.trim()) ?: return null
+        val y = m.groupValues[1].toInt(); val mo = m.groupValues[2].toInt(); val d = m.groupValues[3].toInt()
+        if (mo !in 1..12 || d !in 1..31) return null
+        val dim = intArrayOf(31, if ((y % 4 == 0 && y % 100 != 0) || y % 400 == 0) 29 else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+        if (d > dim[mo - 1]) return null
+        var age = year - y
+        if (month < mo || (month == mo && day < d)) age--
+        return if (age in 0..120) age else null
+    }
+
+    /** One line about the person, using only what was filled in. Null when nothing was filled in. */
+    fun profileLine(name: String, age: Int?, blood: String): String? {
+        val parts = mutableListOf<String>()
+        if (name.isNotBlank()) parts.add("Name: " + name.trim())
+        if (age != null) parts.add("Age: $age")
+        if (blood.isNotBlank()) parts.add("Blood group: $blood")
+        return if (parts.isEmpty()) null else parts.joinToString(", ")
+    }
+
+    /** The emergency SMS. locationMessage is the LocationShare text, or null when there is no fix. Profile and battery are left out when unknown. */
+    fun smsBody(locationMessage: String?, profile: String? = null, batteryPct: Int? = null): String {
         val loc = locationMessage ?: "Location Unavailable"
-        return "SOS from Netra Hub: I may be in danger and need help. Please call me now.\n" + loc
+        val sb = StringBuilder("SOS from Netra Hub: I may be in danger and need help. Please call me now.\n")
+        if (profile != null) sb.append(profile).append('\n')
+        if (batteryPct != null && batteryPct in 0..100) sb.append("Phone battery: ").append(batteryPct).append("%\n")
+        return sb.append(loc).toString()
     }
 
     fun canTrigger(nowMs: Long, lastTriggerMs: Long): Boolean = lastTriggerMs <= 0L || nowMs - lastTriggerMs >= COOLDOWN_MS

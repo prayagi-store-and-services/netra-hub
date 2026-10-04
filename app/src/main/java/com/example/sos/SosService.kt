@@ -88,7 +88,13 @@ class SosService : Service(), SensorEventListener {
         SosStore.setLastTrigger(this, System.currentTimeMillis())
         scope.launch {
             val info = OfficialLocationContextManager(this@SosService).refreshLocation()
-            val body = SosLogic.smsBody(LocationShare.message(info.latitude, info.longitude, info.accuracy, info.timestamp))
+            val cal = java.util.Calendar.getInstance()
+            val age = SosLogic.ageYears(SosStore.dob(this@SosService), cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH) + 1, cal.get(java.util.Calendar.DAY_OF_MONTH))
+            val batt = registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val lvl = batt?.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) ?: -1
+            val scl = batt?.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1) ?: -1
+            val pct = if (lvl >= 0 && scl > 0) lvl * 100 / scl else null
+            val body = SosLogic.smsBody(LocationShare.message(info.latitude, info.longitude, info.accuracy, info.timestamp), SosLogic.profileLine(SosStore.name(this@SosService), age, SosStore.blood(this@SosService)), pct)
             val hasSms = ContextCompat.checkSelfPermission(this@SosService, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
             var ok = 0
             if (hasSms) {
