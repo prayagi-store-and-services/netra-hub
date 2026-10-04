@@ -60,100 +60,17 @@ class OfficialEmergencyWarningManager(private val context: Context) {
         }
 
         // No official alert feed is connected. We do not send the user's coordinates to any third party.
-        run {
-            val stateInfo = OfficialWarningInfo(
-                warningType = "Warning Source Unavailable",
-                headline = "No official alert feed is connected, so this app cannot tell you about warnings. Check official sources.",
-                checkStatusState = "SOURCE_UNAVAILABLE",
-                issuingAuthority = "Unavailable"
-            )
-            _activeWarning.value = stateInfo
-            _checkStatus.value = "Unavailable: no official alert feed"
-            _lastCheckTimestamp.value = now
-            return@withContext stateInfo
-        }
-        _checkStatus.value = "Checking Warning Sources..."
-        val loc = locationManager.refreshLocation()
+        val stateInfo = OfficialWarningInfo(
+            warningType = "Warning Source Unavailable",
+            headline = "No official alert feed is connected, so this app cannot tell you about warnings. Check official sources.",
+            checkStatusState = "SOURCE_UNAVAILABLE",
+            issuingAuthority = "Unavailable"
+        )
+        _activeWarning.value = stateInfo
+        _checkStatus.value = "Unavailable: no official alert feed"
         _lastCheckTimestamp.value = now
-
-        val hasValidCoords = loc.latitude in -90.0..90.0 && loc.longitude in -180.0..180.0 &&
-                             loc.locationStatus != "LOCATION_UNAVAILABLE" &&
-                             loc.locationStatus != "PERMISSION_NOT_GRANTED" &&
-                             loc.locationStatus != "PROVIDER_DISABLED"
-
-        if (!hasValidCoords) {
-            val stateInfo = OfficialWarningInfo(
-                warningType = "Location Unavailable",
-                headline = "Location unavailable for warning check",
-                checkStatusState = "LOCATION_UNAVAILABLE",
-                source = "System Location"
-            )
-            _activeWarning.value = stateInfo
-            _checkStatus.value = "Location unavailable"
-            return@withContext stateInfo
-        }
-
-        try {
-            val warning = fetchWarning(loc)
-            if (warning == null) {
-                val stateInfo = OfficialWarningInfo(
-                    warningType = "Warning Source Unavailable",
-                    headline = "Warning source unavailable",
-                    checkStatusState = "SOURCE_UNAVAILABLE",
-                    issuingAuthority = "Source unavailable"
-                )
-                _activeWarning.value = stateInfo
-                _checkStatus.value = "Warning source unavailable"
-                return@withContext stateInfo
-            }
-
-            if (warning.isAvailable) {
-                val relevance = determineLocationRelevance(warning, loc)
-                val updatedWarning = warning.copy(locationRelevance = relevance)
-
-                // UNIFIED ELIGIBILITY: Official + Reliable Third-Party data collected & displayed if location matches
-                val isEligible = updatedWarning.isAvailable &&
-                                 updatedWarning.locationRelevance == "VERIFIED_MATCH" &&
-                                 updatedWarning.lifecycleState == "ACTIVE"
-
-                if (isEligible) {
-                    processMatchedWarning(updatedWarning, loc)
-                    val finalState = updatedWarning.copy(checkStatusState = "VERIFIED_ACTIVE_WARNING")
-                    _activeWarning.value = finalState
-                    _checkStatus.value = "Active Warning Detected (${updatedWarning.source})"
-                    return@withContext finalState
-                } else {
-                    val infoState = updatedWarning.copy(checkStatusState = "UNVERIFIED_INFORMATION")
-                    _activeWarning.value = infoState
-                    _checkStatus.value = "Advisory recorded (No local match)"
-                    return@withContext infoState
-                }
-            }
-
-            val clearState = OfficialWarningInfo(
-                isAvailable = false,
-                warningType = "No Active Warning",
-                headline = "No active warning for ${loc.locality}",
-                checkStatusState = "CHECK_SUCCESS_NO_ACTIVE_WARNING"
-            )
-            _activeWarning.value = clearState
-            _checkStatus.value = "Checked - No active warnings"
-            return@withContext clearState
-        } catch (e: Exception) {
-            LoggingManager.critical("EmergencyWarning", "CHECK_FAILED", "Warning check failed: ${e.message}", "Preserving status.")
-            val failState = OfficialWarningInfo(
-                warningType = "Check Failed",
-                headline = "Latest warning check failed",
-                checkStatusState = "CHECK_FAILED"
-            )
-            _activeWarning.value = failState
-            _checkStatus.value = "Latest warning check failed"
-            return@withContext failState
-        }
+        return@withContext stateInfo
     }
-
-    /** Network lookup removed: it sent coordinates to a third-party weather API with a placeholder key and called the result "verified". */
-    private suspend fun fetchWarning(loc: LocationContextInfo): OfficialWarningInfo? = null
 
     private fun mapSeverity(severityStr: String, eventStr: String): String {
         val s = severityStr.uppercase()
