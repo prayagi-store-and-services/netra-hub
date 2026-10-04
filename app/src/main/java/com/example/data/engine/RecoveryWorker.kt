@@ -17,15 +17,11 @@ class RecoveryWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val failedModules = currentHealth.values.filter { it.state != ModuleState.HEALTHY }
         
         // 3. Act on failures (Condition-based recovery)
-        failedModules.forEach { module ->
-            LoggingManager.info("RecoveryEngine", "RECOVERY_ACTION", "Attempting recovery for: ${module.name}", "Module state: ${module.state}")
-            
-            // TODO: Implement actual recovery levels (1-4)
-            // Example:
-            // if (module.name == "Battery") recoverBatteryModule()
+        // No recovery action exists in this version, so nothing is attempted and nothing is reported as recovered.
+        if (failedModules.isNotEmpty()) {
+            LoggingManager.info("RecoveryEngine", "RECOVERY_NOT_AVAILABLE", "${failedModules.size} module(s) not healthy; automatic recovery is not available in this version.", "No action taken.")
         }
-        
-        LoggingManager.info("RecoveryEngine", "RECOVERY_COMPLETE", "Recovery cycle complete.", "Automated.")
+        LoggingManager.info("RecoveryEngine", "RECOVERY_CYCLE_END", "Cycle ended. No recovery actions exist.", "Automated.")
         return Result.success()
     }
 }
