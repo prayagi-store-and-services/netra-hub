@@ -42,6 +42,7 @@ Once per UTC day (and once per month) the app adds 1 to a public counter in Fire
 
 ## Automatic crash reports
 - If the app crashes, it saves a short report on the device. The next time the app opens, it sends that report by itself (no button, no question) and then deletes it. If the send fails, it is kept and retried at the next start.
+- Version 1.1.2: Settings has a manual "Send crash report" button. It shows the exact text first (app, app version, phone model, Android version, the last crash trace) and sends only if the user taps Send; "Share instead" lets the user pick any app. If no crash is saved it says Unavailable. The automatic send now counts as sent only when the forwarding service confirms it; before, an HTTP 200 reply was enough, so a report could be deleted without any email being sent.
 - The report contains only: the app name, phone model, Android version, app version, and the crash stack trace (exception class names and code locations; exception messages are dropped on purpose).
 - It contains no name, email, location, files, contacts, device IDs or usage history.
 - It is sent through the same form pipeline as the website forms (FormSubmit) to the developer's email.
