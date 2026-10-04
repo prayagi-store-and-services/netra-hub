@@ -122,3 +122,9 @@ The app has no working "driving detected" detection in this version. The dashboa
 - Stored on the device only: the day, the counter start value and the time of the first reading. Nothing about steps is sent anywhere.
 - Honest limit: steps before the first reading of the day are not known, so the card says "Counted since <time>" and the real total can be higher. If there is no step sensor or no permission it shows Unavailable.
 - Not built yet: age-based daily target from date of birth and the achievement message (planned, next part).
+
+## Daily step target from date of birth (version 1.1.4)
+
+- The Steps today card now asks for a date of birth (optional, typed as DD-MM-YYYY) to pick a daily step target. It is stored on this phone only (local preferences, not backed up because app backup is off) and is never sent anywhere. Without it the target shows Unavailable.
+- Targets come only from published reviews: ages 6 to 19 = 12,000 steps/day (Colley et al. 2012, steps equal to 60 minutes of active time; Tudor-Locke et al. 2011 child and adolescent review), ages 20 to 64 = 10,000 steps/day (Tudor-Locke et al. 2011 adult review, "reasonable" for healthy adults). Under 6 and 65 and over: no single evidence-based target in those reviews, so the app shows Unavailable instead of inventing one. A general guide, not medical advice.
+- When today's real steps reach the target the card shows a "Target reached" message. No new permission, no network call, no new library.

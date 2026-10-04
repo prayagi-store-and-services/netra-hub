@@ -16,7 +16,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -32,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -63,6 +67,8 @@ fun StepsCard(modifier: Modifier = Modifier) {
         c.checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED
     var ok by remember { mutableStateOf(granted()) }
     var state by remember { mutableStateOf(load(prefs)) }
+    var dobText by remember { mutableStateOf(prefs.getString("dob", null)) }
+    var askDob by remember { mutableStateOf(false) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok = it }
 
     DisposableEffect(owner, ok, sensor) {
@@ -105,8 +111,54 @@ fun StepsCard(modifier: Modifier = Modifier) {
                             "Steps before that time are not known, so the real total for the day can be higher.",
                         fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    val cal = Calendar.getInstance()
+                    val ny = cal.get(Calendar.YEAR); val nm = cal.get(Calendar.MONTH) + 1; val nd = cal.get(Calendar.DAY_OF_MONTH)
+                    val dob = dobText?.let { StepTarget.parseDob(it, ny, nm, nd) }
+                    if (dob == null) {
+                        Text("Daily target: Unavailable until you enter your date of birth. It stays on this phone.", fontSize = 12.sp)
+                    } else {
+                        val age = StepTarget.ageYears(dob, ny, nm, nd)
+                        val target = StepTarget.forAge(age)
+                        if (target == null) {
+                            Text("Daily target: Unavailable. The published step reviews give no single evidence-based target for age $age (under 6, or 65 and over).", fontSize = 12.sp)
+                        } else {
+                            val steps = StepMath.today(s)
+                            Text("Daily target for age $age: $target steps (you are at ${(steps * 100 / target).coerceAtMost(100)}%).", fontSize = 12.sp)
+                            if (steps >= target) {
+                                Text("Target reached today. Well done, keep it up!", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Text(
+                                "Source: Tudor-Locke et al. 2011, Int J Behav Nutr Phys Act 8:78-80 (adults 10,000 steps/day is reasonable; children and adolescents) and Colley et al. 2012 (12,000 steps/day matches 60 minutes of active time for ages 6 to 19). A general guide, not medical advice.",
+                                fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    OutlinedButton(onClick = { askDob = true }) { Text(if (dobText == null) "Enter date of birth" else "Change date of birth") }
                 }
             }
         }
+    }
+
+    if (askDob) {
+        var txt by remember { mutableStateOf(dobText ?: "") }
+        var err by remember { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = { askDob = false },
+            title = { Text("Date of birth") },
+            text = {
+                Column {
+                    OutlinedTextField(value = txt, onValueChange = { txt = it; err = false }, singleLine = true, label = { Text("DD-MM-YYYY") }, isError = err)
+                    Text("Used only to pick your daily step target. Stored on this phone, never sent.", fontSize = 11.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val cal = Calendar.getInstance()
+                    val ok2 = StepTarget.parseDob(txt, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))
+                    if (ok2 == null) err = true else { prefs.edit().putString("dob", txt.trim()).apply(); dobText = txt.trim(); askDob = false }
+                }) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { askDob = false }) { Text("Cancel") } }
+        )
     }
 }
