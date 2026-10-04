@@ -23,6 +23,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -82,6 +84,23 @@ fun SosScreen() {
             }
         }) { Text("Save profile") }
         if (pMsg.isNotBlank()) Text(pMsg, fontSize = 13.sp)
+        Text("Official 112 India app", fontSize = 14.sp)
+        Text("Opens the government 112 India app, or its Google Play page if it is not installed. This hub shares no data with it and does not contact 112 itself.", fontSize = 12.sp)
+        Button(onClick = { open112App(ctx) }) { Text("Open 112 India") }
         if (contacts.size < 3) Text("Tip: three or more emergency contacts are recommended. SOS works with one.", fontSize = 12.sp)
+    }
+}
+
+private const val APP_112 = "in.cdac.ners.psa.mobile.android.national"
+
+/** Opens the official 112 India app if installed, else its Play page (market:// first, then the web link). */
+private fun open112App(ctx: android.content.Context) {
+    val launch = ctx.packageManager.getLaunchIntentForPackage(APP_112)
+    val intent = launch ?: Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$APP_112"))
+    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    try { ctx.startActivity(intent) } catch (e: Exception) {
+        try {
+            ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$APP_112")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e2: Exception) { android.widget.Toast.makeText(ctx, "Could not open 112 India. Install it from Google Play.", android.widget.Toast.LENGTH_LONG).show() }
     }
 }
