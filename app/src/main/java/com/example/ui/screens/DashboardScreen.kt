@@ -123,7 +123,6 @@ fun DashboardScreen(
         list.add(Manifest.permission.ACCESS_FINE_LOCATION)
         list.add(Manifest.permission.ACCESS_COARSE_LOCATION)
         list.add(Manifest.permission.CAMERA)
-        list.add(Manifest.permission.RECORD_AUDIO)
         list.toTypedArray()
     }
 
