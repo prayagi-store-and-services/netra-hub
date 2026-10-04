@@ -106,7 +106,8 @@ fun DashboardScreen(
     privacyScannerState: PrivacyScannerState,
     onTogglePrivacyScanner: (Boolean) -> Unit,
     viewModel: MainViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    topActions: @Composable () -> Unit = {}
 ) {
     val supportedCount = capabilities.count { it.isSupported }
     val totalCount = capabilities.size
@@ -186,7 +187,7 @@ fun DashboardScreen(
             .testTag("dashboard_screen"),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        item { Spacer(modifier = Modifier.height(4.dp)) }
+        item { topActions() }
 
         // --- Global Safety Status Indicator (Phase 3) ---
         item {

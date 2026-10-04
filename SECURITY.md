@@ -1,5 +1,8 @@
 # Security notes - netra-hub
 
+## Standard header and scrolling (v1.1.1)
+The header is the Netra standard: 56 dp, only the app name, the installed version and the device date/time. The SOS setup, Share location and Travel Checking buttons moved to the top of the scrolling Dashboard; the bottom bar stays fixed. No new permission, network call or library.
+
 ## Header cleanup, first UI step (v1.1.0)
 - The header now shows the installed version (read from Android's package info; "Unavailable" if Android does not return it). The always-green dot and the account icon are removed: nothing was behind them (the dot never changed with any real state, and Hub has no accounts). The header button "SOS" is renamed "SOS setup" because it opens the SOS settings screen and does not send an SOS. The SOS tab icon is now a warning sign instead of a camera. No permission, network call or library change. Further UI steps follow in later releases.
 - Rule for all Netra apps: every datum shown must be backed by real evidence; when none is available the app shows "Unavailable" and nothing is made up.

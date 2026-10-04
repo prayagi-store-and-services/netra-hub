@@ -193,92 +193,21 @@ fun MainScreen(
     Scaffold(
         topBar = {
             if (!showAuditScreen && !showPinChangeScreen) {
-                TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    ) {
-                        Column {
-                            Text(
-                                text = (if (isLiteMode) "SYSTEM ENGINE (LITE MODE)" else "SYSTEM ENGINE") + "  v" + (try { context.packageManager.getPackageInfo(context.packageName, 0).versionName } catch (e: Exception) { null } ?: "Unavailable"),
-                                color = if (isLiteMode) BentoAmber else BentoTextSecondary,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.5.sp
-                            )
-                            Text(
-                                text = "Netra Human Safety",
-                                color = BentoTextPrimary,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = (-0.5).sp
-                            )
-                        }
+                // Standard Netra header: 56 dp, only app name, version and date/time. Everything else scrolls.
+                var clockNow by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(java.util.Date()) }
+                androidx.compose.runtime.LaunchedEffect(Unit) { while (true) { clockNow = java.util.Date(); kotlinx.coroutines.delay(30_000) } }
+                val ownVersion = androidx.compose.runtime.remember { try { context.packageManager.getPackageInfo(context.packageName, 0).versionName } catch (e: Exception) { null } ?: "Unavailable" }
+                Row(
+                    modifier = Modifier.fillMaxWidth().background(BentoBackground).statusBarsPadding().height(56.dp).padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(text = "Netra Human Safety", color = BentoTextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text(text = "v" + ownVersion + (if (isLiteMode) "  (lite mode)" else ""), color = if (isLiteMode) BentoAmber else BentoTextSecondary, fontSize = 12.sp, maxLines = 1)
                     }
-                },
-                actions = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(end = 12.dp)
-                    ) {
-                        androidx.compose.material3.TextButton(
-                            onClick = { selectedTab = if (selectedTab == NavigationTab.SOS) NavigationTab.DASHBOARD else NavigationTab.SOS },
-                            modifier = Modifier.testTag("header_sos")
-                        ) {
-                            Text(text = if (selectedTab == NavigationTab.SOS) "Close" else "SOS setup", color = BentoGreenPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-                        androidx.compose.material3.TextButton(
-                            onClick = {
-                                shareScope.launch {
-                                    val info = shareLocationManager.refreshLocation()
-                                    val msg = com.example.share.LocationShare.message(info.latitude, info.longitude, info.accuracy, info.timestamp)
-                                    if (msg == null) {
-                                        android.widget.Toast.makeText(context, "Location Unavailable - turn on location and allow it, then try again", android.widget.Toast.LENGTH_LONG).show()
-                                    } else {
-                                        val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, msg) }
-                                        context.startActivity(Intent.createChooser(send, "Share my location"))
-                                    }
-                                }
-                            },
-                            modifier = Modifier.testTag("header_share_location")
-                        ) {
-                            Text(text = "Share location", color = BentoGreenPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-                        androidx.compose.material3.TextButton(
-                            onClick = { selectedTab = if (selectedTab == NavigationTab.TRAVEL_CHECK) NavigationTab.DASHBOARD else NavigationTab.TRAVEL_CHECK },
-                            modifier = Modifier.testTag("header_travel_checking")
-                        ) {
-                            Text(
-                                text = if (selectedTab == NavigationTab.TRAVEL_CHECK) "Close" else "Travel Checking",
-                                color = BentoGreenPrimary,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        if (isLiteMode) {
-                            Surface(
-                                color = BentoAmber.copy(alpha = 0.2f),
-                                shape = RoundedCornerShape(4.dp),
-                                modifier = Modifier.padding(end = 8.dp)
-                            ) {
-                                Text(
-                                    text = "⚡ LITE",
-                                    color = BentoAmber,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BentoBackground,
-                    titleContentColor = BentoTextPrimary
-                ),
-                modifier = Modifier.statusBarsPadding()
-            )
+                    Text(text = java.text.SimpleDateFormat("EEE d MMM, HH:mm", java.util.Locale.getDefault()).format(clockNow), color = BentoTextSecondary, fontSize = 12.sp, maxLines = 1)
+                }
             }
         },
         bottomBar = {
@@ -388,7 +317,45 @@ fun MainScreen(
                             onRefreshAi = { viewModel.refreshAiAnalysis() },
                             privacyScannerState = privacyScannerState,
                             onTogglePrivacyScanner = { enabled -> viewModel.togglePrivacyScanner(enabled) },
-                            viewModel = viewModel
+                            viewModel = viewModel,
+                            topActions = {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    androidx.compose.material3.TextButton(
+                                        onClick = { selectedTab = if (selectedTab == NavigationTab.SOS) NavigationTab.DASHBOARD else NavigationTab.SOS },
+                                        modifier = Modifier.testTag("header_sos")
+                                    ) {
+                                        Text(text = if (selectedTab == NavigationTab.SOS) "Close" else "SOS setup", color = BentoGreenPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    androidx.compose.material3.TextButton(
+                                        onClick = {
+                                            shareScope.launch {
+                                                val info = shareLocationManager.refreshLocation()
+                                                val msg = com.example.share.LocationShare.message(info.latitude, info.longitude, info.accuracy, info.timestamp)
+                                                if (msg == null) {
+                                                    android.widget.Toast.makeText(context, "Location Unavailable - turn on location and allow it, then try again", android.widget.Toast.LENGTH_LONG).show()
+                                                } else {
+                                                    val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, msg) }
+                                                    context.startActivity(Intent.createChooser(send, "Share my location"))
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.testTag("header_share_location")
+                                    ) {
+                                        Text(text = "Share location", color = BentoGreenPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    androidx.compose.material3.TextButton(
+                                        onClick = { selectedTab = if (selectedTab == NavigationTab.TRAVEL_CHECK) NavigationTab.DASHBOARD else NavigationTab.TRAVEL_CHECK },
+                                        modifier = Modifier.testTag("header_travel_checking")
+                                    ) {
+                                        Text(
+                                            text = if (selectedTab == NavigationTab.TRAVEL_CHECK) "Close" else "Travel Checking",
+                                            color = BentoGreenPrimary,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
                         )
                         NavigationTab.SENSOR_CENTER -> SensorCenterContainerScreen(
                             capabilities = capabilities,
