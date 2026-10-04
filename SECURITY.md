@@ -103,3 +103,6 @@ Everything below was found by auditing the code against what the app says it doe
 
 - The background "self-audit" and "recovery" jobs and the service-recovery routine used to log "Self-audit complete", "Recovery Completed" and mark a failed service as running again, while doing nothing. They now log that no checks and no recovery actions exist in this version, and a service that fails its check is shown as stopped, not recovered. Nothing here changes what the safety features (SOS, location share) do.
 - Left for the owner to decide: crash reports are sent automatically with no switch (the report holds only app name, phone model, Android and app version, and exception class names with code locations; no name, email, location or device ID). It goes through the formsubmit.co forwarding service to the owner's inbox. A consent switch can be added if wanted.
+
+## Driving detection is not available yet (1.0.14)
+The app has no working "driving detected" detection in this version. The dashboard card and the assistant used to show "Idle / Stationary" or "No Drive Detected", which was misleading. They now say drive detection is not available. GPS speed is still shown as measured. A real, battery-aware driving detection is planned as a separate, clearly labelled heuristic.
