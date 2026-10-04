@@ -79,3 +79,10 @@ After an in-app update installs, the app restarts and, on start, deletes every d
 - A button on the SOS screen opens the official 112 India app (package in.cdac.ners.psa.mobile.android.national), or its Google Play page when it is not installed. It runs only when you tap it.
 - The manifest gains a package-visibility entry for that one package so the hub can tell if it is installed. No new permission, no new library, no data is sent to the app or to anyone.
 - Honest limits: the hub is not registered with 112 and does not alert 112 itself. Alerts to 112 are sent by the 112 India app, which has its own terms and state coverage.
+
+## Location and backup honesty fixes (also in 1.0.11)
+
+- Found in an audit: when the phone had no location at all, the location code made up a fix in New York (40.7128, -74.0060, accuracy 50 m, stamped "now"). SOS and Share location could therefore have sent a wrong place. It also accepted old cached fixes of any age.
+- Fixed: the made-up fix is removed. A location older than 15 minutes (or stamped in the future) is never used. With no recent real fix the app says "Location unavailable", and the SOS SMS says "Location Unavailable" instead of a map link. The sensor engine's built-in New York default is now 0,0 (treated as no fix).
+- Fixed: backups no longer fall back to plain Base64 when the Android Keystore fails. Base64 is encoding, not encryption. Creating a backup now fails and says so; restoring a file that cannot be decrypted fails and says so. Older backup files written by the old fallback can no longer be restored.
+- Honest limits: nothing in the app claims an encrypted database. Only backup files are encrypted (AES-GCM with a Keystore key). Not tested on a device. No new permission or library.
