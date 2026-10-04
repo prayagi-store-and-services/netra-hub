@@ -86,3 +86,15 @@ After an in-app update installs, the app restarts and, on start, deletes every d
 - Fixed: the made-up fix is removed. A location older than 15 minutes (or stamped in the future) is never used. With no recent real fix the app says "Location unavailable", and the SOS SMS says "Location Unavailable" instead of a map link. The sensor engine's built-in New York default is now 0,0 (treated as no fix).
 - Fixed: backups no longer fall back to plain Base64 when the Android Keystore fails. Base64 is encoding, not encryption. Creating a backup now fails and says so; restoring a file that cannot be decrypted fails and says so. Older backup files written by the old fallback can no longer be restored.
 - Honest limits: nothing in the app claims an encrypted database. Only backup files are encrypted (AES-GCM with a Keystore key). Not tested on a device. No new permission or library.
+
+## Compliance audit fixes (1.0.12)
+
+Everything below was found by auditing the code against what the app says it does. Nothing here is tested on a device.
+
+- Warnings: the app used to ask a third-party weather API (placeholder key "public") about the phone's coordinates and call the answer "verified". That call is removed. No coordinates leave the phone for warnings. The warning card now says that no official alert feed is connected. The app does not claim "no active warnings".
+- Encryption claims: the "AES-256 log encryption" switch changed nothing and defaulted to on. It is removed and replaced by a plain statement that logs are not encrypted by the app. "Export encrypted backup" wrote plain JSON; it is renamed "Export Logs (plain JSON)" and the file names no longer say "encrypted". The old backup engine wrote only a few metadata fields and a restore that restored nothing; both now report "not available".
+- Integrity: the system-integrity check always said "secure". It now says "not verified". Backup format validation now needs valid Base64 of at least an IV plus data instead of any text containing "{".
+- Security score: items the app cannot read from Android (Find My Device, Play Protect, theft lock, offline lock, trusted devices, remote lock, network lock, power-menu lock, factory-reset protection, SIM lock, emergency SOS setting) used to default to "enabled". They now show "unknown" until Android reports otherwise. Device encryption shows "enabled" only when Android reports it.
+- Permissions removed because nothing uses them: RECORD_AUDIO (the app never records audio), BODY_SENSORS, ACCESS_BACKGROUND_LOCATION, HIGH_SAMPLING_RATE_SENSORS, USE_BIOMETRIC, USE_FINGERPRINT, ACTIVITY_RECOGNITION, BLUETOOTH_ADMIN. ACTIVITY_RECOGNITION returns if driving detection ships. The app no longer asks for the microphone.
+- SOS result wording: the notification now says the SMS was "handed to the phone" and that delivery is not confirmed. Android gives no delivery proof without extra callbacks.
+- Left as is, with reason: the Security Hub's manufacturer picker (it only changes which phone-maker tips are shown, and is labelled); the old test-simulation framework (no screen opens it); the usage stats permission (used for app screen time on the health page).
