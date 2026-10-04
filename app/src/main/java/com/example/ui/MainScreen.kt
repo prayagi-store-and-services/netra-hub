@@ -317,14 +317,6 @@ fun MainScreen(
                             onRefreshAi = { viewModel.refreshAiAnalysis() },
                             privacyScannerState = privacyScannerState,
                             onTogglePrivacyScanner = { enabled -> viewModel.togglePrivacyScanner(enabled) },
-                            viewModel = viewModel
-                        )
-                        NavigationTab.SENSOR_CENTER -> SensorCenterContainerScreen(
-                            capabilities = capabilities,
-                            liveReadings = liveReadings,
-                            watchdogStates = watchdogStates,
-                            fusionState = fusionState,
-                            riskAnalysis = riskAnalysis,
                             viewModel = viewModel,
                             topActions = {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -364,6 +356,14 @@ fun MainScreen(
                                     }
                                 }
                             }
+                        )
+                        NavigationTab.SENSOR_CENTER -> SensorCenterContainerScreen(
+                            capabilities = capabilities,
+                            liveReadings = liveReadings,
+                            watchdogStates = watchdogStates,
+                            fusionState = fusionState,
+                            riskAnalysis = riskAnalysis,
+                            viewModel = viewModel
                         )
                         NavigationTab.LIVE_GRAPH -> {
                             val liveGraphState by viewModel.liveGraphState.collectAsStateWithLifecycle()
