@@ -16,4 +16,10 @@ class CrashReporterTest {
         assertTrue(s.contains("Caused by: java.lang.IllegalArgumentException"))
         assertFalse(s.contains("inner-secret"))
     }
+    @Test fun acceptedNeedsRealSuccessAnswer() {
+        assertTrue(CrashReporter.accepted("{\"success\":\"true\",\"message\":\"ok\"}"))
+        assertTrue(CrashReporter.accepted("{\"success\":true}"))
+        assertFalse(CrashReporter.accepted("{\"success\":\"false\",\"message\":\"Needs Activation\"}"))
+        assertFalse(CrashReporter.accepted(""))
+    }
 }

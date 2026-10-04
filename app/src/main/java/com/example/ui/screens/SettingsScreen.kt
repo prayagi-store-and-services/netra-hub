@@ -1285,6 +1285,7 @@ fun SettingsScreen(
         item { com.example.ui.readiness.SpeedGateCard(modifier = Modifier.padding(horizontal = 4.dp)) }
         item { com.example.stats.UsageCountCard() }
         item { com.example.update.UpdateCheckCard() }
+        item { com.example.stats.CrashReportCard() }
 
         // System Self-Audit & Health Monitor Card
         item {
