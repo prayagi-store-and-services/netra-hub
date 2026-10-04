@@ -67,9 +67,9 @@ class IBRS2RuntimeEngine(
             service.recoveryCount++
             historyEngine.logEvent("System", "Warning", "Recovery Started", service.name, "Attempt ${service.recoveryCount}", "RECOVERING")
             
-            // Perform recovery (mock)
-            updateLifecycle(service.name, ServiceLifecycle.RUNNING)
-            historyEngine.logEvent("System", "Information", "Recovery Completed", service.name, "Attempt ${service.recoveryCount}", "RUNNING")
+            // No restart action exists, so we do not pretend the service recovered.
+            updateLifecycle(service.name, ServiceLifecycle.STOPPED)
+            historyEngine.logEvent("System", "Warning", "Recovery Not Available", service.name, "No restart action exists in this version", "STOPPED")
         } else {
             historyEngine.logEvent("System", "Critical", "Recovery Failed", service.name, "Max attempts reached", "STOPPED")
             updateLifecycle(service.name, ServiceLifecycle.STOPPED)
