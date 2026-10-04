@@ -34,6 +34,10 @@ fun SosScreen() {
     var contacts by remember { mutableStateOf(SosStore.contacts(ctx)) }
     var input by remember { mutableStateOf("") }
     var msg by remember { mutableStateOf("") }
+    var pName by remember { mutableStateOf(SosStore.name(ctx)) }
+    var pDob by remember { mutableStateOf(SosStore.dob(ctx)) }
+    var pBlood by remember { mutableStateOf(SosStore.blood(ctx)) }
+    var pMsg by remember { mutableStateOf("") }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { res ->
         val sms = res[Manifest.permission.SEND_SMS] == true
         val loc = res[Manifest.permission.ACCESS_FINE_LOCATION] == true || res[Manifest.permission.ACCESS_COARSE_LOCATION] == true
@@ -63,5 +67,21 @@ fun SosScreen() {
         Button(onClick = {
             msg = if (SosStore.addContact(ctx, input)) { input = ""; contacts = SosStore.contacts(ctx); "" } else "Number not added: use 7 to 15 digits, no duplicates, max ${SosLogic.MAX_CONTACTS}."
         }) { Text("Add contact") }
+        Text("Emergency profile (optional, stored only on this phone)", fontSize = 14.sp)
+        Text("What you fill in here is added to the SOS SMS so helpers know who you are. Empty fields are left out. Age is worked out from your date of birth when the SMS is sent.", fontSize = 12.sp)
+        OutlinedTextField(value = pName, onValueChange = { pName = it }, label = { Text("Your name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = pDob, onValueChange = { pDob = it }, label = { Text("Date of birth (yyyy-mm-dd)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = pBlood, onValueChange = { pBlood = it }, label = { Text("Blood group (optional, like O+)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        Button(onClick = {
+            val cal = java.util.Calendar.getInstance()
+            val blood = SosLogic.cleanBlood(pBlood)
+            pMsg = when {
+                blood == null -> "Blood group not saved: use one of ${SosLogic.BLOOD_GROUPS.joinToString(", ")} or leave it empty."
+                pDob.isNotBlank() && SosLogic.ageYears(pDob, cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH) + 1, cal.get(java.util.Calendar.DAY_OF_MONTH)) == null -> "Date of birth not saved: write it as yyyy-mm-dd, not in the future."
+                else -> { SosStore.saveProfile(ctx, pName, pDob, blood); "Profile saved on this phone." }
+            }
+        }) { Text("Save profile") }
+        if (pMsg.isNotBlank()) Text(pMsg, fontSize = 13.sp)
+        if (contacts.size < 3) Text("Tip: three or more emergency contacts are recommended. SOS works with one.", fontSize = 12.sp)
     }
 }
