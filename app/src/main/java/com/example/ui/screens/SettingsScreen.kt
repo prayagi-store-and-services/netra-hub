@@ -1351,13 +1351,13 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "SECURE ENCRYPTED LOG EXPORT",
+                                text = "LOG EXPORT (NOT ENCRYPTED)",
                                 color = BentoTextPrimary,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Export event logs to local encrypted JSON backup file.",
+                                text = "Saves event logs as a plain, readable JSON file. The file is NOT encrypted: share it only with people you trust.",
                                 color = BentoTextSecondary,
                                 fontSize = 11.sp
                             )
@@ -1380,7 +1380,7 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Export Encrypted JSON Backup", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("Export Logs (plain JSON)", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
 
                     if (exportFeedback != null) {
@@ -1613,7 +1613,7 @@ fun SettingsScreen(
         // 4. Database Security & Encryption Settings
         item {
             Text(
-                text = "DATABASE ENCRYPTION & INTEGRITY",
+                text = "LOG STORAGE",
                 color = BentoTextSecondary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
@@ -1623,12 +1623,11 @@ fun SettingsScreen(
         }
 
         item {
-            SettingSwitchRow(
-                title = "AES-256 Local Log Encryption",
-                subtitle = "Encrypt Room database event logs at rest",
-                checked = encryptionEnabled,
-                onCheckedChange = onToggleEncryption,
-                icon = Icons.Default.Lock
+            Text(
+                text = "Event logs are kept in this app's private storage and are NOT encrypted by the app. The old encryption switch did nothing, so it was removed.",
+                color = BentoTextSecondary,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 4.dp)
             )
         }
 
