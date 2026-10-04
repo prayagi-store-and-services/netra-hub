@@ -1061,7 +1061,7 @@ fun DashboardScreen(
                         "Active Drive: %.1f km/h  |  Max: %.1f km/h  |  Dur: ${fusionState.drivingDurationSec}s"
                             .format(fusionState.currentSpeedKmH, fusionState.maxSpeedKmH)
                     } else {
-                        "Passive Monitor Standby — Speed: %.1f km/h (No Drive Detected)"
+                        "Drive detection is not available in this version. GPS speed: %.1f km/h"
                             .format(fusionState.currentSpeedKmH)
                     },
                     icon = Icons.Default.Speed,
