@@ -68,7 +68,7 @@ class IntelligentSecurityPrivacyEngine(
     private val _cloudBackupEnabled = MutableStateFlow(false)
     val cloudBackupEnabled: StateFlow<Boolean> = _cloudBackupEnabled.asStateFlow()
 
-    private val _integrityStatus = MutableStateFlow("SECURE")
+    private val _integrityStatus = MutableStateFlow("NOT_VERIFIED")
     val integrityStatus: StateFlow<String> = _integrityStatus.asStateFlow()
 
     private val _backgroundReadiness = MutableStateFlow(calculateBackgroundReadinessInternal())
@@ -305,19 +305,17 @@ class IntelligentSecurityPrivacyEngine(
     /**
      * Integrity Verification Engine
      */
+    /** A backup is accepted only when it is valid Base64 long enough to hold an IV plus data. Anything else fails closed. */
     fun verifyBackupIntegrity(backupJson: String): Boolean {
-        if (backupJson.isBlank()) return false
-        val isValid = backupJson.contains("version") || backupJson.contains("{")
-        if (!isValid) {
-            _integrityStatus.value = "CORRUPTED_BACKUP_DETECTED"
-        } else {
-            _integrityStatus.value = "SECURE"
-        }
-        return isValid
+        if (backupJson.isBlank()) { _integrityStatus.value = "CORRUPTED_BACKUP_DETECTED"; return false }
+        val ok = try { android.util.Base64.decode(backupJson, android.util.Base64.DEFAULT).size > 12 } catch (e: Exception) { false }
+        _integrityStatus.value = if (ok) "BACKUP_FORMAT_OK" else "CORRUPTED_BACKUP_DETECTED"
+        return ok
     }
 
+    /** No real system-integrity check exists in this app, so it never reports "secure". */
     fun verifySystemIntegrity(): Boolean {
-        _integrityStatus.value = "SECURE"
-        return true
+        _integrityStatus.value = "NOT_VERIFIED"
+        return false
     }
 }
