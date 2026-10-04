@@ -100,7 +100,7 @@ enum class NavigationTab(val title: String, val icon: ImageVector) {
     SETTINGS("Settings", Icons.Default.Settings),
     /** Opened from the header button, not shown in the bottom bar. */
     TRAVEL_CHECK("Travel Checking", Icons.Default.Videocam),
-    SOS("SOS shake", Icons.Default.Videocam)
+    SOS("SOS shake", Icons.Default.Warning)
 }
 
 @Composable
@@ -201,7 +201,7 @@ fun MainScreen(
                     ) {
                         Column {
                             Text(
-                                text = if (isLiteMode) "SYSTEM ENGINE (LITE MODE)" else "SYSTEM ENGINE",
+                                text = (if (isLiteMode) "SYSTEM ENGINE (LITE MODE)" else "SYSTEM ENGINE") + "  v" + (try { context.packageManager.getPackageInfo(context.packageName, 0).versionName } catch (e: Exception) { null } ?: "Unavailable"),
                                 color = if (isLiteMode) BentoAmber else BentoTextSecondary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -226,7 +226,7 @@ fun MainScreen(
                             onClick = { selectedTab = if (selectedTab == NavigationTab.SOS) NavigationTab.DASHBOARD else NavigationTab.SOS },
                             modifier = Modifier.testTag("header_sos")
                         ) {
-                            Text(text = if (selectedTab == NavigationTab.SOS) "Close" else "SOS", color = BentoGreenPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(text = if (selectedTab == NavigationTab.SOS) "Close" else "SOS setup", color = BentoGreenPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                         androidx.compose.material3.TextButton(
                             onClick = {
@@ -270,28 +270,6 @@ fun MainScreen(
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
-                        }
-                        // Glowing Green Dot Indicator
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .clip(CircleShape)
-                                .background(BentoGreenVibrant)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(CircleShape)
-                                .background(BentoHeroCardBg),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AccountCircle,
-                                contentDescription = "User Account",
-                                tint = BentoGreenPrimary,
-                                modifier = Modifier.size(26.dp)
-                            )
                         }
                     }
                 },

@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Header cleanup, first UI step (v1.1.0)
+- The header now shows the installed version (read from Android's package info; "Unavailable" if Android does not return it). The always-green dot and the account icon are removed: nothing was behind them (the dot never changed with any real state, and Hub has no accounts). The header button "SOS" is renamed "SOS setup" because it opens the SOS settings screen and does not send an SOS. The SOS tab icon is now a warning sign instead of a camera. No permission, network call or library change. Further UI steps follow in later releases.
+- Rule for all Netra apps: every datum shown must be backed by real evidence; when none is available the app shows "Unavailable" and nothing is made up.
+
 ## In-app update (new)
 
 What it does: on app open, at most once a day, the app asks `https://github.com/prayagi-store-and-services/netra-hub/releases/latest/download/latest.json` whether a newer version exists. If yes, it shows the version and what changed, and the user taps Update. The app downloads `app-release.apk` from the same release, checks its size and SHA-256 against latest.json, and only then opens the Android package installer. The user confirms with one system tap.
