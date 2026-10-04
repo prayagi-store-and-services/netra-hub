@@ -46,6 +46,11 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Lets the hub see whether the official 112 India app is installed. Nothing else is queried. -->
+    <queries>
+        <package android:name="in.cdac.ners.psa.mobile.android.national" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"

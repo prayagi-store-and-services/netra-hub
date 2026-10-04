@@ -20,8 +20,8 @@ class SensorFusionEngine(private val context: Context) {
     private var magneticStartTime = 0L
     private var lastThermalStatusLevel: Float = 0f
     private var lastAmbientTempC: Float = 25f
-    private var lastLatitude: Double = 40.7128
-    private var lastLongitude: Double = -74.0060
+    private var lastLatitude: Double = 0.0
+    private var lastLongitude: Double = 0.0
     private var lastSpeedKmH: Float = 0f
     private var lastReadingTimestamp = 0L
 

@@ -38,6 +38,8 @@ class OfficialLocationContextManager(private val context: Context) {
     private val _locationContext = MutableStateFlow(LocationContextInfo())
     val locationContext: StateFlow<LocationContextInfo> = _locationContext.asStateFlow()
 
+    private val MAX_FIX_AGE_MS = 900000L // a location older than 15 minutes is never used
+
     private var lastFetchTime = 0L
     private var lastLat = 0.0
     private var lastLon = 0.0
@@ -116,23 +118,6 @@ class OfficialLocationContextManager(private val context: Context) {
                     }
                 }
             }
-
-            if (bestLocation == null) {
-                if (hasFine && isGpsEnabled) {
-                    val gpsLoc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                    if (gpsLoc != null && isValidCoordinate(gpsLoc.latitude, gpsLoc.longitude)) {
-                        bestLocation = gpsLoc
-                        sourceUsed = "GPS"
-                    }
-                }
-                if (bestLocation == null && isNetworkEnabled) {
-                    val netLoc = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-                    if (netLoc != null && isValidCoordinate(netLoc.latitude, netLoc.longitude)) {
-                        bestLocation = netLoc
-                        sourceUsed = "NETWORK"
-                    }
-                }
-            }
         } catch (e: Exception) {
             LoggingManager.critical("LocationManager", "LOCATION_FETCH_ERROR", "Error reading cached location: ${e.message}", "")
         }
@@ -171,7 +156,7 @@ class OfficialLocationContextManager(private val context: Context) {
                     val allProviders = locationManager.allProviders
                     for (prov in allProviders) {
                         val loc = locationManager.getLastKnownLocation(prov)
-                        if (loc != null && isValidCoordinate(loc.latitude, loc.longitude)) {
+                        if (loc != null && isValidCoordinate(loc.latitude, loc.longitude) && now - loc.time in 0L..MAX_FIX_AGE_MS) {
                             bestLocation = loc
                             sourceUsed = "CACHED_FALLBACK"
                             break
@@ -181,14 +166,11 @@ class OfficialLocationContextManager(private val context: Context) {
             } catch (_: Exception) {}
 
             if (bestLocation == null) {
-                val fallback = Location("fallback").apply {
-                    latitude = 40.7128
-                    longitude = -74.0060
-                    accuracy = 50f
-                    time = System.currentTimeMillis()
-                }
-                bestLocation = fallback
-                sourceUsed = "NETWORK_FALLBACK"
+                // No real, recent fix. Never invent one: report it as unavailable.
+                LoggingManager.info("LocationManager", "NO_RECENT_FIX", "No fix newer than ${MAX_FIX_AGE_MS / 60000} minutes", "Status: LOCATION_TIMEOUT")
+                val info = LocationContextInfo(source = "LOCATION_UNAVAILABLE", locationStatus = "LOCATION_TIMEOUT")
+                _locationContext.value = info
+                return@withContext info
             }
         }
 

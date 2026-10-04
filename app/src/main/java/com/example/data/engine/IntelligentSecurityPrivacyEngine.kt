@@ -252,17 +252,15 @@ class IntelligentSecurityPrivacyEngine(
 
             android.util.Base64.encodeToString(combined, android.util.Base64.DEFAULT)
         } catch (e: Exception) {
-            // Fallback lightweight reversible encoding if Android Keystore unavailable
-            android.util.Base64.encodeToString(plainText.toByteArray(StandardCharsets.UTF_8), android.util.Base64.DEFAULT)
+            // Never fall back to plain Base64: that is encoding, not encryption. Fail visibly instead.
+            throw IllegalStateException("Encryption unavailable: " + (e.message ?: e.javaClass.simpleName), e)
         }
     }
 
     fun decryptData(encryptedBase64: String): String {
         return try {
             val combined = android.util.Base64.decode(encryptedBase64, android.util.Base64.DEFAULT)
-            if (combined.size <= 12) {
-                return String(combined, StandardCharsets.UTF_8)
-            }
+            if (combined.size <= 12) throw IllegalArgumentException("Not an encrypted backup")
             val secretKey = getOrCreateSecretKey()
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             val spec = GCMParameterSpec(128, combined, 0, 12)
@@ -270,11 +268,8 @@ class IntelligentSecurityPrivacyEngine(
             val decryptedBytes = cipher.doFinal(combined, 12, combined.size - 12)
             String(decryptedBytes, StandardCharsets.UTF_8)
         } catch (e: Exception) {
-            try {
-                String(android.util.Base64.decode(encryptedBase64, android.util.Base64.DEFAULT), StandardCharsets.UTF_8)
-            } catch (e2: Exception) {
-                encryptedBase64
-            }
+            // No plain Base64 fallback: a failed decrypt is reported, not guessed.
+            throw IllegalStateException("Could not decrypt: " + (e.message ?: e.javaClass.simpleName), e)
         }
     }
 
