@@ -28,3 +28,27 @@ class StepMathTest {
         assertEquals(480L, StepMath.today(s))
     }
 }
+
+class StepTargetTest {
+    @Test fun parsesValidDob() {
+        assertEquals(Triple(2000, 2, 29), StepTarget.parseDob("29-02-2000", 2026, 10, 5))
+    }
+    @Test fun rejectsBadDates() {
+        assertEquals(null, StepTarget.parseDob("31-04-2000", 2026, 10, 5))
+        assertEquals(null, StepTarget.parseDob("29-02-2001", 2026, 10, 5))
+        assertEquals(null, StepTarget.parseDob("06-10-2026", 2026, 10, 5))
+        assertEquals(null, StepTarget.parseDob("abc", 2026, 10, 5))
+    }
+    @Test fun ageBeforeAndOnBirthday() {
+        assertEquals(25, StepTarget.ageYears(Triple(2000, 10, 6), 2026, 10, 5))
+        assertEquals(26, StepTarget.ageYears(Triple(2000, 10, 5), 2026, 10, 5))
+    }
+    @Test fun targetsOnlyWhereSourced() {
+        assertEquals(null, StepTarget.forAge(5))
+        assertEquals(12000, StepTarget.forAge(6))
+        assertEquals(12000, StepTarget.forAge(19))
+        assertEquals(10000, StepTarget.forAge(20))
+        assertEquals(10000, StepTarget.forAge(64))
+        assertEquals(null, StepTarget.forAge(65))
+    }
+}
