@@ -59,6 +59,19 @@ class OfficialEmergencyWarningManager(private val context: Context) {
             return@withContext _activeWarning.value
         }
 
+        // No official alert feed is connected. We do not send the user's coordinates to any third party.
+        run {
+            val stateInfo = OfficialWarningInfo(
+                warningType = "Warning Source Unavailable",
+                headline = "No official alert feed is connected, so this app cannot tell you about warnings. Check official sources.",
+                checkStatusState = "SOURCE_UNAVAILABLE",
+                issuingAuthority = "Unavailable"
+            )
+            _activeWarning.value = stateInfo
+            _checkStatus.value = "Unavailable: no official alert feed"
+            _lastCheckTimestamp.value = now
+            return@withContext stateInfo
+        }
         _checkStatus.value = "Checking Warning Sources..."
         val loc = locationManager.refreshLocation()
         _lastCheckTimestamp.value = now
@@ -139,57 +152,8 @@ class OfficialEmergencyWarningManager(private val context: Context) {
         }
     }
 
-    private suspend fun fetchWarning(loc: LocationContextInfo): OfficialWarningInfo? {
-        try {
-            val url = URL("https://api.weatherapi.com/v1/current.json?key=public&q=${loc.latitude},${loc.longitude}&aqi=no")
-            val connection = url.openConnection() as HttpURLConnection
-            connection.connectTimeout = 5000
-            connection.readTimeout = 5000
-            connection.requestMethod = "GET"
-
-            if (connection.responseCode == 200) {
-                val jsonStr = connection.inputStream.bufferedReader().use { it.readText() }
-                val root = JSONObject(jsonStr)
-                if (root.has("alerts")) {
-                    val alertsObj = root.getJSONObject("alerts")
-                    val alertArray = alertsObj.getJSONArray("alert")
-                    if (alertArray.length() > 0) {
-                        val alert = alertArray.getJSONObject(0)
-                        val sender = alert.optString("senderName", "").trim()
-                        val authority = if (sender.isNotEmpty()) sender else "Reliable Weather Provider"
-                        
-                        val event = alert.optString("event", "Weather Advisory")
-                        val severityRaw = alert.optString("severity", "UNKNOWN")
-                        val mappedSeverity = mapSeverity(severityRaw, event)
-
-                        return OfficialWarningInfo(
-                            alertId = alert.optString("id", "WARN-${System.currentTimeMillis()}"),
-                            warningType = event,
-                            severity = mappedSeverity,
-                            headline = alert.optString("headline", "Weather advisory issued"),
-                            description = alert.optString("desc", ""),
-                            startTime = alert.optString("effective", ""),
-                            endTime = alert.optString("expires", ""),
-                            issuingAuthority = authority,
-                            sourceType = "THIRD_PARTY",
-                            verificationStatus = "VERIFIED_THIRD_PARTY",
-                            locationRelevance = "UNKNOWN_RELEVANCE",
-                            lifecycleState = "ACTIVE",
-                            checkStatusState = "VERIFIED_ACTIVE_WARNING",
-                            affectedArea = alert.optString("areaDesc", ""),
-                            timestamp = System.currentTimeMillis(),
-                            isAvailable = true,
-                            source = "Weather Provider (Third-Party)"
-                        )
-                    }
-                }
-                return OfficialWarningInfo(isAvailable = false)
-            }
-        } catch (e: Exception) {
-            LoggingManager.info("EmergencyWarning", "NETWORK_OFFLINE", "Warning network check failed: ${e.message}", "Source unavailable.")
-        }
-        return null
-    }
+    /** Network lookup removed: it sent coordinates to a third-party weather API with a placeholder key and called the result "verified". */
+    private suspend fun fetchWarning(loc: LocationContextInfo): OfficialWarningInfo? = null
 
     private fun mapSeverity(severityStr: String, eventStr: String): String {
         val s = severityStr.uppercase()
