@@ -100,7 +100,7 @@ fun SettingsContainerScreen(
             SearchableFeature("Thermal Monitoring", "Overheat and battery thermal safety", "Sensors") { onNavigateToSection("SETTINGS") },
             SearchableFeature("Bluetooth Safety", "Bluetooth nearby device detection", "Sensors") { onNavigateToSection("SETTINGS") },
             SearchableFeature("AI Fusion & Analytics", "Sensor fusion & risk level estimation", "AI") { onNavigateToSection("SENSOR_CENTER") },
-            SearchableFeature("Backup & Restore", "IBSDCE encrypted local and cloud backup", "Security") { onNavigateToSection("SETTINGS") },
+            SearchableFeature("Log export", "Plain JSON export of event logs (not encrypted)", "Security") { onNavigateToSection("SETTINGS") },
             SearchableFeature("Privacy & Permissions", "ISPPE permission dependencies & data policies", "Security") { onNavigateToSection("SETTINGS") },
             SearchableFeature("Service Manager", "IBRS2 runtime service controller & health", "System") { onNavigateToSection("SERVICE_MANAGER") },
             SearchableFeature("Event History & Export", "View event logs and export reports", "Logs") { onNavigateToSection("HISTORY_LOGS") },

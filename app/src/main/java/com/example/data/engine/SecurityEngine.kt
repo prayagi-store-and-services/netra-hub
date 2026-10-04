@@ -342,7 +342,7 @@ class SecurityEngine(
                     category = FeatureCategory.B,
                     isMandatory = true,
                     scoreWeight = 10,
-                    status = getSavedStatus("find_my_device", FeatureStatus.ENABLED), // Defaults to enabled for simulated dashboard simplicity
+                    status = getSavedStatus("find_my_device", FeatureStatus.UNKNOWN), // The app cannot read this setting, so it is shown as unknown, never as on
                     description = "Locate, lock, or wipe your lost or stolen device remotely via Google Account."
                 ),
                 // 4. Device Encryption (Mandatory, 10 pts)
@@ -352,7 +352,7 @@ class SecurityEngine(
                     category = FeatureCategory.B,
                     isMandatory = true,
                     scoreWeight = 10,
-                    status = if (actualEncrypted || getSavedStatus("device_encryption", FeatureStatus.ENABLED) == FeatureStatus.ENABLED) FeatureStatus.ENABLED else FeatureStatus.DISABLED,
+                    status = if (actualEncrypted) FeatureStatus.ENABLED else getSavedStatus("device_encryption", FeatureStatus.UNKNOWN),
                     description = "Encrypt your device's internal storage so files are unreadable without your credentials."
                 ),
                 // 5. Google Play Protect (Mandatory, 10 pts)
@@ -362,7 +362,7 @@ class SecurityEngine(
                     category = FeatureCategory.B,
                     isMandatory = true,
                     scoreWeight = 10,
-                    status = getSavedStatus("google_play_protect", FeatureStatus.ENABLED),
+                    status = getSavedStatus("google_play_protect", FeatureStatus.UNKNOWN),
                     description = "Scans apps before installation and regularly checks existing apps for safety compliance."
                 ),
                 // 6. Theft Protection (Mandatory, 10 pts)
@@ -372,7 +372,7 @@ class SecurityEngine(
                     category = FeatureCategory.C,
                     isMandatory = true,
                     scoreWeight = 10,
-                    status = if (!isPixel && !isSamsung && !isRealme) FeatureStatus.NOT_SUPPORTED else getSavedStatus("theft_detection_lock", FeatureStatus.ENABLED),
+                    status = if (!isPixel && !isSamsung && !isRealme) FeatureStatus.NOT_SUPPORTED else getSavedStatus("theft_detection_lock", FeatureStatus.UNKNOWN),
                     description = "Automatically locks your device screen when physical snatching or running patterns are detected."
                 ),
                 // 7. Offline Device Lock (Mandatory, 5 pts)
@@ -382,7 +382,7 @@ class SecurityEngine(
                     category = FeatureCategory.C,
                     isMandatory = true,
                     scoreWeight = 5,
-                    status = if (!isPixel) FeatureStatus.NOT_SUPPORTED else getSavedStatus("offline_device_lock", FeatureStatus.ENABLED),
+                    status = if (!isPixel) FeatureStatus.NOT_SUPPORTED else getSavedStatus("offline_device_lock", FeatureStatus.UNKNOWN),
                     description = "Locks the screen instantly if the device goes fully offline for a prolonged period."
                 ),
                 // 8. SIM Lock (PIN) (Optional, 8 pts)
@@ -392,7 +392,7 @@ class SecurityEngine(
                     category = FeatureCategory.C,
                     isMandatory = false,
                     scoreWeight = 8,
-                    status = if (isXiaomi) FeatureStatus.ENABLED else getSavedStatus("sim_lock", FeatureStatus.DISABLED),
+                    status = getSavedStatus("sim_lock", FeatureStatus.UNKNOWN),
                     description = "Protects your mobile line with a SIM PIN to block phone identity theft."
                 ),
                 // 9. Emergency SOS (Optional, 4 pts)
@@ -402,7 +402,7 @@ class SecurityEngine(
                     category = FeatureCategory.B,
                     isMandatory = false,
                     scoreWeight = 4,
-                    status = getSavedStatus("emergency_sos", FeatureStatus.ENABLED),
+                    status = getSavedStatus("emergency_sos", FeatureStatus.UNKNOWN),
                     description = "Quickly press the power button 5 times to call emergency services and share location."
                 ),
                 // 10. USB Debugging Disabled (Optional, 3 pts)
@@ -432,7 +432,7 @@ class SecurityEngine(
                     category = FeatureCategory.A,
                     isMandatory = false,
                     scoreWeight = 3,
-                    status = getSavedStatus("trusted_devices", FeatureStatus.ENABLED),
+                    status = getSavedStatus("trusted_devices", FeatureStatus.UNKNOWN),
                     description = "Regularly audits Smart Lock and secure Bluetooth attachments connected to your account."
                 ),
                 // 13. Remote Lock (Optional, 0 pts)
@@ -442,7 +442,7 @@ class SecurityEngine(
                     category = FeatureCategory.A,
                     isMandatory = false,
                     scoreWeight = 0,
-                    status = getSavedStatus("remote_lock", FeatureStatus.ENABLED),
+                    status = getSavedStatus("remote_lock", FeatureStatus.UNKNOWN),
                     description = "Allows quick remote-locking via specific browser panels if the device is lost."
                 ),
                 // 14. Lock Network & Security (Optional, 0 pts)
@@ -452,7 +452,7 @@ class SecurityEngine(
                     category = FeatureCategory.A,
                     isMandatory = false,
                     scoreWeight = 0,
-                    status = getSavedStatus("lock_network_security", FeatureStatus.ENABLED),
+                    status = getSavedStatus("lock_network_security", FeatureStatus.UNKNOWN),
                     description = "Prevents turning off Wi-Fi, Mobile Data, or Location from the lock screen."
                 ),
                 // 15. Power Menu Lock (Optional, 0 pts, OEM-dependent)
@@ -462,7 +462,7 @@ class SecurityEngine(
                     category = FeatureCategory.C,
                     isMandatory = false,
                     scoreWeight = 0,
-                    status = if (!isSamsung) FeatureStatus.NOT_SUPPORTED else getSavedStatus("power_menu_lock", FeatureStatus.ENABLED),
+                    status = if (!isSamsung) FeatureStatus.NOT_SUPPORTED else getSavedStatus("power_menu_lock", FeatureStatus.UNKNOWN),
                     description = "Blocks access to power options while the device is locked, preventing unauthorized shut-downs."
                 ),
                 // 16. Unknown Apps (Optional, 0 pts)
@@ -502,7 +502,7 @@ class SecurityEngine(
                     category = FeatureCategory.C,
                     isMandatory = false,
                     scoreWeight = 0,
-                    status = getSavedStatus("factory_reset_protection", FeatureStatus.ENABLED),
+                    status = getSavedStatus("factory_reset_protection", FeatureStatus.UNKNOWN),
                     description = "Blocks unauthorized setup wizard initialization after a full factory recovery reset."
                 ),
                 // 20. Driving Monitoring

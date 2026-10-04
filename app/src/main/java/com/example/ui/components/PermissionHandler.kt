@@ -42,8 +42,7 @@ fun PermissionHandler(
     val requiredPermissions = remember {
         arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.CAMERA,
-            Manifest.permission.RECORD_AUDIO
+            Manifest.permission.CAMERA
         )
     }
 

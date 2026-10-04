@@ -735,10 +735,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     jsonBuilder.append("  }${if (index < logs.size - 1) "," else ""}\n")
                 }
                 jsonBuilder.append("]")
-                val fileName = "netra_encrypted_backup_${System.currentTimeMillis()}.enc.json"
+                val fileName = "netra_event_log_${System.currentTimeMillis()}.json"
                 val file = File(getApplication<Application>().filesDir, fileName)
                 file.writeText(jsonBuilder.toString())
-                exportStatusMessage = "Exported ${logs.size} records to encrypted backup: $fileName"
+                exportStatusMessage = "Exported ${logs.size} records to a plain JSON file (not encrypted): $fileName"
                 shareFileEvent.emit(file)
                 withContext(Dispatchers.Main) {
                     onResult(true, exportStatusMessage!!)
@@ -771,10 +771,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     jsonBuilder.append("  }${if (index < logs.size - 1) "," else ""}\n")
                 }
                 jsonBuilder.append("]")
-                val fileName = "netra_encrypted_backup_date_${date}_${System.currentTimeMillis()}.enc.json"
+                val fileName = "netra_event_log_date_${date}_${System.currentTimeMillis()}.json"
                 val file = File(getApplication<Application>().filesDir, fileName)
                 file.writeText(jsonBuilder.toString())
-                exportStatusMessage = "Exported ${logs.size} records to encrypted backup: $fileName"
+                exportStatusMessage = "Exported ${logs.size} records to a plain JSON file (not encrypted): $fileName"
                 shareFileEvent.emit(file)
                 withContext(Dispatchers.Main) {
                     onResult(true, exportStatusMessage!!)
@@ -1177,5 +1177,4 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ttsManager.shutdown()
     }
 }
-
 

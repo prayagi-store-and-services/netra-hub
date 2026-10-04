@@ -52,99 +52,18 @@ class IntelligentBackupSyncEngine(
     /**
      * Creates a local encrypted backup of all application history, settings, and logs.
      */
+    /** Not available: the old version wrote only a few metadata fields and called that a backup. */
     suspend fun createLocalBackup(): Result<File> = withContext(Dispatchers.IO) {
-        try {
-            val timestamp = System.currentTimeMillis()
-            val backupId = "NETRA_BACKUP_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date(timestamp))}"
-
-            val backupJsonObject = JSONObject().apply {
-                put("backupId", backupId)
-                put("timestamp", timestamp)
-                put("appVersion", "2.0.0")
-                put("databaseVersion", 1)
-                put("systemStatus", "INTACT")
-            }
-
-            val jsonString = backupJsonObject.toString(2)
-            val encryptedData = isppeEngine.encryptData(jsonString)
-
-            val backupFile = File(backupDir, "$backupId.netrabkp")
-            backupFile.writeText(encryptedData)
-
-            _lastBackupStatus.value = "BACKUP_SUCCESS: $backupId"
-            _lastSyncTimestamp.value = timestamp
-
-            historyEngine.logEvent(
-                category = "System",
-                severity = "Information",
-                eventName = "Backup Created",
-                sourceModule = "IBSDCE",
-                description = "Local encrypted backup created successfully ($backupId)",
-                status = "COMPLETED"
-            )
-
-            Result.success(backupFile)
-        } catch (e: Exception) {
-            _lastBackupStatus.value = "BACKUP_FAILED: ${e.message}"
-            historyEngine.logEvent(
-                category = "System",
-                severity = "Warning",
-                eventName = "Backup Failed",
-                sourceModule = "IBSDCE",
-                description = "Backup creation failed: ${e.localizedMessage}",
-                status = "FAILED"
-            )
-            Result.failure(e)
-        }
+        _lastBackupStatus.value = "BACKUP_UNAVAILABLE"
+        Result.failure(UnsupportedOperationException("Backup is not available in this version"))
     }
 
     /**
      * Performs an intelligent restore & merge from backup content.
      */
     suspend fun restoreFromBackup(backupContent: String): Result<Int> = withContext(Dispatchers.IO) {
-        try {
-            // 1. Verify Integrity
-            if (!isppeEngine.verifyBackupIntegrity(backupContent)) {
-                historyEngine.logEvent(
-                    category = "System",
-                    severity = "Critical",
-                    eventName = "Backup Restore Rejected",
-                    sourceModule = "IBSDCE",
-                    description = "Backup file failed integrity check",
-                    status = "CORRUPTED"
-                )
-                return@withContext Result.failure(IllegalArgumentException("Corrupted or invalid backup file"))
-            }
-
-            // 2. Decrypt if needed
-            val decryptedJson = isppeEngine.decryptData(backupContent)
-            val jsonObject = JSONObject(decryptedJson)
-
-            val backupId = jsonObject.optString("backupId", "UNKNOWN")
-
-            // 3. Smart Merge logic (ensures no duplicate inserts)
-            historyEngine.logEvent(
-                category = "System",
-                severity = "Information",
-                eventName = "Backup Restored",
-                sourceModule = "IBSDCE",
-                description = "Backup $backupId merged and restored successfully",
-                status = "COMPLETED"
-            )
-
-            _lastBackupStatus.value = "RESTORE_SUCCESS: $backupId"
-            Result.success(1)
-        } catch (e: Exception) {
-            historyEngine.logEvent(
-                category = "System",
-                severity = "Warning",
-                eventName = "Restore Failed",
-                sourceModule = "IBSDCE",
-                description = "Restore failed: ${e.localizedMessage}",
-                status = "FAILED"
-            )
-            Result.failure(e)
-        }
+        _lastBackupStatus.value = "RESTORE_UNAVAILABLE"
+        Result.failure(UnsupportedOperationException("Restore is not available in this version"))
     }
 
     /**

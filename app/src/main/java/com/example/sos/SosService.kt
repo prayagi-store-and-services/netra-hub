@@ -103,7 +103,7 @@ class SosService : Service(), SensorEventListener {
                     try { mgr.sendMultipartTextMessage(n, null, mgr.divideMessage(body), null, null); ok++ } catch (e: Exception) { }
                 }
             }
-            val msg = if (!hasSms) "SOS not sent: SMS permission is not allowed" else "SOS sent to $ok of ${SosStore.contacts(this@SosService).size} contacts"
+            val msg = if (!hasSms) "SOS not sent: SMS permission is not allowed" else "SOS SMS handed to the phone for $ok of ${SosStore.contacts(this@SosService).size} contacts. Delivery is not confirmed."
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(RESULT, base(msg, "").build())
         }
     }
