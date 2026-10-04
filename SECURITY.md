@@ -73,3 +73,9 @@ After an in-app update installs, the app restarts and, on start, deletes every d
 - Optional name, date of birth and blood group, typed in the SOS screen and kept only on this phone (the same private app storage as the emergency contacts). They are never uploaded or shared by the app.
 - They leave the phone in one way only: written into the SOS SMS that you triggered yourself with the shake and did not cancel. Empty fields are left out. Age is worked out from the date of birth at that moment. The SMS also adds the phone battery percent when Android gives it.
 - Honest limits: nothing here is checked against any record, it is exactly what you typed. SMS is plain text on the mobile network, so anyone who can read your contacts' SMS can read it. No new permission and no new library.
+
+## 112 India shortcut (added in 1.0.11)
+
+- A button on the SOS screen opens the official 112 India app (package in.cdac.ners.psa.mobile.android.national), or its Google Play page when it is not installed. It runs only when you tap it.
+- The manifest gains a package-visibility entry for that one package so the hub can tell if it is installed. No new permission, no new library, no data is sent to the app or to anyone.
+- Honest limits: the hub is not registered with 112 and does not alert 112 itself. Alerts to 112 are sent by the 112 India app, which has its own terms and state coverage.
