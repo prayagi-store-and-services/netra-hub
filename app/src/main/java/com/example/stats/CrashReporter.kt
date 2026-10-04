@@ -15,6 +15,7 @@ import java.net.URL
 object CrashReporter {
     private const val APP_NAME = "netra-hub"
     private const val FILE = "pending_crash_report.txt"
+    private const val LAST_FILE = "last_crash_report.txt"
     private const val ENDPOINT = "https://formsubmit.co/ajax/prayagideepak@gmail.com"
     private const val MAX_TRACE = 3000
     @Volatile private var installed = false
@@ -39,7 +40,7 @@ object CrashReporter {
         val app = context.applicationContext
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            runCatching { File(app.filesDir, FILE).writeText(sanitize(throwable)) }
+            runCatching { val t = sanitize(throwable); File(app.filesDir, FILE).writeText(t); File(app.filesDir, LAST_FILE).writeText(t) }
             previous?.uncaughtException(thread, throwable)
         }
         Thread { sendPending(app, appVersion(app)) }.start()
@@ -67,9 +68,40 @@ object CrashReporter {
             c.requestMethod = "POST"; c.connectTimeout = 10000; c.readTimeout = 15000; c.doOutput = true
             c.setRequestProperty("Content-Type", "application/json"); c.setRequestProperty("Accept", "application/json")
             c.outputStream.use { it.write(json.toString().toByteArray(Charsets.UTF_8)) }
-            val ok = c.responseCode in 200..299
+            val ok = c.responseCode in 200..299 && accepted(c.inputStream.bufferedReader().use { it.readText() })
             c.disconnect()
             if (ok) runCatching { file.delete() }
+            ok
+        } catch (_: Exception) { false }
+    }
+
+    /** FormSubmit answers {"success":"true"} only when it really queued the email; an HTTP 200 alone is not enough. */
+    fun accepted(body: String): Boolean = Regex("\"success\"\\s*:\\s*\"?true\"?", RegexOption.IGNORE_CASE).containsMatchIn(body)
+
+    /** The exact text a manual report contains, or null when no crash is saved on this device. */
+    fun manualPreview(context: Context): String? {
+        val trace = runCatching { File(context.filesDir, LAST_FILE).readText() }.getOrDefault("")
+        if (trace.isBlank()) return null
+        return "App: $APP_NAME\nApp version: ${appVersion(context)}\nPhone model: ${Build.MODEL ?: "Unknown"}\nAndroid version: ${Build.VERSION.RELEASE ?: "Unknown"}\n\nLast crash (class names and code locations only):\n$trace"
+    }
+
+    /** Sends the last saved crash on user request. true only if the service confirms. Call off the main thread. */
+    fun sendManual(context: Context): Boolean {
+        val trace = runCatching { File(context.filesDir, LAST_FILE).readText() }.getOrDefault("")
+        if (trace.isBlank()) return false
+        return try {
+            val json = org.json.JSONObject()
+            json.put("_subject", "[Netra] Manual crash report: $APP_NAME")
+            json.put("_captcha", "false"); json.put("_template", "table")
+            json.put("app", APP_NAME); json.put("device", Build.MODEL ?: "Unknown")
+            json.put("android_version", Build.VERSION.RELEASE ?: "Unknown")
+            json.put("app_version", appVersion(context)); json.put("stack_trace", trace)
+            val c = URL(ENDPOINT).openConnection() as HttpURLConnection
+            c.requestMethod = "POST"; c.connectTimeout = 10000; c.readTimeout = 15000; c.doOutput = true
+            c.setRequestProperty("Content-Type", "application/json"); c.setRequestProperty("Accept", "application/json")
+            c.outputStream.use { it.write(json.toString().toByteArray(Charsets.UTF_8)) }
+            val ok = c.responseCode in 200..299 && accepted(c.inputStream.bufferedReader().use { it.readText() })
+            c.disconnect()
             ok
         } catch (_: Exception) { false }
     }
