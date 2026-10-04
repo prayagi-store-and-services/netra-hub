@@ -98,3 +98,8 @@ Everything below was found by auditing the code against what the app says it doe
 - Permissions removed because nothing uses them: RECORD_AUDIO (the app never records audio), BODY_SENSORS, ACCESS_BACKGROUND_LOCATION, HIGH_SAMPLING_RATE_SENSORS, USE_BIOMETRIC, USE_FINGERPRINT, ACTIVITY_RECOGNITION, BLUETOOTH_ADMIN. ACTIVITY_RECOGNITION returns if driving detection ships. The app no longer asks for the microphone.
 - SOS result wording: the notification now says the SMS was "handed to the phone" and that delivery is not confirmed. Android gives no delivery proof without extra callbacks.
 - Left as is, with reason: the Security Hub's manufacturer picker (it only changes which phone-maker tips are shown, and is labelled); the old test-simulation framework (no screen opens it); the usage stats permission (used for app screen time on the health page).
+
+## Self-audit and recovery honesty (1.0.13)
+
+- The background "self-audit" and "recovery" jobs and the service-recovery routine used to log "Self-audit complete", "Recovery Completed" and mark a failed service as running again, while doing nothing. They now log that no checks and no recovery actions exist in this version, and a service that fails its check is shown as stopped, not recovered. Nothing here changes what the safety features (SOS, location share) do.
+- Left for the owner to decide: crash reports are sent automatically with no switch (the report holds only app name, phone model, Android and app version, and exception class names with code locations; no name, email, location or device ID). It goes through the formsubmit.co forwarding service to the owner's inbox. A consent switch can be added if wanted.
