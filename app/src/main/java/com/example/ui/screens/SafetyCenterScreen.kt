@@ -62,6 +62,10 @@ fun SafetyCenterScreen(
             OfficialSafetyAlertStatusCard(viewModel = viewModel)
         }
 
+        item {
+            EarthquakeCard()
+        }
+
         // 2. ACTIVE HAZARDS SECTION
         item {
             Text(
