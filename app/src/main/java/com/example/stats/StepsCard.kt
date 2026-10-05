@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.glance.appwidget.updateAll
+import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -69,6 +71,7 @@ fun StepsCard(modifier: Modifier = Modifier) {
     var state by remember { mutableStateOf(load(prefs)) }
     var dobText by remember { mutableStateOf(prefs.getString("dob", null)) }
     var askDob by remember { mutableStateOf(false) }
+    var lastWidgetMs by remember { mutableStateOf(0L) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok = it }
 
     DisposableEffect(owner, ok, sensor) {
@@ -77,6 +80,13 @@ fun StepsCard(modifier: Modifier = Modifier) {
                 val day = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
                 val next = StepMath.advance(load(prefs), day, e.values[0], System.currentTimeMillis())
                 save(prefs, next); state = next
+                val nowW = System.currentTimeMillis()
+                if (nowW - lastWidgetMs > 30_000L) {
+                    lastWidgetMs = nowW
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
+                        runCatching { com.example.widget.NetraBatteryWidget().updateAll(c) }
+                    }
+                }
             }
             override fun onAccuracyChanged(s: Sensor?, a: Int) {}
         }
