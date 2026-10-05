@@ -167,9 +167,9 @@ class IntelligentSecurityPrivacyEngine(
             PermissionDetail(
                 permission = Manifest.permission.CAMERA,
                 title = "Camera Access",
-                purpose = "Required for live optical detection and visual telemetry features.",
+                purpose = "Used only for a self-check that the camera hardware is present. No photos or video are taken.",
                 state = if (camGranted) PermissionState.GRANTED else PermissionState.DENIED,
-                dependentServices = listOf("Visual Security", "Camera Telemetry")
+                dependentServices = listOf("Camera hardware self-check")
             )
         )
 
