@@ -92,11 +92,11 @@ import com.example.ui.theme.BentoRed
 import com.example.ui.theme.BentoAmber
 
 enum class NavigationTab(val title: String, val icon: ImageVector) {
-    DASHBOARD("Dashboard", Icons.Default.Dashboard),
-    SENSOR_CENTER("Sensor Hub", Icons.Default.Sensors),
-    LIVE_GRAPH("Live Graph", Icons.Default.Timeline),
-    HISTORY_LOGS("History & Logs", Icons.Default.Analytics),
-    SERVICE_MANAGER("Service Mgr", Icons.Default.Hub),
+    DASHBOARD("Home", Icons.Default.Dashboard),
+    SENSOR_CENTER("Sensors", Icons.Default.Sensors),
+    LIVE_GRAPH("Graph", Icons.Default.Timeline),
+    HISTORY_LOGS("Logs", Icons.Default.Analytics),
+    SERVICE_MANAGER("Service", Icons.Default.Hub),
     SETTINGS("Settings", Icons.Default.Settings),
     /** Opened from the header button, not shown in the bottom bar. */
     TRAVEL_CHECK("Travel Checking", Icons.Default.Videocam),
@@ -244,6 +244,8 @@ fun MainScreen(
                         label = {
                             Text(
                                 text = tab.title,
+                                maxLines = 1,
+                                softWrap = false,
                                 fontSize = 10.sp,
                                 fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Medium
                             )
@@ -289,12 +291,15 @@ fun MainScreen(
                     }
                 }
             }
-            PermanentLiveStatusHeader(
-                viewModel = viewModel,
-                location = officialLocation,
-                warning = officialWarning
-            )
-            GeminiSummaryCard(viewModel)
+            // Only an active official warning stays pinned on other tabs. The Home tab shows the status card inside its scrolling list.
+            if (selectedTab != NavigationTab.DASHBOARD) {
+                PermanentLiveStatusHeader(
+                    viewModel = viewModel,
+                    location = officialLocation,
+                    warning = officialWarning,
+                    warningOnly = true
+                )
+            }
             if (showPinChangeScreen) {
                 PinChangeScreen(
                     onNavigateBack = { showPinChangeScreen = false }
@@ -319,6 +324,14 @@ fun MainScreen(
                             onTogglePrivacyScanner = { enabled -> viewModel.togglePrivacyScanner(enabled) },
                             viewModel = viewModel,
                             topActions = {
+                                Column(Modifier.fillMaxWidth()) {
+                                PermanentLiveStatusHeader(
+                                    viewModel = viewModel,
+                                    location = officialLocation,
+                                    warning = officialWarning,
+                                    warningOnly = false
+                                )
+                                GeminiSummaryCard(viewModel)
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     androidx.compose.material3.TextButton(
                                         onClick = { selectedTab = if (selectedTab == NavigationTab.SOS) NavigationTab.DASHBOARD else NavigationTab.SOS },
@@ -354,6 +367,7 @@ fun MainScreen(
                                             fontWeight = FontWeight.Bold
                                         )
                                     }
+                                }
                                 }
                             }
                         )
@@ -468,23 +482,9 @@ fun MainScreen(
 fun PermanentLiveStatusHeader(
     viewModel: MainViewModel,
     location: com.example.data.service.LocationContextInfo,
-    warning: com.example.data.engine.OfficialWarningInfo
+    warning: com.example.data.engine.OfficialWarningInfo,
+    warningOnly: Boolean = false
 ) {
-    val sessionDuration by viewModel.sessionDurationSeconds.collectAsStateWithLifecycle()
-    
-    val timeFormat = remember { java.text.SimpleDateFormat("hh:mm:ss a", java.util.Locale.US) }
-    val dateFormat = remember { java.text.SimpleDateFormat("dd MMMM yyyy", java.util.Locale.US) }
-    var currentTimeStr by remember { mutableStateOf(timeFormat.format(java.util.Date())) }
-    var currentDateStr by remember { mutableStateOf(dateFormat.format(java.util.Date())) }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            val now = java.util.Date()
-            currentTimeStr = timeFormat.format(now)
-            currentDateStr = dateFormat.format(now)
-            kotlinx.coroutines.delay(1000L)
-        }
-    }
 
     val hasValidCoords = location.latitude != 0.0 && location.longitude != 0.0 &&
                          location.latitude in -90.0..90.0 && location.longitude in -180.0..180.0 &&
@@ -496,6 +496,8 @@ fun PermanentLiveStatusHeader(
 
     val isWarningActive = warning.isAvailable && warning.locationRelevance == "VERIFIED_MATCH" && warning.lifecycleState == "ACTIVE"
     
+    if (warningOnly && !isWarningActive) return
+
     val containerColor = if (isWarningActive) {
         when (warning.severity) {
             "CRITICAL" -> BentoRed.copy(alpha = 0.2f)
@@ -530,8 +532,8 @@ fun PermanentLiveStatusHeader(
                 .fillMaxWidth()
                 .padding(14.dp)
         ) {
-            // Live Status Row (City / Coordinates / Time / Date / Session)
-            Row(
+            // Live Status Row (City and coordinates only; date and time are in the header)
+            if (!warningOnly) Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -562,27 +564,6 @@ fun PermanentLiveStatusHeader(
                     }
                 }
 
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = currentTimeStr,
-                        color = BentoTextPrimary,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = currentDateStr,
-                        color = BentoTextSecondary,
-                        fontSize = 10.sp
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Session: ${com.example.util.TimeManager.formatDuration(sessionDuration)}",
-                        color = BentoGreenPrimary,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
             }
 
             // Expanded Warning Section if Active Warning Exists
