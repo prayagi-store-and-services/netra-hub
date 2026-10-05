@@ -97,6 +97,14 @@ fun EarthquakeCard() {
             else "Automatic check (" + fmt.format(Date(autoLast)) + "): " + autoMsg,
             fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary
         )
+        val sPrefs = remember { context.getSharedPreferences(com.example.data.engine.SachetWatchWorker.PREFS, android.content.Context.MODE_PRIVATE) }
+        val sLast = sPrefs.getLong(com.example.data.engine.SachetWatchWorker.KEY_LAST, 0L)
+        val sMsg = sPrefs.getString(com.example.data.engine.SachetWatchWorker.KEY_MSG, null)
+        Text(
+            if (sLast == 0L || sMsg == null) "Official alerts (NDMA SACHET, matched by area name): has not run yet on this phone."
+            else "Official alerts, NDMA SACHET (" + fmt.format(Date(sLast)) + "): " + sMsg,
+            fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary
+        )
         Button(enabled = !busy, onClick = {
             busy = true
             scope.launch {
