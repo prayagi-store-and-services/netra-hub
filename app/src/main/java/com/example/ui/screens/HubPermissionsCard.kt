@@ -86,11 +86,11 @@ private fun installStatus(c: Context): String = try {
 } catch (e: Exception) { "Unavailable" }
 
 private fun hubPermissions(): List<HubPerm> = listOf(
-    HubPerm("Location", "Used for weather and temperature sync, travel and SOS location. If you deny it, only these features are limited; sensors keep working.",
+    HubPerm("Location", "Used for weather and temperature sync and for the location in the SOS message. If you deny it, only these features are limited; sensors keep working.",
         { runtime(it, android.Manifest.permission.ACCESS_FINE_LOCATION) }, { appDetails(it) }),
     HubPerm("Send SMS", "Used by the SOS flow to text your chosen contacts. Nothing is sent unless SOS runs.",
         { runtime(it, android.Manifest.permission.SEND_SMS) }, { appDetails(it) }),
-    HubPerm("Camera", "Used by Travel Checking to inspect for hidden cameras. No photo is stored or uploaded.",
+    HubPerm("Camera", "Used only for a self-check that the phone's camera hardware is present. Hub takes no photos or video. Travel Checking uses the torch, which needs no permission.",
         { runtime(it, android.Manifest.permission.CAMERA) }, { appDetails(it) }),
     HubPerm("Physical activity", "Used to count your steps from the phone's step sensor.",
         { runtimeFrom(29, it, android.Manifest.permission.ACTIVITY_RECOGNITION) }, { appDetails(it) }),
