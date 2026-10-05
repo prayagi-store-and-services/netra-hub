@@ -102,7 +102,7 @@ fun RuntimeHealthScreen(viewModel: MainViewModel) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Overall System Health Score", style = MaterialTheme.typography.titleMedium, color = BentoTextSecondary)
                     Text("$healthScore / 100", style = MaterialTheme.typography.displaySmall, color = BentoGreenPrimary)
-                    Text("IBRS² & IDHMSE Self-Healing Engine Active", style = MaterialTheme.typography.bodySmall, color = BentoTextMuted)
+                    Text("Background self-check is running", style = MaterialTheme.typography.bodySmall, color = BentoTextMuted)
                 }
             }
         }

@@ -681,7 +681,7 @@ fun SecurityHubScreen(
                         color = BentoTextPrimary
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    DiagnosticLabelValue("Security Engine Health", "OK - TRUTH ENGINE ACTIVE")
+                    DiagnosticLabelValue("Security Engine Health", "OK - running")
                     DiagnosticLabelValue("Actual Manufacturer", viewModel.securityEngine.getActualManufacturer())
                     DiagnosticLabelValue("Effective OEM", viewModel.securityEngine.getEffectiveManufacturer())
                     DiagnosticLabelValue("Engine Broadcasts", "Registered (SCREEN_ON, USER_PRESENT)")
