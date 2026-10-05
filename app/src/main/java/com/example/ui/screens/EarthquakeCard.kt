@@ -41,7 +41,7 @@ import java.util.Date
 import java.util.Locale
 
 /** One earthquake read from the USGS public feed. */
-data class QuakeItem(val magnitude: Double, val place: String, val timeMillis: Long, val distanceKm: Double)
+data class QuakeItem(val magnitude: Double, val place: String, val timeMillis: Long, val distanceKm: Double, val id: String = "")
 
 /** Pure parser so it can be tested: reads USGS GeoJSON and keeps events within radiusKm of the given point. */
 internal fun parseUsgsQuakes(json: String, lat: Double, lon: Double, radiusKm: Double): List<QuakeItem>? = try {
@@ -55,7 +55,7 @@ internal fun parseUsgsQuakes(json: String, lat: Double, lon: Double, radiusKm: D
         val res = FloatArray(1)
         Location.distanceBetween(lat, lon, c.getDouble(1), c.getDouble(0), res)
         val km = res[0] / 1000.0
-        if (km <= radiusKm) out.add(QuakeItem(p.getDouble("mag"), p.optString("place", "Unavailable"), p.getLong("time"), km))
+        if (km <= radiusKm) out.add(QuakeItem(p.getDouble("mag"), p.optString("place", "Unavailable"), p.getLong("time"), km, f.optString("id", "")))
     }
     out.sortedByDescending { it.timeMillis }
 } catch (e: Exception) {
@@ -68,7 +68,7 @@ private const val QUAKE_MIN_MAG = 2.5
 
 /**
  * Safety card: earthquakes within about 200 km of the phone in the last 7 days, from the USGS public feed.
- * Runs only when the user taps the button (no background polling). Shows Unavailable when location or the feed cannot be read.
+ * Also shows the result of the automatic background check (QuakeWatchWorker). The button is a manual backup. Shows Unavailable when location or the feed cannot be read.
  */
 @Composable
 fun EarthquakeCard() {
@@ -76,7 +76,10 @@ fun EarthquakeCard() {
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var lines by remember { mutableStateOf<List<String>>(emptyList()) }
-    var headline by remember { mutableStateOf("Not checked yet. Tap Check now.") }
+    val prefs = remember { context.getSharedPreferences(com.example.data.engine.QuakeWatchWorker.PREFS, android.content.Context.MODE_PRIVATE) }
+    val autoLast = prefs.getLong(com.example.data.engine.QuakeWatchWorker.KEY_LAST, 0L)
+    val autoMsg = prefs.getString(com.example.data.engine.QuakeWatchWorker.KEY_MSG, null)
+    var headline by remember { mutableStateOf("Not checked in this session. Tap Check now.") }
     var bad by remember { mutableStateOf(false) }
     val fmt = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
     Column(
@@ -86,8 +89,13 @@ fun EarthquakeCard() {
     ) {
         Text("Earthquakes near you", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = BentoTextPrimary)
         Text(
-            "Last " + QUAKE_DAYS + " days, within " + QUAKE_RADIUS_KM.toInt() + " km of this phone, magnitude " + QUAKE_MIN_MAG + " and above. Source: USGS (earthquake.usgs.gov), read only when you tap the button. Smaller quakes in India may be missing from this feed, and this is not an official warning.",
+            "Last " + QUAKE_DAYS + " days, within " + QUAKE_RADIUS_KM.toInt() + " km of this phone, magnitude " + QUAKE_MIN_MAG + " and above. Source: USGS (earthquake.usgs.gov). Hub also checks automatically about every 30 minutes and notifies you of a new quake (Android may delay this). Smaller quakes in India may be missing from this feed, and this is not an official warning.",
             fontSize = 12.sp, color = BentoTextSecondary
+        )
+        Text(
+            if (autoLast == 0L || autoMsg == null) "Automatic check: has not run yet on this phone (Android decides when it runs)."
+            else "Automatic check (" + fmt.format(Date(autoLast)) + "): " + autoMsg,
+            fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary
         )
         Button(enabled = !busy, onClick = {
             busy = true
