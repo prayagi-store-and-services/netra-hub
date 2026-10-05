@@ -18,8 +18,8 @@ android {
     applicationId = "com.aistudio.netrasensorhub.kxmpzq"
     minSdk = 24
     targetSdk = 36
-    versionCode = 27
-    versionName = "1.1.11"
+    versionCode = 28
+    versionName = "1.1.12"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -116,6 +116,7 @@ dependencies {
   implementation(libs.vico.compose.m3)
   implementation(libs.vico.core)
   implementation(libs.firebase.ai)
+  implementation(libs.firebase.messaging)
   // Uncomment to use Firestore:
   // implementation(libs.firebase.firestore)
 

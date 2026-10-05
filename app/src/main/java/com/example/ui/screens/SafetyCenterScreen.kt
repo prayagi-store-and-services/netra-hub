@@ -64,6 +64,7 @@ fun SafetyCenterScreen(
 
         item {
             EarthquakeCard()
+            com.example.push.InstantAlertsCard()
         }
 
         // 2. ACTIVE HAZARDS SECTION
