@@ -105,24 +105,6 @@ fun RiskMeterGauge(
                         letterSpacing = (-0.5).sp
                     )
                 }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(BentoBackground)
-                        .border(1.dp, safetyColor.copy(alpha = 0.4f), CircleShape)
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = "TRUTH ENGINE VALIDATED",
-                        color = BentoGreenPrimary,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -175,7 +157,7 @@ fun RiskMeterGauge(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "ABSOLUTE TRUTH ENGINE",
+                        text = "SAFETY SCORE",
                         color = BentoGreenPrimary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
@@ -183,7 +165,7 @@ fun RiskMeterGauge(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = if (safetyScore >= 75) "All sensors nominal. Hardware streams operating in baseline limits." else "Sensor telemetry variance detected. Review active risk factors.",
+                        text = if (safetyScore >= 75) "No risk factor found in the readings available now." else "Some readings need a look. See the risk factors below.",
                         color = BentoTextSecondary,
                         fontSize = 12.sp,
                         lineHeight = 16.sp
