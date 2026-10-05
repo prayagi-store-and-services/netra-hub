@@ -98,6 +98,7 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
                 save("Unavailable: no recent phone location with a state or district name (" + loc.locationStatus + ").")
                 return Result.success()
             }
+            com.example.push.PushAlerts.sync(ctx, loc.state, loc.district)
             val rss = get(SACHET_RSS)?.let { parseSachetRss(it) }
             if (rss == null) { save("Unavailable: the NDMA SACHET feed could not be read."); return Result.success() }
             val seen = prefs.getStringSet(KEY_SEEN, emptySet()) ?: emptySet()
