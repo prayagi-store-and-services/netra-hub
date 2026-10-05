@@ -46,9 +46,10 @@ fun PermissionHandler(
         )
     }
 
+    val introPrefs = remember { context.getSharedPreferences("netra_perm_intro", android.content.Context.MODE_PRIVATE) }
     var showDialog by remember {
         mutableStateOf(
-            requiredPermissions.any {
+            !introPrefs.getBoolean("skipped", false) && requiredPermissions.any {
                 context.checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
             }
         )
@@ -135,7 +136,7 @@ fun PermissionHandler(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "Netra Sensor Hub processes real-time ambient environment logs. Please authorize the following permissions:",
+                        text = "Netra Hub works without these. Each one only switches on the feature named below. You can change them later in Settings > Permissions.",
                         color = BentoTextSecondary,
                         fontSize = 13.sp,
                         textAlign = TextAlign.Center,
@@ -148,7 +149,7 @@ fun PermissionHandler(
                     PermissionItem(
                         icon = Icons.Default.LocationOn,
                         title = "Location Access",
-                        description = "Enables Fused Location Client geographic telemetry.",
+                        description = "Used for weather and temperature sync and for the location in the SOS message. Only these features need it.",
                         isGranted = locationGranted
                     )
 
@@ -157,17 +158,8 @@ fun PermissionHandler(
                     PermissionItem(
                         icon = Icons.Default.CameraAlt,
                         title = "Camera Access",
-                        description = "Enables CameraX live visual telemetry.",
+                        description = "Used only for a self-check that the camera hardware is present. No photos or video are taken.",
                         isGranted = cameraGranted
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    PermissionItem(
-                        icon = Icons.Default.Mic,
-                        title = "Audio Recording",
-                        description = "Enables high-frequency noise decibel analysis.",
-                        isGranted = audioGranted
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -179,6 +171,7 @@ fun PermissionHandler(
                     ) {
                         OutlinedButton(
                             onClick = {
+                                introPrefs.edit().putBoolean("skipped", true).apply()
                                 showDialog = false
                                 onPermissionsStatusChanged(false)
                             },
