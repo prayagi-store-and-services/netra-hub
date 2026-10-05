@@ -1,5 +1,10 @@
 # Security notes - netra-hub
 
+## UI standard check (v1.1.15)
+- Two internal words on screen are replaced by plain text: Security tab "Security Engine Health" now says "OK - running", and the Service screen line now says "Background self-check is running".
+- A new automatic check (scripts/ui-standard-check.sh, run by the ui-standard workflow on every pull request) fails the build if an internal word (for example TRUTH ENGINE, IBRS2, IDHMSE) or a filter chip or tab label that can wrap shows up on screen. CONTRIBUTING.md holds the Netra UI standard checklist.
+- No new permission, library or network call. Nothing about the user is read or sent.
+
 ## UI cleanup, step 3 (v1.1.14)
 - Home: the Microphone row is removed from the privacy scanner (Hub does not use the microphone, so the row only ever said "Unavailable"). Scanner rows keep the label on one line and let the value wrap on the right. The dark "Absolute Truth" footer and the "TRUTH ENGINE VALIDATED" badge are removed: they repeated the sensor count and claimed a validation the app does not perform. The score card now reads "Safety score" with a plain sentence.
 - Sensors, Service and Logs: the "Name > Tab" line above the tabs is removed (the selected tab already shows), tab labels stay on one line, the Service tabs scroll sideways instead of being cut off.
