@@ -77,7 +77,7 @@ class NetraBatteryWidget : GlanceAppWidget() {
                         .fillMaxSize()
                         .background(ColorProvider(Color(0xFF1F1F1F)))
                         .padding(12.dp)
-                        .clickable(actionStartActivity<MainActivity>()),
+                        .clickable(actionStartActivity(Intent(context, MainActivity::class.java))),
                     horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
                     verticalAlignment = Alignment.Vertical.CenterVertically
                 ) {
