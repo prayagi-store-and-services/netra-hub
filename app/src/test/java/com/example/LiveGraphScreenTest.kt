@@ -33,7 +33,7 @@ class LiveGraphScreenTest {
         }
 
         composeTestRule.onNodeWithText("WAITING").assertIsDisplayed()
-        composeTestRule.onNodeWithText("WAITING FOR RAW TELEMETRY DATA...").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Waiting for sensor data").assertIsDisplayed()
     }
 
     @Test

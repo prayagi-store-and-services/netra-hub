@@ -138,7 +138,6 @@ class WatchdogEngine(
 
         // Fix: Check for Event-Based or Passive modules before recovery (Fix 4)
         if (meta.type == ModuleType.EVENT_BASED || meta.type == ModuleType.PASSIVE) {
-            LoggingManager.info("WatchdogEngine", "WATCHDOG_CHECK", "$moduleName is Event/Passive", "No heartbeat expected for $moduleName, skipping recovery.")
             startStaleTimer(moduleName)
             return
         }

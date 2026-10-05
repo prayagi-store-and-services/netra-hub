@@ -129,39 +129,14 @@ fun NetraConsoleHeader(state: LiveGraphState) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = "NETRA AI",
-                    color = BentoGreenPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.5.sp,
-                    fontFamily = FontFamily.Monospace
-                )
-                Box(
-                    modifier = Modifier
-                        .size(4.dp)
-                        .background(NetraDarkTextMuted.copy(alpha = 0.5f), CircleShape)
-                )
-                Text(
-                    text = "HUMAN SAFETY SYSTEM",
-                    color = NetraDarkTextPrimary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    fontFamily = FontFamily.Monospace
-                )
-            }
-            Text(
-                text = "REAL-TIME DIAGNOSTIC TELEMETRY // CORE_ENGINE",
-                color = NetraDarkTextMuted,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Medium,
-                fontFamily = FontFamily.Monospace,
-                letterSpacing = 0.5.sp
-            )
-        }
+        Text(
+            text = "Live sensor graph",
+            color = NetraDarkTextPrimary,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            modifier = Modifier.weight(1f).padding(end = 8.dp)
+        )
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -253,7 +228,7 @@ fun NetraConsoleReadout(latestReading: RawSensorReading?, state: LiveGraphState,
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "WAITING FOR RAW TELEMETRY DATA...",
+                        text = "Waiting for sensor data",
                         color = NetraDarkTextMuted,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
