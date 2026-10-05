@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
         val usageCtx = applicationContext
         Thread { com.example.stats.UsagePing.pingIfDue(usageCtx) }.start()
         com.example.data.engine.QuakeWatchWorker.schedule(applicationContext)
+        com.example.data.engine.SachetWatchWorker.schedule(applicationContext)
         enableEdgeToEdge()
         com.example.util.LoggingManager.init(applicationContext)
 
