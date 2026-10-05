@@ -337,7 +337,7 @@ fun MainScreen(
                                         onClick = { selectedTab = if (selectedTab == NavigationTab.SOS) NavigationTab.DASHBOARD else NavigationTab.SOS },
                                         modifier = Modifier.testTag("header_sos")
                                     ) {
-                                        Text(text = if (selectedTab == NavigationTab.SOS) "Close" else "SOS setup", color = BentoGreenPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        Text(text = if (selectedTab == NavigationTab.SOS) "Close" else "SOS setup", color = BentoGreenPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                     }
                                     androidx.compose.material3.TextButton(
                                         onClick = {
@@ -354,7 +354,7 @@ fun MainScreen(
                                         },
                                         modifier = Modifier.testTag("header_share_location")
                                     ) {
-                                        Text(text = "Share location", color = BentoGreenPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        Text(text = "Share location", color = BentoGreenPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                     }
                                     androidx.compose.material3.TextButton(
                                         onClick = { selectedTab = if (selectedTab == NavigationTab.TRAVEL_CHECK) NavigationTab.DASHBOARD else NavigationTab.TRAVEL_CHECK },
@@ -364,7 +364,9 @@ fun MainScreen(
                                             text = if (selectedTab == NavigationTab.TRAVEL_CHECK) "Close" else "Travel Checking",
                                             color = BentoGreenPrimary,
                                             fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            softWrap = false
                                         )
                                     }
                                 }

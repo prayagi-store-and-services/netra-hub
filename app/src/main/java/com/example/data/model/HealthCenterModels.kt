@@ -84,7 +84,7 @@ data class ActivityHealthScore(
     val score: Int = 92, // 0 to 100
     val statusLabel: String = "Optimal Activity Balance",
     val confidencePct: Int = 94,
-    val primarySensorSource: String = "Pedometer (sensor_19) + Accel/Gyro Fusion"
+    val primarySensorSource: String = "Pedometer + Accel/Gyro fusion"
 )
 
 data class MovementIntensity(
@@ -252,4 +252,3 @@ fun formatDwreDuration(seconds: Long): String {
     val mStr = if (remMin == 1L) "1 Minute" else "$remMin Minutes"
     return "$hStr $mStr"
 }
-

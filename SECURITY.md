@@ -1,5 +1,12 @@
 # Security notes - netra-hub
 
+## UI cleanup, step 3 (v1.1.14)
+- Home: the Microphone row is removed from the privacy scanner (Hub does not use the microphone, so the row only ever said "Unavailable"). Scanner rows keep the label on one line and let the value wrap on the right. The dark "Absolute Truth" footer and the "TRUTH ENGINE VALIDATED" badge are removed: they repeated the sensor count and claimed a validation the app does not perform. The score card now reads "Safety score" with a plain sentence.
+- Sensors, Service and Logs: the "Name > Tab" line above the tabs is removed (the selected tab already shows), tab labels stay on one line, the Service tabs scroll sideways instead of being cut off.
+- Settings: the "Settings > Global Search" line is removed, the search field is one slim line, and internal codes (ISPPE, IBRS2, IDHMSE) are replaced by plain words.
+- Home action row (SOS setup, Share location, Travel Checking): labels cannot wrap.
+- No new permission, library or network call.
+
 ## Standard header and scrolling (v1.1.1)
 The header is the Netra standard: 56 dp, only the app name, the installed version and the device date/time. The SOS setup, Share location and Travel Checking buttons moved to the top of the scrolling Dashboard; the bottom bar stays fixed. No new permission, network call or library.
 

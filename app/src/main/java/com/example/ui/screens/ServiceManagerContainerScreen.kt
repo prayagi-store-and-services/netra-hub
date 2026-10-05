@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -39,25 +41,16 @@ fun ServiceManagerContainerScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Service Manager", style = MaterialTheme.typography.labelMedium, color = BentoGreenPrimary)
-                    Text("  >  ", style = MaterialTheme.typography.labelMedium, color = BentoTextMuted)
-                    Text(selectedSubTab.title, style = MaterialTheme.typography.titleMedium, color = BentoTextPrimary)
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
                 // Sub-section Navigation Chips
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ServiceManagerSubTab.values().forEach { tab ->
                         FilterChip(
                             selected = (selectedSubTab == tab),
                             onClick = { selectedSubTab = tab },
-                            label = { Text(tab.title, fontSize = 12.sp) },
-                            leadingIcon = { Icon(tab.icon, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                            label = { Text(tab.title, fontSize = 12.sp, maxLines = 1, softWrap = false) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = BentoGreenPrimary,
                                 selectedLabelColor = BentoBackground,

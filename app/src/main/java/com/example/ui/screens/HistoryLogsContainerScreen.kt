@@ -42,14 +42,6 @@ fun HistoryLogsContainerScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("History & Logs", style = MaterialTheme.typography.labelSmall, color = BentoGreenPrimary)
-                    Text("  >  ", style = MaterialTheme.typography.labelSmall, color = BentoTextMuted)
-                    Text(selectedSubTab.title, style = MaterialTheme.typography.titleSmall, color = BentoTextPrimary, fontWeight = FontWeight.Bold)
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
                 // Sub-section Navigation Chips (Horizontally Scrollable)
                 val scrollState = rememberScrollState()
                 Row(
@@ -62,8 +54,7 @@ fun HistoryLogsContainerScreen(
                         FilterChip(
                             selected = (selectedSubTab == tab),
                             onClick = { selectedSubTab = tab },
-                            label = { Text(tab.title, fontSize = 12.sp) },
-                            leadingIcon = { Icon(tab.icon, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                            label = { Text(tab.title, fontSize = 12.sp, maxLines = 1, softWrap = false) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = BentoGreenPrimary,
                                 selectedLabelColor = BentoBackground,

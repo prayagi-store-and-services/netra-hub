@@ -353,16 +353,18 @@ fun DashboardScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 8.dp)) {
                                     Icon(Icons.Default.Bluetooth, contentDescription = null, tint = BentoTextSecondary, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Bluetooth Devices", color = BentoTextPrimary, fontSize = 13.sp)
+                                    Text("Bluetooth Devices", color = BentoTextPrimary, fontSize = 13.sp, maxLines = 1)
                                 }
                                 Text(
                                     text = privacyScannerState.bluetoothCount?.toString() ?: "Unavailable",
                                     color = if (privacyScannerState.bluetoothCount == null) BentoTextMuted else BentoGreenVibrant,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
+                                    fontSize = 13.sp,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                    modifier = Modifier.weight(1f, fill = false)
                                 )
                             }
 
@@ -370,16 +372,18 @@ fun DashboardScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 8.dp)) {
                                     Icon(Icons.Default.Wifi, contentDescription = null, tint = BentoTextSecondary, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Wi-Fi Networks", color = BentoTextPrimary, fontSize = 13.sp)
+                                    Text("Wi-Fi Networks", color = BentoTextPrimary, fontSize = 13.sp, maxLines = 1)
                                 }
                                 Text(
                                     text = privacyScannerState.wifiCount?.toString() ?: "Unavailable",
                                     color = if (privacyScannerState.wifiCount == null) BentoTextMuted else BentoGreenVibrant,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
+                                    fontSize = 13.sp,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                    modifier = Modifier.weight(1f, fill = false)
                                 )
                             }
 
@@ -388,16 +392,18 @@ fun DashboardScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 8.dp)) {
                                     Icon(Icons.Default.Sensors, contentDescription = null, tint = BentoTextSecondary, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Electromagnetic Field", color = BentoTextPrimary, fontSize = 13.sp)
+                                    Text("Electromagnetic Field", color = BentoTextPrimary, fontSize = 13.sp, maxLines = 1)
                                 }
                                 Text(
                                     text = privacyScannerState.magnetometerRawValue?.let { "${"%.1f".format(it)} µT" } ?: "Unavailable",
                                     color = if (privacyScannerState.magnetometerRawValue == null) BentoTextMuted else BentoTextPrimary,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
+                                    fontSize = 13.sp,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                    modifier = Modifier.weight(1f, fill = false)
                                 )
                             }
 
@@ -405,10 +411,10 @@ fun DashboardScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 8.dp)) {
                                     Icon(Icons.Default.CameraAlt, contentDescription = null, tint = BentoTextSecondary, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Device camera check", color = BentoTextPrimary, fontSize = 13.sp)
+                                    Text("Camera check", color = BentoTextPrimary, fontSize = 13.sp, maxLines = 1)
                                 }
                                 Text(
                                     text = when(privacyScannerState.cameraCheckResult) {
@@ -421,27 +427,9 @@ fun DashboardScreen(
                                         else -> BentoTextMuted
                                     },
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
-                                )
-                            }
-
-                            Row(
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Mic, contentDescription = null, tint = BentoTextSecondary, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Microphone", color = BentoTextPrimary, fontSize = 13.sp)
-                                }
-                                Text(
-                                    text = "Unavailable (Hub does not use the microphone)",
-                                    color = when(privacyScannerState.microphoneCheckResult) {
-                                        "VERIFIED_OK" -> BentoGreenVibrant
-                                        else -> BentoTextMuted
-                                    },
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
+                                    fontSize = 13.sp,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                    modifier = Modifier.weight(1f, fill = false)
                                 )
                             }
                         }
@@ -1131,54 +1119,6 @@ fun DashboardScreen(
                                 modifier = Modifier.padding(start = 4.dp, top = 3.dp)
                             )
                         }
-                    }
-                }
-            }
-        }
-
-        // 7. Absolute Truth Dark Footer Bento Banner
-        item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(BentoDarkCardBg)
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "ABSOLUTE TRUTH ENGINE",
-                            color = BentoGreenVibrant,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.2.sp
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "$supportedCount Active Discovered HAL Nodes Operational",
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(Color(0xFF333734))
-                            .border(1.dp, BentoBorder, CircleShape)
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = "VERIFIED",
-                            color = BentoGreenVibrant,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp
-                        )
                     }
                 }
             }
