@@ -128,3 +128,9 @@ The app has no working "driving detected" detection in this version. The dashboa
 - The Steps today card now asks for a date of birth (optional, typed as DD-MM-YYYY) to pick a daily step target. It is stored on this phone only (local preferences, not backed up because app backup is off) and is never sent anywhere. Without it the target shows Unavailable.
 - Targets come only from published reviews: ages 6 to 19 = 12,000 steps/day (Colley et al. 2012, steps equal to 60 minutes of active time; Tudor-Locke et al. 2011 child and adolescent review), ages 20 to 64 = 10,000 steps/day (Tudor-Locke et al. 2011 adult review, "reasonable" for healthy adults). Under 6 and 65 and over: no single evidence-based target in those reviews, so the app shows Unavailable instead of inventing one. A general guide, not medical advice.
 - When today's real steps reach the target the card shows a "Target reached" message. No new permission, no network call, no new library.
+
+## Home screen widget (version 1.1.5)
+
+- The existing Hub widget now shows, in one card: battery temperature and charging state (from Android's battery broadcast, read when the widget is drawn), steps today and the age based daily target (the values this app saved the last time it read the step counter). A value that is not known shows "Unavailable". The old "STATUS: SAFE" text is replaced by the plain fact "Below 40C" or "HIGH TEMP (40C or more)".
+- The widget never reads the step sensor and has no timer or background work of its own. The Steps card asks the widget to redraw at most once every 30 seconds while the app is open. The card says "Steps update when Hub is open".
+- No new permission, network call or library. Tapping the widget opens the app.
