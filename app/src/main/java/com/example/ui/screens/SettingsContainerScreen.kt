@@ -101,10 +101,10 @@ fun SettingsContainerScreen(
             SearchableFeature("Bluetooth Safety", "Bluetooth nearby device detection", "Sensors") { onNavigateToSection("SETTINGS") },
             SearchableFeature("AI Fusion & Analytics", "Sensor fusion & risk level estimation", "AI") { onNavigateToSection("SENSOR_CENTER") },
             SearchableFeature("Log export", "Plain JSON export of event logs (not encrypted)", "Security") { onNavigateToSection("SETTINGS") },
-            SearchableFeature("Privacy & Permissions", "ISPPE permission dependencies & data policies", "Security") { onNavigateToSection("SETTINGS") },
-            SearchableFeature("Service Manager", "IBRS2 runtime service controller & health", "System") { onNavigateToSection("SERVICE_MANAGER") },
+            SearchableFeature("Privacy & Permissions", "Which permission each feature needs, and the data policy", "Security") { onNavigateToSection("SETTINGS") },
+            SearchableFeature("Service Manager", "Background services and their health", "System") { onNavigateToSection("SERVICE_MANAGER") },
             SearchableFeature("Event History & Export", "View event logs and export reports", "Logs") { onNavigateToSection("HISTORY_LOGS") },
-            SearchableFeature("Diagnostics & Self-Healing", "IDHMSE system health monitoring", "System") { onNavigateToSection("SERVICE_MANAGER") }
+            SearchableFeature("Diagnostics & Self-Healing", "Check the health of the app's own services", "System") { onNavigateToSection("SERVICE_MANAGER") }
         )
     }
 
@@ -124,14 +124,13 @@ fun SettingsContainerScreen(
             tonalElevation = 2.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Settings > Global Search & Configuration", style = MaterialTheme.typography.titleMedium, color = BentoGreenPrimary)
-                Spacer(modifier = Modifier.height(8.dp))
+            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
 
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text("Smart Search (e.g. Magnetic, Driving, Backup)") },
+                    singleLine = true,
+                    placeholder = { Text("Search settings", maxLines = 1) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
@@ -159,7 +158,7 @@ fun SettingsContainerScreen(
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(item.title, style = MaterialTheme.typography.titleMedium, color = BentoTextPrimary)
                             Text(item.description, style = MaterialTheme.typography.bodySmall, color = BentoTextSecondary)
-                            Text("Category: ${item.category}", style = MaterialTheme.typography.labelSmall, color = BentoGreenPrimary)
+                            Text(item.category, style = MaterialTheme.typography.labelSmall, color = BentoGreenPrimary)
                         }
                     }
                 }
