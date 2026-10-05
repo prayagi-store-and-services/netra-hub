@@ -408,12 +408,12 @@ fun DashboardScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.CameraAlt, contentDescription = null, tint = BentoTextSecondary, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Device Camera Lockout", color = BentoTextPrimary, fontSize = 13.sp)
+                                    Text("Device camera check", color = BentoTextPrimary, fontSize = 13.sp)
                                 }
                                 Text(
                                     text = when(privacyScannerState.cameraCheckResult) {
-                                        "VERIFIED_OK" -> "Verified Secure"
-                                        "NO_PERMISSION" -> "No Permission"
+                                        "VERIFIED_OK" -> "Camera found (lockout not checked)"
+                                        "NO_PERMISSION" -> "Needs camera permission"
                                         else -> "Unavailable"
                                     },
                                     color = when(privacyScannerState.cameraCheckResult) {
@@ -432,14 +432,10 @@ fun DashboardScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.Mic, contentDescription = null, tint = BentoTextSecondary, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Device Mic Lockout", color = BentoTextPrimary, fontSize = 13.sp)
+                                    Text("Microphone", color = BentoTextPrimary, fontSize = 13.sp)
                                 }
                                 Text(
-                                    text = when(privacyScannerState.microphoneCheckResult) {
-                                        "VERIFIED_OK" -> "Verified Secure"
-                                        "NO_PERMISSION" -> "No Permission"
-                                        else -> "Unavailable"
-                                    },
+                                    text = "Unavailable (Hub does not use the microphone)",
                                     color = when(privacyScannerState.microphoneCheckResult) {
                                         "VERIFIED_OK" -> BentoGreenVibrant
                                         else -> BentoTextMuted
