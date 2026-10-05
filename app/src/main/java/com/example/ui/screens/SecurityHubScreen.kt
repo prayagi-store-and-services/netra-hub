@@ -1080,11 +1080,6 @@ fun SecurityFeatureItemRow(
                 fontWeight = FontWeight.Bold,
                 color = BentoTextPrimary
             )
-            Text(
-                text = "Score weight: ${feature.scoreWeight} pts",
-                style = MaterialTheme.typography.bodySmall,
-                color = BentoTextMuted
-            )
         }
 
         Spacer(modifier = Modifier.width(8.dp))
