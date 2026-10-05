@@ -33,6 +33,7 @@ class MainActivity : ComponentActivity() {
         com.example.stats.CrashReporter.install(this)
         val usageCtx = applicationContext
         Thread { com.example.stats.UsagePing.pingIfDue(usageCtx) }.start()
+        com.example.data.engine.QuakeWatchWorker.schedule(applicationContext)
         enableEdgeToEdge()
         com.example.util.LoggingManager.init(applicationContext)
 
