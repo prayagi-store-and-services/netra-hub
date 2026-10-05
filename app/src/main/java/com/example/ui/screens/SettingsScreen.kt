@@ -972,6 +972,9 @@ fun SettingsScreen(
             }
         }
 
+        // Permissions list: name, reason, live status, tap opens the Android page
+        item { HubPermissionsCard() }
+
         // Location Permission & Weather Synchronization Card (Settings -> Permissions -> Location)
         item {
             val context = LocalContext.current
