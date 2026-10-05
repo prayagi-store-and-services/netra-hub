@@ -149,3 +149,10 @@ About every 30 minutes when the phone has a network (Android may delay it), Hub 
 - The Home tab shows the location card and the one-line security message at the top of its scrolling list. The date and time are in the header only. The session timer was removed.
 - Bottom bar names are shorter (Home, Sensors, Graph, Logs, Service, Settings) and stay on one line.
 - No new permission, library or network call.
+
+## Cleaner screens, second step (version 1.1.13)
+- Live Graph uses the same light colours as the rest of the app. The second title block ("NETRA AI, HUMAN SAFETY SYSTEM, CORE_ENGINE") is replaced by one line, "Live sensor graph", and the empty-state text reads "Waiting for sensor data".
+- Service Manager rows no longer show the internal "Score weight" number.
+- History and Logs no longer fills with "WATCHDOG_CHECK ... Event/Passive" entries (the check still runs, it just does not write a log line for modules that need no heartbeat).
+- Settings no longer shows a developer note about a removed switch; it says only that event logs are kept in the app's private storage and are not encrypted by the app.
+- No new permission, library or network call.
