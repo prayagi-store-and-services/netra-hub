@@ -1628,7 +1628,7 @@ fun SettingsScreen(
 
         item {
             Text(
-                text = "Event logs are kept in this app's private storage and are NOT encrypted by the app. The old encryption switch did nothing, so it was removed.",
+                text = "Event logs are kept in this app's private storage and are not encrypted by the app.",
                 color = BentoTextSecondary,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 4.dp)
