@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Installer file cleanup (v1.1.19)
+
+When the app comes back to the front it also deletes installer files older than one hour from its private cache folder. Nothing outside the app's own folder is touched. No new permission, library or network call.
+
 ## Update download progress (v1.1.18)
 
 The in-app update now shows real progress: percent downloaded counting up, megabytes done of total, a bar, and a time left that never goes up. After the download the installer file can be installed again from the card if the installer was closed, and it is deleted after install or at the next start. Only the app's private cache folder is used. No new permission, library or network call.
