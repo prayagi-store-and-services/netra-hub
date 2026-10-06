@@ -79,6 +79,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        Thread { com.example.update.AppUpdater.cleanStale(applicationContext) }.start()
         viewModel.securityEngine.scanDevice()
     }
 }
