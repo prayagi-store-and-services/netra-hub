@@ -24,10 +24,16 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        com.example.update.UpdateAlert.handle(this, intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Remove any installer file left from an in-app update (runs in the background).
         Thread { com.example.update.AppUpdater.cleanLeftovers(applicationContext) }.start()
+        com.example.update.UpdateAlert.start(this)
         // Anonymous daily usage count (+1 on a public counter, nothing else). The user can turn it off in Settings.
         // Automatic crash reports: a crash saved last time is sent now, in the background. No personal data.
         com.example.stats.CrashReporter.install(this)
