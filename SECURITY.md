@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Update alert (v1.1.17)
+
+A background check every 6 hours reads the same public latest.json the in-app updater already uses and, when a newer version exists, shows one notification. Tapping it runs the existing verified download (size and SHA-256 checked) and opens the Android installer. Adds the AndroidX WorkManager library (2.10.0) where it was not already present. No new permission, server or stored personal data.
+
 ## Plain failure messages (v1.1.16)
 - When an update download fails, the app now shows one plain sentence (for example "No internet, or the server did not answer") instead of the raw system text such as "Unable to resolve host". The app's own messages (checksum, allow installs) are unchanged.
 - No new permission, library or network call.
