@@ -158,7 +158,7 @@ object AppUpdater {
     }
 
     /** Downloads the APK and verifies size and sha256. Deletes the file and throws if anything is off. */
-    fun download(context: Context, release: AppRelease): File {
+    fun download(context: Context, release: AppRelease, onProgress: ((Long, Long) -> Unit)? = null): File {
         val dir = File(context.cacheDir, "updates").apply { mkdirs() }
         dir.listFiles()?.forEach { it.delete() }
         val file = File(dir, "$APP_LABEL-${release.tag}.apk")
@@ -166,6 +166,7 @@ object AppUpdater {
         if (c.responseCode != 200) throw IllegalStateException("Download failed (server answered ${c.responseCode}).")
         val md = MessageDigest.getInstance("SHA-256")
         var total = 0L
+        var lastReport = 0L
         c.inputStream.use { input ->
             file.outputStream().use { out ->
                 val buf = ByteArray(16384)
@@ -176,6 +177,7 @@ object AppUpdater {
                     if (total > release.size) { file.delete(); throw IllegalStateException("Downloaded file is larger than expected.") }
                     md.update(buf, 0, n)
                     out.write(buf, 0, n)
+                    if (onProgress != null) { val now = System.currentTimeMillis(); if (now - lastReport >= 250L) { lastReport = now; onProgress(total, release.size) } }
                 }
             }
         }
@@ -213,6 +215,8 @@ fun AppUpdatePrompt() {
     var release by remember { mutableStateOf<AppRelease?>(null) }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var line by remember { mutableStateOf<String?>(null) }
+    var frac by remember { mutableStateOf(0f) }
     LaunchedEffect(Unit) {
         release = withContext(Dispatchers.IO) { AppUpdater.checkIfDue(context) }
     }
@@ -223,6 +227,8 @@ fun AppUpdatePrompt() {
         text = {
             Column {
                 Text(if (r.notes.isNotEmpty()) r.notes.take(800) else "A new version is ready.")
+                if (busy) androidx.compose.material3.LinearProgressIndicator(progress = frac)
+                line?.let { Text(it) }
                 message?.let { Text(it) }
             }
         },
@@ -232,7 +238,9 @@ fun AppUpdatePrompt() {
                     busy = true
                     message = null
                     try {
-                        val file = withContext(Dispatchers.IO) { AppUpdater.download(context, r) }
+                        val meter = DownloadMeter()
+                        val file = withContext(Dispatchers.IO) { AppUpdater.download(context, r) { d, t -> line = meter.line(d, t, System.currentTimeMillis()); frac = DownloadMeter.fraction(d, t) } }
+                        line = null
                         AppUpdater.install(context, file)
                         release = null
                     } catch (e: Exception) {
