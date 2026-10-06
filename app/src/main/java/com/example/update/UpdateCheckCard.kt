@@ -32,6 +32,9 @@ fun UpdateCheckCard(modifier: Modifier = Modifier) {
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     var newer by remember { mutableStateOf<AppRelease?>(null) }
+    var line by remember { mutableStateOf<String?>(null) }
+    var frac by remember { mutableStateOf(0f) }
+    var ready by remember { mutableStateOf<java.io.File?>(null) }
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("App version", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
@@ -55,7 +58,10 @@ fun UpdateCheckCard(modifier: Modifier = Modifier) {
                     scope.launch {
                         busy = true
                         try {
-                            val file = withContext(Dispatchers.IO) { AppUpdater.download(context, r) }
+                            val meter = DownloadMeter()
+                            val file = withContext(Dispatchers.IO) { AppUpdater.download(context, r) { d, t -> line = meter.line(d, t, System.currentTimeMillis()); frac = DownloadMeter.fraction(d, t) } }
+                            ready = file
+                            line = null
                             AppUpdater.install(context, file)
                         } catch (e: Exception) {
                             status = plainFailure(e, "Update failed.")
@@ -63,6 +69,14 @@ fun UpdateCheckCard(modifier: Modifier = Modifier) {
                         busy = false
                     }
                 }) { Text(if (busy) "Downloading..." else "Update to " + r.versionName) }
+                if (busy) androidx.compose.material3.LinearProgressIndicator(progress = frac, modifier = Modifier.fillMaxWidth())
+                line?.let { Text(it, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface) }
+                ready?.let { f ->
+                    if (!busy && f.exists()) {
+                        Text("Downloaded. Deleted automatically after it is installed.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        OutlinedButton(onClick = { try { AppUpdater.install(context, f) } catch (e: Exception) { status = plainFailure(e, "Install failed.") } }) { Text("Install downloaded update") }
+                    }
+                }
             }
         }
     }
