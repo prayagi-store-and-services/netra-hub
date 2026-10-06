@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Plain failure messages (v1.1.16)
+- When an update download fails, the app now shows one plain sentence (for example "No internet, or the server did not answer") instead of the raw system text such as "Unable to resolve host". The app's own messages (checksum, allow installs) are unchanged.
+- No new permission, library or network call.
+
 ## UI standard check (v1.1.15)
 - Two internal words on screen are replaced by plain text: Security tab "Security Engine Health" now says "OK - running", and the Service screen line now says "Background self-check is running".
 - A new automatic check (scripts/ui-standard-check.sh, run by the ui-standard workflow on every pull request) fails the build if an internal word (for example TRUTH ENGINE, IBRS2, IDHMSE) or a filter chip or tab label that can wrap shows up on screen. CONTRIBUTING.md holds the Netra UI standard checklist.
