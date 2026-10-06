@@ -157,6 +157,14 @@ object AppUpdater {
         try { cleanDir(File(context.cacheDir, "updates")) } catch (_: Exception) {}
     }
 
+    /** Called when the app comes back to the front. Removes installer files older than one hour (cancelled or finished installs). */
+    fun cleanStale(context: Context) {
+        try {
+            val now = System.currentTimeMillis()
+            File(context.cacheDir, "updates").listFiles()?.forEach { if (now - it.lastModified() > 3_600_000L) it.delete() }
+        } catch (_: Exception) {}
+    }
+
     /** Downloads the APK and verifies size and sha256. Deletes the file and throws if anything is off. */
     fun download(context: Context, release: AppRelease, onProgress: ((Long, Long) -> Unit)? = null): File {
         val dir = File(context.cacheDir, "updates").apply { mkdirs() }
