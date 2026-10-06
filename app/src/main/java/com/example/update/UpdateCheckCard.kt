@@ -58,7 +58,7 @@ fun UpdateCheckCard(modifier: Modifier = Modifier) {
                             val file = withContext(Dispatchers.IO) { AppUpdater.download(context, r) }
                             AppUpdater.install(context, file)
                         } catch (e: Exception) {
-                            status = e.message ?: "Update failed."
+                            status = plainFailure(e, "Update failed.")
                         }
                         busy = false
                     }
