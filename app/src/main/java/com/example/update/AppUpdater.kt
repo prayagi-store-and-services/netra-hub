@@ -236,7 +236,7 @@ fun AppUpdatePrompt() {
                         AppUpdater.install(context, file)
                         release = null
                     } catch (e: Exception) {
-                        message = e.message ?: "Update failed."
+                        message = plainFailure(e, "Update failed.")
                     }
                     busy = false
                 }
