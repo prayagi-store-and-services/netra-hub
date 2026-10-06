@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Update download progress (v1.1.18)
+
+The in-app update now shows real progress: percent downloaded counting up, megabytes done of total, a bar, and a time left that never goes up. After the download the installer file can be installed again from the card if the installer was closed, and it is deleted after install or at the next start. Only the app's private cache folder is used. No new permission, library or network call.
+
 ## Update alert (v1.1.17)
 
 A background check every 6 hours reads the same public latest.json the in-app updater already uses and, when a newer version exists, shows one notification. Tapping it runs the existing verified download (size and SHA-256 checked) and opens the Android installer. Adds the AndroidX WorkManager library (2.10.0) where it was not already present. No new permission, server or stored personal data.
