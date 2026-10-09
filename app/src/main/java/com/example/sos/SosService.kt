@@ -14,6 +14,9 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.media.AudioAttributes
+import android.media.MediaPlayer
+import android.media.RingtoneManager
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -44,7 +47,7 @@ class SosService : Service(), SensorEventListener {
         override fun run() {
             if (!counting) return
             left -= 1
-            if (left <= 0) { counting = false; sendNow(); show(idle(), ONGOING) } else { show(countdown(left), ONGOING); handler.postDelayed(this, 1000) }
+            if (left <= 0) { counting = false; stopSiren(); sendNow(); show(idle(), ONGOING) } else { show(countdown(left), ONGOING); handler.postDelayed(this, 1000) }
         }
     }
 
@@ -53,7 +56,7 @@ class SosService : Service(), SensorEventListener {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> { stopSelf(); return START_NOT_STICKY }
-            ACTION_CANCEL -> { counting = false; handler.removeCallbacks(tick); detector.reset(); show(idle(), ONGOING); return START_STICKY }
+            ACTION_CANCEL -> { counting = false; stopSiren(); handler.removeCallbacks(tick); detector.reset(); show(idle(), ONGOING); return START_STICKY }
         }
         ensureChannel()
         try {
@@ -76,6 +79,11 @@ class SosService : Service(), SensorEventListener {
     override fun onSensorChanged(e: SensorEvent) {
         if (counting) return
         if (!SosLogic.canTrigger(System.currentTimeMillis(), SosStore.lastTrigger(this))) return
+        if (SosStore.crashAlert(this) && ImpactLogic.isImpact(e.values[0], e.values[1], e.values[2], com.example.data.sensor.DrivingState.driving.value) && SosStore.contacts(this).isNotEmpty()) {
+            counting = true; left = ImpactLogic.COUNTDOWN_S; detector.reset()
+            startSiren(); show(countdown(left), ONGOING); handler.postDelayed(tick, 1000)
+            return
+        }
         if (detector.onSample(e.values[0], e.values[1], e.values[2], System.currentTimeMillis())) {
             if (SosStore.contacts(this).isEmpty()) return
             counting = true; left = SosLogic.COUNTDOWN_S
@@ -83,6 +91,18 @@ class SosService : Service(), SensorEventListener {
         }
     }
     override fun onAccuracyChanged(s: Sensor?, a: Int) {}
+
+    private var siren: MediaPlayer? = null
+    /** Loud alarm-stream siren during the crash countdown. Best effort: if the phone has no alarm sound, the notification still shows. */
+    private fun startSiren() {
+        try {
+            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val mp = MediaPlayer()
+            mp.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+            mp.setDataSource(this, uri); mp.isLooping = true; mp.prepare(); mp.start(); siren = mp
+        } catch (e: Exception) { siren = null }
+    }
+    private fun stopSiren() { try { siren?.stop(); siren?.release() } catch (e: Exception) { }; siren = null }
 
     private fun sendNow() {
         SosStore.setLastTrigger(this, System.currentTimeMillis())
@@ -124,7 +144,7 @@ class SosService : Service(), SensorEventListener {
     private fun show(n: Notification, id: Int) = (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(id, n)
 
     override fun onDestroy() {
-        sm?.unregisterListener(this); handler.removeCallbacksAndMessages(null); scope.cancel()
+        stopSiren(); sm?.unregisterListener(this); handler.removeCallbacksAndMessages(null); scope.cancel()
         SosStore.setEnabled(this, false)
         super.onDestroy()
     }

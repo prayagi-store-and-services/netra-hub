@@ -87,6 +87,13 @@ fun SosScreen() {
         Text("Official 112 India app", fontSize = 14.sp)
         Text("Opens the government 112 India app, or its Google Play page if it is not installed. This hub shares no data with it and does not contact 112 itself.", fontSize = 12.sp)
         Button(onClick = { open112App(ctx) }) { Text("Open 112 India") }
+        var crash by remember { mutableStateOf(SosStore.crashAlert(ctx)) }
+        Text("Crash alert while driving (optional)", fontSize = 14.sp)
+        Text("When Driving mode is active and the phone feels a very hard hit, a loud siren plays for ${ImpactLogic.COUNTDOWN_S} seconds with a Cancel button. If you do not cancel, the same SOS SMS goes to your contacts. Phone sensors cannot tell a real crash from a hard drop, so false alarms can happen. Needs SOS shake to be ON. OFF by default.", fontSize = 12.sp)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(if (crash) "Crash alert: ON" else "Crash alert: OFF")
+            Switch(checked = crash, onCheckedChange = { crash = it; SosStore.setCrashAlert(ctx, it) })
+        }
         if (contacts.size < 3) Text("Tip: three or more emergency contacts are recommended. SOS works with one.", fontSize = 12.sp)
     }
 }
