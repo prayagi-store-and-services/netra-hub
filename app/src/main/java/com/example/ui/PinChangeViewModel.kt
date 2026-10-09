@@ -50,6 +50,14 @@ class PinChangeViewModel(application: Application) : AndroidViewModel(applicatio
     val developerPinSalt: StateFlow<String?> = settingsRepository.developerPinSalt
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    private val pinSnapshot: StateFlow<com.example.data.service.PinSnapshot?> = kotlinx.coroutines.flow.combine(
+        settingsRepository.developerPinHash,
+        settingsRepository.developerPinSalt,
+        settingsRepository.developerPinIterations
+    ) { h, s, i -> com.example.data.service.PinSnapshot(h, s, i) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    private val pinChecker = com.example.data.service.PinChecker()
+
     // Form validation state combining input states
     val isFormValid: StateFlow<Boolean> = combine(
         currentPin, newPin, confirmPin, developerPinHash, developerPinSalt
@@ -107,18 +115,13 @@ class PinChangeViewModel(application: Application) : AndroidViewModel(applicatio
 
         viewModelScope.launch {
             try {
-                val hash = developerPinHash.value
-                val salt = developerPinSalt.value
-
-                val isCurrentCorrect = if (hash == null || salt == null) {
-                    current == "000000"
-                } else {
-                    val isPbkdf2Correct = pinStorageService.verifyPin(current, hash, salt)
-                    val isSha256Correct = SecurityUtils.hashPin(current, salt) == hash
-                    isPbkdf2Correct || isSha256Correct
+                val outcome = pinChecker.check(current, pinSnapshot.value)
+                if (outcome.result == com.example.data.service.PinGate.Result.NOT_READY) {
+                    _errorMessage.value = "Still loading. Please try again in a moment."
+                    _isLoading.value = false
+                    return@launch
                 }
-
-                if (!isCurrentCorrect) {
+                if (outcome.result != com.example.data.service.PinGate.Result.OK) {
                     _errorMessage.value = "Current PIN is incorrect."
                     _isLoading.value = false
                     return@launch
@@ -126,7 +129,7 @@ class PinChangeViewModel(application: Application) : AndroidViewModel(applicatio
 
                 // Generate new salt and slow hash using standard PBKDF2WithHmacSHA256
                 val newSalt = pinStorageService.generateSalt()
-                val newHash = pinStorageService.hashPin(new, newSalt)
+                val newHash = pinStorageService.hashPin(new, newSalt, com.example.data.service.PinGate.CURRENT_ITERATIONS)
                 val strengthStr = strength.displayName
                 val dateStr = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date())
                 val newRecoveryKey = SecurityUtils.generateRecoveryKey()
