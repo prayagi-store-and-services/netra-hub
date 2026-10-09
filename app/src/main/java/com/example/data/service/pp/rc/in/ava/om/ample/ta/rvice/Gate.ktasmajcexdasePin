@@ -1,0 +1,37 @@
+package com.example.data.service
+
+/**
+ * The one rule for "is this PIN accepted". Pure logic, no Android, so it is unit tested.
+ *
+ * - Before the stored PIN has been read from the phone, nothing is accepted. A missing value must never be
+ *   mistaken for "no custom PIN yet" (that let the default PIN in).
+ * - The default PIN works only when no custom PIN has ever been saved.
+ * - Once a custom PIN is saved, only that PIN works.
+ */
+object PinGate {
+    const val DEFAULT_PIN = "000000"
+    /** Iteration count used by every PIN saved before 1.1.23. Hashes without a stored count use this. */
+    const val LEGACY_ITERATIONS = 12000
+    /** Iteration count for newly saved PINs. Existing PINs are re-hashed to this after the next correct entry. */
+    const val CURRENT_ITERATIONS = 310000
+
+    enum class Result { OK, WRONG, NOT_READY }
+
+    fun check(
+        entered: String,
+        ready: Boolean,
+        storedHash: String?,
+        storedSalt: String?,
+        verifyStored: (String) -> Boolean
+    ): Result {
+        if (!ready) return Result.NOT_READY
+        if (storedHash == null || storedSalt == null) {
+            return if (entered == DEFAULT_PIN) Result.OK else Result.WRONG
+        }
+        return if (verifyStored(entered)) Result.OK else Result.WRONG
+    }
+
+    /** True when a correct PIN should be saved again with the stronger setting. */
+    fun needsUpgrade(storedIterations: Int?, matchedLegacySha256: Boolean): Boolean =
+        matchedLegacySha256 || (storedIterations ?: LEGACY_ITERATIONS) < CURRENT_ITERATIONS
+}
