@@ -9,11 +9,13 @@ interface PinStorageService {
     fun generateSalt(): String
     fun hashPin(pin: String, salt: String): String
     fun verifyPin(enteredPin: String, storedHash: String, storedSalt: String): Boolean
+    fun hashPin(pin: String, salt: String, iterations: Int): String
+    fun verifyPin(enteredPin: String, storedHash: String, storedSalt: String, iterations: Int): Boolean
 }
 
 class Pbkdf2PinStorageService : PinStorageService {
     companion object {
-        private const val ITERATIONS = 12000 // Slow down brute force significantly
+        private const val ITERATIONS = PinGate.LEGACY_ITERATIONS // count used by PINs saved before 1.1.23
         private const val KEY_LENGTH = 256
         private const val ALGORITHM = "PBKDF2WithHmacSHA256"
     }
@@ -25,10 +27,12 @@ class Pbkdf2PinStorageService : PinStorageService {
         return Base64.encodeToString(saltBytes, Base64.NO_WRAP)
     }
 
-    override fun hashPin(pin: String, salt: String): String {
+    override fun hashPin(pin: String, salt: String): String = hashPin(pin, salt, ITERATIONS)
+
+    override fun hashPin(pin: String, salt: String, iterations: Int): String {
         return try {
             val saltBytes = Base64.decode(salt, Base64.NO_WRAP)
-            val spec = PBEKeySpec(pin.toCharArray(), saltBytes, ITERATIONS, KEY_LENGTH)
+            val spec = PBEKeySpec(pin.toCharArray(), saltBytes, iterations, KEY_LENGTH)
             val factory = SecretKeyFactory.getInstance(ALGORITHM)
             val hashBytes = factory.generateSecret(spec).encoded
             Base64.encodeToString(hashBytes, Base64.NO_WRAP)
@@ -41,8 +45,11 @@ class Pbkdf2PinStorageService : PinStorageService {
         }
     }
 
-    override fun verifyPin(enteredPin: String, storedHash: String, storedSalt: String): Boolean {
-        val enteredHash = hashPin(enteredPin, storedSalt)
+    override fun verifyPin(enteredPin: String, storedHash: String, storedSalt: String): Boolean =
+        verifyPin(enteredPin, storedHash, storedSalt, ITERATIONS)
+
+    override fun verifyPin(enteredPin: String, storedHash: String, storedSalt: String, iterations: Int): Boolean {
+        val enteredHash = hashPin(enteredPin, storedSalt, iterations)
         // Constant-time comparison to prevent timing attacks
         return constantTimeAreEqual(enteredHash, storedHash)
     }
