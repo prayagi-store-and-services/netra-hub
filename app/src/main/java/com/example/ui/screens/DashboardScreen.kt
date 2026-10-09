@@ -202,6 +202,9 @@ fun DashboardScreen(
                         Text("Driving mode", fontWeight = FontWeight.Bold, color = BentoTextPrimary)
                         Text("Moving at 30 km/h or more: safety sensors are listening. It ends after 30 seconds below that speed.", fontSize = 12.sp, color = BentoTextPrimary)
                         Text("Speed limit warnings: Unavailable (no on-device source)", fontSize = 12.sp, color = BentoTextPrimary)
+                        if (com.example.sos.SosStore.contacts(androidx.compose.ui.platform.LocalContext.current).isEmpty()) {
+                            Text("No emergency contacts yet. Open the SOS tab and add at least one so help can be reached.", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = BentoTextPrimary)
+                        }
                     }
                 }
             }
