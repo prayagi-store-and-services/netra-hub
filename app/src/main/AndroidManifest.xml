@@ -42,6 +42,7 @@
     <!-- Lets the hub see whether the official 112 India app is installed. Nothing else is queried. -->
     <queries>
         <package android:name="in.cdac.ners.psa.mobile.android.national" />
+        <package android:name="com.aistudio.sensorguard.prvsec" />
     </queries>
 
     <application

@@ -66,6 +66,10 @@ fun SafetyCenterScreen(
             EarthquakeCard()
         }
 
+        item {
+            SafeBrowsingCard()
+        }
+
         // 2. ACTIVE HAZARDS SECTION
         item {
             Text(
