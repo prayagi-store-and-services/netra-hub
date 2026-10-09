@@ -21,12 +21,28 @@ private val NetraBentoColorScheme = lightColorScheme(
     outline = BentoBorder
 )
 
+private val NewHubColorScheme = lightColorScheme(
+    primary = Color(0xFF1A237E),
+    onPrimary = Color.White,
+    secondary = Color(0xFF00897B),
+    onSecondary = Color.White,
+    tertiary = BentoAmber,
+    error = BentoRed,
+    background = Color(0xFFF3F4FB),
+    onBackground = Color(0xFF191B2E),
+    surface = Color.White,
+    onSurface = Color(0xFF191B2E),
+    surfaceVariant = Color(0xFFE6E8F7),
+    onSurfaceVariant = Color(0xFF4A4E6B),
+    outline = Color(0xFFC5C9E3)
+)
+
 @Composable
 fun NetraTheme(
     content: @Composable () -> Unit
 ) {
     MaterialTheme(
-        colorScheme = NetraBentoColorScheme,
+        colorScheme = if (RedesignGate.isOn()) NewHubColorScheme else NetraBentoColorScheme,
         typography = Typography,
         content = content
     )
