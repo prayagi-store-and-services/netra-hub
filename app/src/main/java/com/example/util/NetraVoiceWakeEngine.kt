@@ -100,7 +100,7 @@ class NetraVoiceWakeEngine(
             val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
             if (!matches.isNullOrEmpty()) {
                 val text = matches[0].lowercase(Locale.ROOT).trim()
-                Log.d(tag, "Heard: $text")
+                Log.d(tag, "Heard speech (text not logged)")
                 handleHeardText(text)
             } else {
                 if (isStarted) {
@@ -211,7 +211,7 @@ class NetraVoiceWakeEngine(
                 startWakeWordListening()
             }
         } else if (currentState == EngineState.COMMAND) {
-            Log.i(tag, "Command detected: $text")
+            Log.i(tag, "Command detected")
             onCommandHeard?.invoke(text)
             
             speechRecognizer?.stopListening()
