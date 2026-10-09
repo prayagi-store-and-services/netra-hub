@@ -9,6 +9,8 @@ object SosStore {
 
     fun enabled(c: Context) = p(c).getBoolean("enabled", false)
     fun setEnabled(c: Context, v: Boolean) = p(c).edit().putBoolean("enabled", v).apply()
+    fun crashAlert(c: Context) = p(c).getBoolean("crash_alert", false)
+    fun setCrashAlert(c: Context, v: Boolean) = p(c).edit().putBoolean("crash_alert", v).apply()
     fun contacts(c: Context): List<String> = (p(c).getString("contacts", "") ?: "").split(",").filter { it.isNotBlank() }
     fun addContact(c: Context, raw: String): Boolean {
         val n = SosLogic.cleanNumber(raw) ?: return false
