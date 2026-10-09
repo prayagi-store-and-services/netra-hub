@@ -189,6 +189,23 @@ fun DashboardScreen(
     ) {
         item { topActions() }
         item { com.example.stats.StepsCard() }
+        item {
+            val drivingNow by com.example.data.sensor.DrivingState.driving.collectAsStateWithLifecycle()
+            if (drivingNow) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().testTag("driving_mode_card"),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = BentoAmber.copy(alpha = 0.15f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BentoAmber)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Driving mode", fontWeight = FontWeight.Bold, color = BentoTextPrimary)
+                        Text("Moving at 30 km/h or more: safety sensors are listening. It ends after 30 seconds below that speed.", fontSize = 12.sp, color = BentoTextPrimary)
+                        Text("Speed limit warnings: Unavailable (no on-device source)", fontSize = 12.sp, color = BentoTextPrimary)
+                    }
+                }
+            }
+        }
 
         // --- Global Safety Status Indicator (Phase 3) ---
         item {
