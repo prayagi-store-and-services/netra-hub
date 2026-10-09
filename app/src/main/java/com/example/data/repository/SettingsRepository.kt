@@ -42,6 +42,7 @@ class SettingsRepository(private val context: Context) {
                 val TRAVEL_MODE = stringPreferencesKey("travel_mode")
         val DEVELOPER_MODE = booleanPreferencesKey("developer_mode")
         val DEVELOPER_PIN_HASH = stringPreferencesKey("developer_pin_hash")
+        val DEVELOPER_PIN_ITERATIONS = intPreferencesKey("developer_pin_iterations")
         val DEVELOPER_PIN_SALT = stringPreferencesKey("developer_pin_salt")
         val DEVELOPER_PIN_CHANGED_DATE = stringPreferencesKey("developer_pin_changed_date")
         val DEVELOPER_PIN_STRENGTH = stringPreferencesKey("developer_pin_strength")
@@ -79,6 +80,8 @@ class SettingsRepository(private val context: Context) {
     val developerMode: Flow<Boolean> = context.dataStore.data.map { it[Keys.DEVELOPER_MODE] ?: false }
     val developerPinHash: Flow<String?> = context.dataStore.data.map { it[Keys.DEVELOPER_PIN_HASH] }
     val developerPinSalt: Flow<String?> = context.dataStore.data.map { it[Keys.DEVELOPER_PIN_SALT] }
+    /** Iteration count the stored PIN hash was made with. Missing means a PIN saved before 1.1.23 (12,000). */
+    val developerPinIterations: Flow<Int?> = context.dataStore.data.map { it[Keys.DEVELOPER_PIN_ITERATIONS] }
     val developerPinChangedDate: Flow<String?> = context.dataStore.data.map { it[Keys.DEVELOPER_PIN_CHANGED_DATE] }
     val developerPinStrength: Flow<String?> = context.dataStore.data.map { it[Keys.DEVELOPER_PIN_STRENGTH] }
     val developerPinFailedAttempts: Flow<Int> = context.dataStore.data.map { it[Keys.DEVELOPER_PIN_FAILED_ATTEMPTS] ?: 0 }
@@ -193,10 +196,20 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[Keys.DEVELOPER_MODE] = enabled }
     }
 
-    suspend fun saveDeveloperPin(hash: String, salt: String, strength: String, dateStr: String, recoveryKey: String) {
+    /** Re-saves only the PIN hash with a stronger setting after a correct entry. Strength, date and recovery key stay. */
+    suspend fun upgradeDeveloperPinHash(hash: String, salt: String, iterations: Int) {
         context.dataStore.edit {
             it[Keys.DEVELOPER_PIN_HASH] = hash
             it[Keys.DEVELOPER_PIN_SALT] = salt
+            it[Keys.DEVELOPER_PIN_ITERATIONS] = iterations
+        }
+    }
+
+    suspend fun saveDeveloperPin(hash: String, salt: String, strength: String, dateStr: String, recoveryKey: String, iterations: Int = com.example.data.service.PinGate.CURRENT_ITERATIONS) {
+        context.dataStore.edit {
+            it[Keys.DEVELOPER_PIN_HASH] = hash
+            it[Keys.DEVELOPER_PIN_SALT] = salt
+            it[Keys.DEVELOPER_PIN_ITERATIONS] = iterations
             it[Keys.DEVELOPER_PIN_STRENGTH] = strength
             it[Keys.DEVELOPER_PIN_CHANGED_DATE] = dateStr
             it[Keys.DEVELOPER_PIN_RECOVERY_KEY] = recoveryKey
@@ -247,6 +260,7 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit {
             it.remove(Keys.DEVELOPER_PIN_HASH)
             it.remove(Keys.DEVELOPER_PIN_SALT)
+            it.remove(Keys.DEVELOPER_PIN_ITERATIONS)
             it.remove(Keys.DEVELOPER_PIN_STRENGTH)
             it.remove(Keys.DEVELOPER_PIN_CHANGED_DATE)
             it.remove(Keys.DEVELOPER_PIN_RECOVERY_KEY)
