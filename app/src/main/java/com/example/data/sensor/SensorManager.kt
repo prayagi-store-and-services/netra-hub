@@ -298,7 +298,9 @@ class SensorManager(
     private fun updateSpeedGate(reading: RawSensorReading) {
         if (reading.sensorId != "gnss_location") return
         val speedKmH: Float? = if (reading.extraDetails["speedKmH"]?.endsWith("km/h") == true && reading.values.size > 2) reading.values[2] else null
-        if (speedGate.update(speedKmH, System.currentTimeMillis())) evaluateSensorStreams()
+        val changed = speedGate.update(speedKmH, System.currentTimeMillis())
+        DrivingState.set(speedGate.isOpen)
+        if (changed) evaluateSensorStreams()
     }
 
     private fun handleIncomingReading(reading: RawSensorReading) {
