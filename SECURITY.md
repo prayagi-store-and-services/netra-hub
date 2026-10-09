@@ -1,5 +1,11 @@
 # Security notes - netra-hub
 
+## Developer PIN fix and stronger PIN storage (v1.1.23)
+
+Fixed: after a user changed the Developer Mode PIN from the default, the default PIN 000000 could still be accepted. The app treated "PIN not read from the phone yet" the same as "no custom PIN saved". Now nothing is accepted until the saved PIN has been read, the default works only while no own PIN has been saved, and once an own PIN is saved only that PIN works. The PIN screen now shows the default PIN (000000, 6 digits) and says you will be asked to set your own right after entering it.
+
+Stronger storage: new PINs are stored with 310,000 rounds instead of 12,000. PINs saved earlier keep working and are re-saved with the stronger setting the next time they are entered correctly. A reset with the recovery key still brings back the default PIN on purpose. No new permission, library or server.
+
 ## Log privacy (v1.1.22)
 
 Log lines no longer include personal content: the Hub no longer writes spoken text to the device log, and KBC no longer writes the player's name. Nothing else changes. No new permission, library or server.

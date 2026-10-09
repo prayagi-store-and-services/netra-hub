@@ -238,6 +238,16 @@ fun SettingsScreen(
                                 textAlign = TextAlign.Center
                             )
 
+                            if (developerPinHash.isNullOrEmpty()) {
+                                Text(
+                                    text = "The PIN has 6 digits. Default PIN: 000000. After you enter it you will be asked to set your own PIN, and the default stops working.",
+                                    color = BentoTextMuted,
+                                    fontSize = 11.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(top = 6.dp).testTag("default_pin_hint")
+                                )
+                            }
+
                             // PIN dots display
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(14.dp),

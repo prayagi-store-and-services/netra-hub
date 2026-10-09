@@ -228,8 +228,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val travelMode: StateFlow<String> = settingsRepository.travelMode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "AUTO")
     val developerMode: StateFlow<Boolean> = settingsRepository.developerMode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    val developerPinHash: StateFlow<String?> = settingsRepository.developerPinHash.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-    val developerPinSalt: StateFlow<String?> = settingsRepository.developerPinSalt.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val developerPinHash: StateFlow<String?> = settingsRepository.developerPinHash.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    val developerPinSalt: StateFlow<String?> = settingsRepository.developerPinSalt.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    /** The stored PIN as one value. Null until it has been read from the phone: nothing is accepted before that. */
+    private val pinSnapshot: StateFlow<com.example.data.service.PinSnapshot?> = kotlinx.coroutines.flow.combine(
+        settingsRepository.developerPinHash,
+        settingsRepository.developerPinSalt,
+        settingsRepository.developerPinIterations
+    ) { h, s, i -> com.example.data.service.PinSnapshot(h, s, i) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    private val pinChecker = com.example.data.service.PinChecker()
     val developerPinChangedDate: StateFlow<String?> = settingsRepository.developerPinChangedDate.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val developerPinStrength: StateFlow<String?> = settingsRepository.developerPinStrength.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val developerPinFailedAttempts: StateFlow<Int> = settingsRepository.developerPinFailedAttempts.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
@@ -304,16 +312,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return false // Locked out!
         }
 
-        val hash = developerPinHash.value
-        val salt = developerPinSalt.value
-
-        val isSuccess = if (hash == null || salt == null) {
-            // No custom PIN set yet, authenticate with default 000000
-            pin == "000000"
-        } else {
-            val isPbkdf2Correct = pinStorageService.verifyPin(pin, hash, salt)
-            val isSha256Correct = SecurityUtils.hashPin(pin, salt) == hash
-            isPbkdf2Correct || isSha256Correct
+        val snapshot = pinSnapshot.value
+        val outcome = pinChecker.check(pin, snapshot)
+        // Not read from the phone yet: refuse without counting a failed attempt.
+        if (outcome.result == com.example.data.service.PinGate.Result.NOT_READY) return false
+        val isSuccess = outcome.result == com.example.data.service.PinGate.Result.OK
+        if (isSuccess && outcome.upgrade) {
+            // Correct PIN on an older, weaker hash: save it again with the stronger setting.
+            val (newHash, newSalt) = pinChecker.stronger(pin)
+            viewModelScope.launch(Dispatchers.IO) {
+                settingsRepository.upgradeDeveloperPinHash(newHash, newSalt, com.example.data.service.PinGate.CURRENT_ITERATIONS)
+            }
         }
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -380,24 +389,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun changeDeveloperPin(currentPin: String, newPin: String): Boolean {
-        val hash = developerPinHash.value
-        val salt = developerPinSalt.value
-
-        val isCurrentCorrect = if (hash == null || salt == null) {
-            currentPin == "000000"
-        } else {
-            val isPbkdf2Correct = pinStorageService.verifyPin(currentPin, hash, salt)
-            val isSha256Correct = SecurityUtils.hashPin(currentPin, salt) == hash
-            isPbkdf2Correct || isSha256Correct
-        }
-
-        if (!isCurrentCorrect) return false
+        val currentOutcome = pinChecker.check(currentPin, pinSnapshot.value)
+        if (currentOutcome.result != com.example.data.service.PinGate.Result.OK) return false
 
         val strength = PinStrengthAnalyzer.analyze(newPin)
         if (strength == PinStrength.WEAK) return false
 
         val newSalt = pinStorageService.generateSalt()
-        val newHash = pinStorageService.hashPin(newPin, newSalt)
+        val newHash = pinStorageService.hashPin(newPin, newSalt, com.example.data.service.PinGate.CURRENT_ITERATIONS)
         val strengthStr = strength.displayName
         val dateStr = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(java.util.Date())
         val recoveryKey = SecurityUtils.generateRecoveryKey()
@@ -1177,4 +1176,3 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ttsManager.shutdown()
     }
 }
-
