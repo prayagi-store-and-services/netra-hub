@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Log privacy (v1.1.22)
+
+Log lines no longer include personal content: the Hub no longer writes spoken text to the device log, and KBC no longer writes the player's name. Nothing else changes. No new permission, library or server.
+
 ## Report delivery fix (v1.1.21)
 
 Crash and feedback reports from the app now send the website address as the origin header, so the report service accepts them. Reports that could not be delivered before (they stay saved on the phone and retry at the next start) will now go through. Report contents, the stored file and the opt-in text are unchanged. No new permission, library or server.
