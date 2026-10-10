@@ -49,5 +49,6 @@ jobs:
           name: build-diagnostics
           path: |
             app/build/test-results/testDebugUnitTest/*.xml
+            app/build/ui-shots/*.png
             app/build/ci-diagnostics/android-build.log
           if-no-files-found: warn
