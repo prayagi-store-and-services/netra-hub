@@ -58,7 +58,7 @@ android {
     compose = true
     buildConfig = true
   }
-  testOptions { unitTests { isIncludeAndroidResources = true } }
+  testOptions { unitTests { isIncludeAndroidResources = true; all { it.testLogging.showStandardStreams = true } } }
   ksp {
     arg("room.schemaLocation", file("schemas").absolutePath)
   }
