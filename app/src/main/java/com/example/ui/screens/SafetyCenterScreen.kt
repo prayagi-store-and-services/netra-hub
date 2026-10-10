@@ -647,21 +647,36 @@ fun OfficialSafetyAlertStatusCard(
 
             HorizontalDivider(color = BentoBorder, thickness = 1.dp)
 
-            StatusRow("Current Location", "${locationContext.locality}, ${locationContext.state}")
-            StatusRow("Location Source", locationContext.source)
-            StatusRow("Last Successful Location Update", lastUpdateStr)
+            StatusRow("Current Location", com.example.data.service.LocationAccess.placeText(locationContext.locality, locationContext.district, locationContext.state))
+            StatusRow("Location Source", if (locationContext.source == "LOCATION_UNAVAILABLE") "Unavailable" else locationContext.source)
+            StatusRow("Last Successful Location Update", if (lastUpdateStr == "Location Unavailable") "Unavailable" else lastUpdateStr)
             StatusRow("Last Official Alert Check", "$lastCheckStr ($checkStatus)")
             StatusRow("Active Warning", if (officialWarning.isAvailable) officialWarning.warningType else "None / Unavailable")
             StatusRow("Source", officialWarning.issuingAuthority)
+            val ctxLocal = androidx.compose.ui.platform.LocalContext.current
+            if (!com.example.data.service.LocationAccess.backgroundGranted(ctxLocal)) {
+                Text(
+                    text = com.example.data.service.LocationAccess.NEEDS_BACKGROUND_TEXT,
+                    color = BentoTextPrimary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.testTag("background_location_needed_text")
+                )
+                androidx.compose.material3.Button(
+                    onClick = { try { ctxLocal.startActivity(com.example.data.service.LocationAccess.appSettingsIntent(ctxLocal)) } catch (_: Exception) {} },
+                    modifier = Modifier.testTag("open_app_settings_button")
+                ) { Text("Open Hub app settings") }
+            }
         }
     }
 }
 
 @Composable
 fun StatusRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+    // Label above, value below, both full width and allowed to wrap: text can never collide at any width or font size.
+    Column(
+        modifier = Modifier.fillMaxWidth().testTag("status_row_" + label.replace(' ', '_')),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Text(
             text = label,
@@ -671,8 +686,9 @@ fun StatusRow(label: String, value: String) {
         Text(
             text = value,
             color = BentoTextPrimary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
