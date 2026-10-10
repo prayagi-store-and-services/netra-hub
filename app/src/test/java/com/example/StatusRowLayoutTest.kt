@@ -9,8 +9,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
-import com.github.takahirom.roborazzi.captureRoboImage
 import androidx.compose.ui.unit.dp
 import com.example.data.service.LocationAccess
 import com.example.ui.screens.StatusRow
@@ -33,18 +31,6 @@ class StatusRowLayoutTest {
     @get:Rule val rule = createComposeRule()
 
     /** Saves the rendered card as a PNG and also prints it as base64 between markers so the image can be read from the CI log. */
-    private fun shot(name: String) {
-        val path = "build/ui-shots/" + name
-        rule.onRoot().captureRoboImage(filePath = path)
-        val file = java.io.File(path)
-        if (file.exists()) {
-            val bytes = file.readBytes()
-            println("UISHOT_BEGIN " + name + " bytes=" + bytes.size)
-            java.util.Base64.getEncoder().encodeToString(bytes).chunked(180).forEach { println("UISHOT " + it) }
-            println("UISHOT_END " + name)
-        } else println("UISHOT_MISSING " + name)
-    }
-
     private fun card(widthDp: Int) {
         rule.setContent {
             NetraTheme {
@@ -67,13 +53,12 @@ class StatusRowLayoutTest {
         val label = rule.onNodeWithText("Last Official Alert Check").getUnclippedBoundsInRoot()
         val value = rule.onNodeWithText("10/10/2026 10:01:57 (Unavailable: no official alert feed)").getUnclippedBoundsInRoot()
         assertTrue("value must start below its label", value.top >= label.bottom)
-        shot("status_rows_320dp.png")
     }
 
     @Test
     fun narrowAndWideBothRender() {
         card(411)
-        shot("status_rows_411dp.png")
+        rule.onNodeWithText("Source").assertIsDisplayed()
     }
 
     @Test
