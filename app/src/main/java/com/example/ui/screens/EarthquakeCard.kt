@@ -111,7 +111,7 @@ fun EarthquakeCard() {
                 val loc = withContext(Dispatchers.IO) { OfficialLocationContextManager(context).refreshLocation() }
                 val ok = loc.locationStatus == "LOCATION_AVAILABLE" || loc.locationStatus == "COORDINATES_AVAILABLE" || loc.locationStatus == "GEOCODER_FAILED"
                 if (!ok || (loc.latitude == 0.0 && loc.longitude == 0.0)) {
-                    headline = "Unavailable: location is not available (" + loc.locationStatus + ")."
+                    headline = "Unavailable: no area check was made. " + com.example.data.service.LocationAccess.failureText(loc.locationStatus, true)
                     bad = true; lines = emptyList()
                 } else {
                     val start = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(System.currentTimeMillis() - QUAKE_DAYS * 86_400_000L))
@@ -131,7 +131,11 @@ fun EarthquakeCard() {
                         bad = true; lines = emptyList()
                     } else {
                         bad = false
-                        headline = if (quakes.isEmpty()) "No earthquake listed by USGS in this area in the last " + QUAKE_DAYS + " days (checked " + fmt.format(Date()) + ")."
+                        val where = com.example.data.service.LocationAccess.placeText(loc.locality, loc.district, loc.state).let { place ->
+                            val fixAge = if (loc.timestamp > 0) " (location fix from " + fmt.format(Date(loc.timestamp)) + ", source " + loc.source + ")" else ""
+                            (if (place == "Unavailable") "within " + QUAKE_RADIUS_KM.toInt() + " km of " + String.format(Locale.US, "%.2f, %.2f", loc.latitude, loc.longitude) else "within " + QUAKE_RADIUS_KM.toInt() + " km of " + place) + fixAge
+                        }
+                        headline = if (quakes.isEmpty()) "No earthquake listed by USGS " + where + " in the last " + QUAKE_DAYS + " days (checked " + fmt.format(Date()) + ")."
                         else quakes.size.toString() + " earthquake(s) listed by USGS (checked " + fmt.format(Date()) + "):"
                         lines = quakes.take(5).map { q -> "M " + q.magnitude + ", " + q.distanceKm.toInt() + " km away, " + fmt.format(Date(q.timeMillis)) + ", " + q.place }
                     }
