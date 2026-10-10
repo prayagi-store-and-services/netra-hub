@@ -51,6 +51,7 @@ open class MainActivity : ComponentActivity() {
             setContentView(box)
             return
         }
+        com.example.festival.JayMataDi.greetIfDue(this)
         // Remove any installer file left from an in-app update (runs in the background).
         Thread { com.example.update.AppUpdater.cleanLeftovers(applicationContext) }.start()
         com.example.update.UpdateAlert.start(this)
