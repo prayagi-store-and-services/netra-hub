@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Region guard (v1.4.3)
+
+The app refuses to open when the phone's SIM or network country is on a built-in block list (PK, BD, AF, CN, KP). The check runs only on the phone, uses no permission, no network call and no IP lookup, and nothing is stored or sent. With no signal, or an Indian SIM, it never blocks. It is a deterrent, not foolproof: removing the SIM or changing the language region bypasses it.
+
 ## Parking spot and siren stop (v1.4.0)
 
 New optional parking spot, OFF by default. When on, it saves one location (latitude, longitude, time) in the app's private storage when driving ends, replacing the previous one. No history, never sent anywhere, Clear deletes it, switching it off deletes it. Uses the location permission the app already asks for. Also: the siren now has a STOP SIREN / CANCEL button on the SOS screen. The Driving flag for other Netra apps (v1.3.0) now also counts the speed-based driving mode. No new permission, library or server.
