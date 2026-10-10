@@ -94,6 +94,46 @@ fun SosScreen() {
             Text(if (crash) "Crash alert: ON" else "Crash alert: OFF")
             Switch(checked = crash, onCheckedChange = { crash = it; SosStore.setCrashAlert(ctx, it) })
         }
+        Text("Stop the siren", fontSize = 14.sp)
+        Text("During the crash countdown the siren keeps playing until you press this or the notification button. It also cancels the SOS SMS.", fontSize = 12.sp)
+        Button(onClick = {
+            if (SosStore.enabled(ctx)) ctx.startService(Intent(ctx, SosService::class.java).setAction(SosService.ACTION_CANCEL))
+            else msg = "Nothing to stop: SOS shake is OFF."
+        }) { Text("STOP SIREN / CANCEL") }
+        var park by remember { mutableStateOf(ParkingSpot.enabled(ctx)) }
+        var parkMsg by remember { mutableStateOf("") }
+        var spot by remember { mutableStateOf(ParkingSpot.get(ctx)) }
+        val parkAsk = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { res ->
+            val ok = res[Manifest.permission.ACCESS_FINE_LOCATION] == true || res[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            if (ok) { ParkingSpot.setEnabled(ctx, true); park = true; parkMsg = "" } else parkMsg = "Parking spot stays OFF: location permission is needed."
+        }
+        Text("Parking spot (optional)", fontSize = 14.sp)
+        Text("When driving ends, this saves where you stopped so you can find your vehicle. One spot only, kept on this phone, never sent anywhere. Driving detection is a sensor guess, so the spot can be wrong or missed.", fontSize = 12.sp)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(if (park) "Parking spot: ON" else "Parking spot: OFF")
+            Switch(checked = park, onCheckedChange = { want ->
+                if (!want) { ParkingSpot.setEnabled(ctx, false); park = false; spot = null; parkMsg = "" }
+                else parkAsk.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+            })
+        }
+        if (parkMsg.isNotBlank()) Text(parkMsg, fontSize = 13.sp)
+        if (park) {
+            val s = spot ?: ParkingSpot.get(ctx)
+            if (s != null) {
+                Text("Last parking spot saved " + java.text.SimpleDateFormat("d MMM, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(s.at)), fontSize = 13.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = {
+                        try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ParkingSpot.mapsUri(s.lat, s.lon))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                        catch (e: Exception) { parkMsg = "No maps app found on this phone." }
+                    }) { Text("Open in Maps") }
+                    TextButton(onClick = { ParkingSpot.clear(ctx); spot = null }) { Text("Clear") }
+                }
+            } else {
+                val st = ParkingSpot.status(ctx)
+                Text(if (st.isNotBlank()) st else "No parking spot saved yet.", fontSize = 13.sp)
+            }
+        }
+        Text("Crash alert and parking spot were tested in simulation (unit tests), not in real crashes or real drives.", fontSize = 12.sp)
         if (contacts.size < 3) Text("Tip: three or more emergency contacts are recommended. SOS works with one.", fontSize = 12.sp)
     }
 }

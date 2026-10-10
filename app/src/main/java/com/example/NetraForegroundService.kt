@@ -23,6 +23,7 @@ class NetraForegroundService : Service() {
     private val CHANNEL_ID = "NetraForegroundServiceChannel"
     private var repository: NetraSafetyRepository? = null
     private val serviceJob = Job()
+    private var wasDriving = false
     private val serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
 
 
@@ -96,7 +97,15 @@ class NetraForegroundService : Service() {
                     val isCharging = repository?.batteryManager?.batteryState?.value?.isCharging ?: false
                     val isMotionDetected = repository?.sensorManager?.fusionState?.value?.isDrivingConfirmed ?: false
                     
-                    com.example.driving.DrivingSignal.publish(applicationContext, isMotionDetected)
+                    val drivingNow = isMotionDetected || com.example.data.sensor.DrivingState.driving.value
+                    com.example.driving.DrivingSignal.publish(applicationContext, drivingNow)
+                    if (com.example.sos.ParkingSpot.shouldSave(wasDriving, drivingNow, com.example.sos.ParkingSpot.enabled(applicationContext))) {
+                        val fix = com.example.data.service.OfficialLocationContextManager(applicationContext).refreshLocation()
+                        if (com.example.sos.ParkingSpot.usable(fix.latitude, fix.longitude, fix.timestamp)) {
+                            com.example.sos.ParkingSpot.save(applicationContext, fix.latitude, fix.longitude, System.currentTimeMillis())
+                        } else com.example.sos.ParkingSpot.markUnavailable(applicationContext)
+                    }
+                    wasDriving = drivingNow
                     val newMode = repository?.powerManagerEngine?.determineMode(isScreenOn, isCharging, isMotionDetected)
                     newMode?.let { repository?.powerManagerEngine?.updateMode(it) }
 

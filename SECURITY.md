@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Parking spot and siren stop (v1.4.0)
+
+New optional parking spot, OFF by default. When on, it saves one location (latitude, longitude, time) in the app's private storage when driving ends, replacing the previous one. No history, never sent anywhere, Clear deletes it, switching it off deletes it. Uses the location permission the app already asks for. Also: the siren now has a STOP SIREN / CANCEL button on the SOS screen. The Driving flag for other Netra apps (v1.3.0) now also counts the speed-based driving mode. No new permission, library or server.
+
 ## Driving flag for other Netra apps (v1.3.0)
 
 Hub now publishes one yes/no "driving" flag and the time it was set, through a read-only content provider on this phone. Any app on the phone can read it. It contains no location, no name and nothing else, and it cannot be written to. It is never sent over the network. If Hub stops updating it, it reads as "not driving" after 2 minutes. No new permission, library or server.
