@@ -10,8 +10,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.graphics.asAndroidBitmap
+import com.github.takahirom.roborazzi.captureRoboImage
 import androidx.compose.ui.unit.dp
 import com.example.data.service.LocationAccess
 import com.example.ui.screens.StatusRow
@@ -35,15 +34,15 @@ class StatusRowLayoutTest {
 
     /** Saves the rendered card as a PNG and also prints it as base64 between markers so the image can be read from the CI log. */
     private fun shot(name: String) {
-        val bmp = rule.onRoot().captureToImage().asAndroidBitmap()
-        val out = java.io.ByteArrayOutputStream()
-        bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
-        val bytes = out.toByteArray()
-        val dir = java.io.File("build/ui-shots"); dir.mkdirs()
-        java.io.File(dir, name).writeBytes(bytes)
-        println("UISHOT_BEGIN " + name + " " + bmp.width + "x" + bmp.height)
-        android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP).chunked(180).forEach { println("UISHOT " + it) }
-        println("UISHOT_END " + name)
+        val path = "build/ui-shots/" + name
+        rule.onRoot().captureRoboImage(filePath = path)
+        val file = java.io.File(path)
+        if (file.exists()) {
+            val bytes = file.readBytes()
+            println("UISHOT_BEGIN " + name + " bytes=" + bytes.size)
+            java.util.Base64.getEncoder().encodeToString(bytes).chunked(180).forEach { println("UISHOT " + it) }
+            println("UISHOT_END " + name)
+        } else println("UISHOT_MISSING " + name)
     }
 
     private fun card(widthDp: Int) {
