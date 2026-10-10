@@ -147,7 +147,7 @@ fun ReadinessFixButtons(
         if (showAutostart) {
             FixRow(
                 "Open Autostart settings ($manufacturer)",
-                "Your phone's maker adds its own background rules. Turn Autostart on for Netra Human Safety and set Battery to Unrestricted. Android gives apps no way to see this switch, so it cannot be checked here."
+                "Your phone's maker adds its own background rules. Turn Autostart on for ${com.example.Brand.name} and set Battery to Unrestricted. Android gives apps no way to see this switch, so it cannot be checked here."
             ) { ReadinessFixes.openAutostart(context) }
         }
     }

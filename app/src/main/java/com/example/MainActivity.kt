@@ -20,7 +20,7 @@ import com.example.ui.MainScreen
 import com.example.ui.MainViewModel
 import com.example.ui.theme.NetraTheme
 
-class MainActivity : ComponentActivity() {
+open class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -30,6 +30,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        try { Brand.applyLauncherName(this) } catch (_: Throwable) { }
         super.onCreate(savedInstanceState)
         // Remove any installer file left from an in-app update (runs in the background).
         Thread { com.example.update.AppUpdater.cleanLeftovers(applicationContext) }.start()
