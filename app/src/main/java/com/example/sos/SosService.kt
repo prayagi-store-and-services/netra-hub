@@ -139,8 +139,8 @@ class SosService : Service(), SensorEventListener {
     private fun pi(action: String) = PendingIntent.getService(this, action.hashCode(), Intent(this, SosService::class.java).setAction(action), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     private fun idle() = base("SOS shake is ON", "Shake the phone hard 3 times to send an SOS").setOngoing(true)
         .addAction(Notification.Action.Builder(null as android.graphics.drawable.Icon?, "Turn off", pi(ACTION_STOP)).build()).build()
-    private fun countdown(s: Int) = base("SOS in $s seconds", "Sending your location by SMS. Tap Cancel to stop.").setOngoing(true)
-        .addAction(Notification.Action.Builder(null as android.graphics.drawable.Icon?, "CANCEL", pi(ACTION_CANCEL)).build()).build()
+    private fun countdown(s: Int) = base("SOS in $s seconds", "Sending your location by SMS. Tap STOP SIREN / CANCEL to stop.").setOngoing(true)
+        .addAction(Notification.Action.Builder(null as android.graphics.drawable.Icon?, "STOP SIREN / CANCEL", pi(ACTION_CANCEL)).build()).build()
     private fun show(n: Notification, id: Int) = (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(id, n)
 
     override fun onDestroy() {
