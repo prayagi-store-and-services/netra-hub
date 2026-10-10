@@ -32,6 +32,25 @@ open class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         try { Brand.applyLauncherName(this) } catch (_: Throwable) { }
         super.onCreate(savedInstanceState)
+        if (com.example.geo.GeoGuard.isBlocked(this)) {
+            val pad = (24 * resources.displayMetrics.density).toInt()
+            val box = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER
+                setPadding(pad, pad, pad, pad)
+            }
+            box.addView(android.widget.TextView(this).apply {
+                text = "This app is not available in your region."
+                textSize = 20f
+                gravity = android.view.Gravity.CENTER
+            })
+            box.addView(android.widget.Button(this).apply {
+                text = "Close"
+                setOnClickListener { finishAffinity() }
+            })
+            setContentView(box)
+            return
+        }
         // Remove any installer file left from an in-app update (runs in the background).
         Thread { com.example.update.AppUpdater.cleanLeftovers(applicationContext) }.start()
         com.example.update.UpdateAlert.start(this)
