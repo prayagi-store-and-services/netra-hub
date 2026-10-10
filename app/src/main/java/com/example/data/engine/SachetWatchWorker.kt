@@ -95,7 +95,7 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
             val loc = OfficialLocationContextManager(ctx).refreshLocation()
             val ok = loc.locationStatus == "LOCATION_AVAILABLE" || loc.locationStatus == "COORDINATES_AVAILABLE" || loc.locationStatus == "GEOCODER_FAILED"
             if (!ok || (loc.state.contains("unavailable", true) && loc.district.contains("unavailable", true))) {
-                save("Unavailable: no recent phone location with a state or district name (" + loc.locationStatus + ").")
+                save("Unavailable: " + com.example.data.service.LocationAccess.failureText(loc.locationStatus, com.example.data.service.LocationAccess.backgroundGranted(ctx)).let { if (loc.locationStatus == "LOCATION_TIMEOUT" || loc.locationStatus == "PERMISSION_NOT_GRANTED" || loc.locationStatus == "PROVIDER_DISABLED") it else "No state or district name for your location, so area alerts cannot be matched." })
                 return Result.success()
             }
             val rss = get(SACHET_RSS)?.let { parseSachetRss(it) }

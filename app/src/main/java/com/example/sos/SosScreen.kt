@@ -133,6 +133,7 @@ fun SosScreen() {
                 Text(if (st.isNotBlank()) st else "No parking spot saved yet.", fontSize = 13.sp)
             }
         }
+        Text("Battery Sentinel is currently the only Netra app that receives the driving flag (yes or no, and a time).", fontSize = 12.sp)
         Text("Crash alert and parking spot were tested in simulation (unit tests), not in real crashes or real drives.", fontSize = 12.sp)
         if (contacts.size < 3) Text("Tip: three or more emergency contacts are recommended. SOS works with one.", fontSize = 12.sp)
     }
