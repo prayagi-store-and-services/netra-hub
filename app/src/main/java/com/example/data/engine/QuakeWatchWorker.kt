@@ -36,7 +36,7 @@ class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
             val loc = OfficialLocationContextManager(ctx).refreshLocation()
             val ok = loc.locationStatus == "LOCATION_AVAILABLE" || loc.locationStatus == "COORDINATES_AVAILABLE" || loc.locationStatus == "GEOCODER_FAILED"
             if (!ok || (loc.latitude == 0.0 && loc.longitude == 0.0)) {
-                save(prefs, now, "Unavailable: no recent phone location (" + loc.locationStatus + ").")
+                save(prefs, now, "Unavailable: " + com.example.data.service.LocationAccess.failureText(loc.locationStatus, com.example.data.service.LocationAccess.backgroundGranted(ctx)))
                 return Result.success()
             }
             val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
