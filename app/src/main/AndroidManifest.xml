@@ -107,6 +107,12 @@
             android:foregroundServiceType="location"
             tools:targetApi="upside_down_cake" />
 
+        <!-- Read-only driving flag for the other Netra apps on this phone. Returns only driving yes/no and a time. -->
+        <provider
+            android:name="com.example.driving.DrivingSignalProvider"
+            android:authorities="${applicationId}.driving"
+            android:exported="true" />
+
         <provider
             android:name=".nasre.NasreInitializer"
             android:authorities="${applicationId}.nasre"

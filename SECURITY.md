@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Driving flag for other Netra apps (v1.3.0)
+
+Hub now publishes one yes/no "driving" flag and the time it was set, through a read-only content provider on this phone. Any app on the phone can read it. It contains no location, no name and nothing else, and it cannot be written to. It is never sent over the network. If Hub stops updating it, it reads as "not driving" after 2 minutes. No new permission, library or server.
+
 ## Developer PIN fix and stronger PIN storage (v1.1.23)
 
 Fixed: after a user changed the Developer Mode PIN from the default, the default PIN 000000 could still be accepted. The app treated "PIN not read from the phone yet" the same as "no custom PIN saved". Now nothing is accepted until the saved PIN has been read, the default works only while no own PIN has been saved, and once an own PIN is saved only that PIN works. The PIN screen now shows the default PIN (000000, 6 digits) and says you will be asked to set your own right after entering it.

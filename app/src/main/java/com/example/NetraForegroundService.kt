@@ -96,6 +96,7 @@ class NetraForegroundService : Service() {
                     val isCharging = repository?.batteryManager?.batteryState?.value?.isCharging ?: false
                     val isMotionDetected = repository?.sensorManager?.fusionState?.value?.isDrivingConfirmed ?: false
                     
+                    com.example.driving.DrivingSignal.publish(applicationContext, isMotionDetected)
                     val newMode = repository?.powerManagerEngine?.determineMode(isScreenOn, isCharging, isMotionDetected)
                     newMode?.let { repository?.powerManagerEngine?.updateMode(it) }
 
@@ -134,4 +135,3 @@ class NetraForegroundService : Service() {
             .build()
     }
 }
-
