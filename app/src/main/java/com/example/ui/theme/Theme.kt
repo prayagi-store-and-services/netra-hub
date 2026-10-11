@@ -42,7 +42,7 @@ fun NetraTheme(
     content: @Composable () -> Unit
 ) {
     MaterialTheme(
-        colorScheme = if (RedesignGate.isOn()) NewHubColorScheme else NetraBentoColorScheme,
+        colorScheme = com.example.festival.festiveScheme(if (RedesignGate.isOn()) NewHubColorScheme else NetraBentoColorScheme),
         typography = Typography,
         content = content
     )
