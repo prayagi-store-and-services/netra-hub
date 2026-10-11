@@ -114,8 +114,18 @@ class NetraVoiceWakeEngine(
         override fun onEvent(eventType: Int, params: Bundle?) {}
     }
 
+    companion object {
+        private const val PREFS = "netra_voice_consent"
+        private const val KEY = "voice_commands_opt_in"
+        /** Shown to the user before voice commands can be switched on. */
+        const val PRIVACY_NOTICE = "Voice commands use your phone's speech recogniser. Netra asks it to work on-device, but this is only a preference: if the offline language pack is missing, your phone's recogniser may send your voice to its provider's servers (usually Google). Netra itself stores no audio. Voice commands stay off until you turn them on."
+        fun hasOptedIn(context: Context): Boolean = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY, false)
+        fun setOptIn(context: Context, value: Boolean) { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY, value).apply() }
+    }
+
     fun start() {
         if (isStarted) return
+        if (!hasOptedIn(context)) { Log.w(tag, "Voice commands are off: no opt-in given."); return }
         isStarted = true
         currentState = EngineState.WAKE_WORD
         onStateChanged?.invoke(currentState)
@@ -163,6 +173,7 @@ class NetraVoiceWakeEngine(
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         }
         try {
             speechRecognizer?.startListening(intent)
@@ -179,6 +190,7 @@ class NetraVoiceWakeEngine(
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         }
         try {
             speechRecognizer?.startListening(intent)
