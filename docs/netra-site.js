@@ -128,7 +128,7 @@ function whatsNew(){
     var m=l.match(/^\s*[-*]\s+(.*)$/);if(m&&n<8){var li=document.createElement("li");li.textContent=m[1].replace(/\*\*/g,"");ul.appendChild(li);n++}});
    if(!n){var li=document.createElement("li");li.textContent="See the release page for the notes.";ul.appendChild(li)}
    box.appendChild(ul)});
- }).catch(function(){box.innerHTML="";var a=document.createElement("a");a.href="https://github.com/"+repo+"/releases";a.textContent="Could not load. Open the release notes on GitHub.";box.appendChild(a)});
+ }).catch(function(){box.innerHTML="";var a=document.createElement("span");a.textContent="Could not load the update notes right now. Please try again later.";box.appendChild(a)});
 }
 
 /* ---- Live stats: visits and downloads. No personal data is collected.
