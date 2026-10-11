@@ -81,9 +81,13 @@ class NetraTtsManager(private val context: Context) : TextToSpeech.OnInitListene
             return
         }
 
+        // Critical safety alerts interrupt whatever is being spoken. Everything else waits its turn,
+        // so an informational alert can never cut a critical warning off mid-sentence.
+        val id = "NetraAlert-" + System.nanoTime()
         val params = android.os.Bundle()
-        params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "NetraAlertId")
-        tts?.speak(message, TextToSpeech.QUEUE_FLUSH, params, "NetraAlertId")
+        params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, id)
+        val mode = if (isCriticalSafety) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
+        tts?.speak(message, mode, params, id)
     }
 
     fun shutdown() {
@@ -91,4 +95,3 @@ class NetraTtsManager(private val context: Context) : TextToSpeech.OnInitListene
         tts?.shutdown()
     }
 }
-
