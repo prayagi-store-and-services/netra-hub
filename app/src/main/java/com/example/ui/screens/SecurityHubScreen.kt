@@ -806,17 +806,6 @@ fun SecurityHubScreen(
                                     Text("Open Settings")
                                 }
 
-                                Button(
-                                    onClick = {
-                                        // Allow simulation of the feature for ease of presentation/testing
-                                        val nextEnabled = feat.status != FeatureStatus.ENABLED
-                                        viewModel.securityEngine.toggleFeature(feat.id, nextEnabled)
-                                        selectedFeatureForDetail = null
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
-                                ) {
-                                    Text(if (feat.status == FeatureStatus.ENABLED) "Simulate Disabled" else "Simulate Enabled")
-                                }
                             }
                         }
                         FeatureCategory.C -> {
@@ -848,16 +837,6 @@ fun SecurityHubScreen(
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Button(
-                                    onClick = {
-                                        val nextEnabled = feat.status != FeatureStatus.ENABLED
-                                        viewModel.securityEngine.toggleFeature(feat.id, nextEnabled)
-                                        selectedFeatureForDetail = null
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = BentoGreenPrimary)
-                                ) {
-                                    Text(if (feat.status == FeatureStatus.ENABLED) "Simulate Disabled" else "Simulate Enabled")
-                                }
                                 TextButton(onClick = { selectedFeatureForDetail = null }) {
                                     Text("Dismiss", color = BentoTextPrimary)
                                 }
@@ -943,8 +922,6 @@ fun SecurityHubScreen(
 
                         Button(
                             onClick = {
-                                // Simulate completion of this step
-                                viewModel.securityEngine.toggleFeature(stepFeatureId, true)
                                 if (wizardStep < totalSteps) {
                                     wizardStep++
                                 } else {
@@ -954,7 +931,7 @@ fun SecurityHubScreen(
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = BentoGreenPrimary)
                         ) {
-                            Text(if (wizardStep == totalSteps) "Complete Setup" else "Verify & Next")
+                            Text(if (wizardStep == totalSteps) "Complete Setup" else "Next")
                         }
                     }
                 }
