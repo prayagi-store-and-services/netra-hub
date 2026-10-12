@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Only apps signed with the same key as Hub may read the driving flag. -->
+    <permission
+        android:name="${applicationId}.permission.READ_DRIVING"
+        android:protectionLevel="signature" />
+
     <!-- Network & Internet -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
@@ -125,6 +130,7 @@
         <provider
             android:name="com.example.driving.DrivingSignalProvider"
             android:authorities="${applicationId}.driving"
+            android:readPermission="${applicationId}.permission.READ_DRIVING"
             android:exported="true" />
 
         <provider
