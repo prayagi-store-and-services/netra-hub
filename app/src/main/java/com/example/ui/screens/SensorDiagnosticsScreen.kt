@@ -208,37 +208,6 @@ fun SensorDiagnosticsScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Developer Simulation Control (Accessible touch target height >= 48dp)
-                    Button(
-                        onClick = { viewModel.forceWatchdogStale(state.name) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .testTag("simulate_stale_${state.name.lowercase().replace(" ", "_")}"),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (state.isRefreshing) Color.DarkGray else Color.DarkGray.copy(alpha = 0.5f),
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (state.isRefreshing) Icons.Default.Cached else Icons.Default.PlayArrow,
-                                contentDescription = "Simulate Timeout",
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = if (state.isRefreshing) "REFRESHING STREAM..." else "SIMULATE FROZEN DATA (TIMEOUT)",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
                 }
             }
         }

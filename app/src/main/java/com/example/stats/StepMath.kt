@@ -52,3 +52,14 @@ object StepTarget {
         else -> null
     }
 }
+
+/** Reads the stored step state written by the Home step card. Real data only. */
+object StepsStore {
+    fun todayOrNull(c: android.content.Context): StepState? {
+        val p = c.getSharedPreferences("netra_steps", android.content.Context.MODE_PRIVATE)
+        val d = p.getString("day", null) ?: return null
+        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+        if (d != today) return null
+        return StepState(d, p.getFloat("base", 0f), p.getFloat("carried", 0f), p.getFloat("last", 0f), p.getLong("since", 0L))
+    }
+}
