@@ -129,18 +129,21 @@ fun SafetyCenterScreen(
             }
         }
 
-        // 3. SUBSYSTEMS TELEMETRY & FRESHNESS GRID
-        item {
-            Text(
-                text = "Subsystems Telemetry & Freshness",
-                style = MaterialTheme.typography.titleMedium,
-                color = BentoTextPrimary,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        // 3. SUBSYSTEMS TELEMETRY & FRESHNESS GRID (rows with no data are hidden)
+        val shownSubsystems = safetyState.subsystemHealths.filterValues { it.freshness != DataFreshness.UNAVAILABLE }
+        if (shownSubsystems.isNotEmpty()) {
+            item {
+                Text(
+                    text = "Subsystems Telemetry & Freshness",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = BentoTextPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
 
-        item {
-            SubsystemTelemetryMatrix(subsystems = safetyState.subsystemHealths)
+            item {
+                SubsystemTelemetryMatrix(subsystems = shownSubsystems)
+            }
         }
 
         // 4. RECENT SAFETY ANNOUNCEMENTS & ALERTS STREAM
@@ -647,12 +650,13 @@ fun OfficialSafetyAlertStatusCard(
 
             HorizontalDivider(color = BentoBorder, thickness = 1.dp)
 
-            StatusRow("Current Location", com.example.data.service.LocationAccess.placeText(locationContext.locality, locationContext.district, locationContext.state))
-            StatusRow("Location Source", if (locationContext.source == "LOCATION_UNAVAILABLE") "Unavailable" else locationContext.source)
-            StatusRow("Last Successful Location Update", if (lastUpdateStr == "Location Unavailable") "Unavailable" else lastUpdateStr)
-            StatusRow("Last Official Alert Check", "$lastCheckStr ($checkStatus)")
-            StatusRow("Active Warning", if (officialWarning.isAvailable) officialWarning.warningType else "None / Unavailable")
-            StatusRow("Source", officialWarning.issuingAuthority)
+            val placeStr = com.example.data.service.LocationAccess.placeText(locationContext.locality, locationContext.district, locationContext.state)
+            if (!placeStr.contains("Unavailable", ignoreCase = true)) StatusRow("Current Location", placeStr)
+            if (locationContext.source != "LOCATION_UNAVAILABLE") StatusRow("Location Source", locationContext.source)
+            if (lastUpdateStr != "Location Unavailable") StatusRow("Last Successful Location Update", lastUpdateStr)
+            if (lastCheck > 0) StatusRow("Last Official Alert Check", "$lastCheckStr ($checkStatus)")
+            if (officialWarning.isAvailable) StatusRow("Active Warning", officialWarning.warningType)
+            if (officialWarning.isAvailable && officialWarning.issuingAuthority.isNotBlank() && !officialWarning.issuingAuthority.contains("Unavailable", ignoreCase = true)) StatusRow("Source", officialWarning.issuingAuthority)
             val ctxLocal = androidx.compose.ui.platform.LocalContext.current
             if (!com.example.data.service.LocationAccess.backgroundGranted(ctxLocal)) {
                 Text(

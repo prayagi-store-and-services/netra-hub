@@ -786,7 +786,8 @@ fun DashboardScreen(
             val gpsStat by viewModel.gpsStatus.collectAsStateWithLifecycle()
             val networkStat by viewModel.networkStatus.collectAsStateWithLifecycle()
 
-            Box(
+            // Hidden entirely when there is no resolved place (no real data to show).
+            if (!city.contains("Unavailable", ignoreCase = true) && city.isNotBlank()) Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(24.dp))
@@ -914,7 +915,7 @@ fun DashboardScreen(
                     magVal < 1000f -> "Extreme Risk Zone"
                     else -> "Dangerous Env"
                 }
-                CompactBentoCard(
+                if (magVal > 0f) CompactBentoCard(
                     title = "MAGNETIC",
                     value = "${"%.1f".format(magVal)} µT",
                     subtitle = magneticSubtitle,
