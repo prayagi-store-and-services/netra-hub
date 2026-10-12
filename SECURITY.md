@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Only real values are shown (v1.4.8)
+
+Not a security patch. Placeholder numbers and test controls were removed so the app never shows a value it did not measure. Steps now come from the phone's own step counter and are the same everywhere in the app. Distance, walking, standing, idle, posture, timeline, trends and digital wellness now say Unavailable until a real, verified method exists. The simulate buttons (screen-time apps, frozen data, "Simulate Enabled") and the manual travel mode override are gone, and the setup wizard no longer marks a feature as on without checking it. No new permission, library or server.
+
 ## Driving flag now limited to apps signed with Hub's key (v1.4.7)
 
 Security patch. Before this, any app on the phone could read the "driving yes/no" flag, which tells another app when you are on the move. The flag is now protected by a signature-level permission, so only apps signed with the same key as Hub can read it. The flag itself is unchanged: yes/no and a time, no location, nothing written, never sent over the network. Hub's own screens are not affected. Limit: if a future Netra app is signed with a different key it cannot read the flag until that is changed on purpose. No other app in this repo reads it today. No new library or server.
