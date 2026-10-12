@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Driving flag now limited to apps signed with Hub's key (v1.4.7)
+
+Security patch. Before this, any app on the phone could read the "driving yes/no" flag, which tells another app when you are on the move. The flag is now protected by a signature-level permission, so only apps signed with the same key as Hub can read it. The flag itself is unchanged: yes/no and a time, no location, nothing written, never sent over the network. Hub's own screens are not affected. Limit: if a future Netra app is signed with a different key it cannot read the flag until that is changed on purpose. No other app in this repo reads it today. No new library or server.
+
 ## Region guard (v1.4.3)
 
 The app refuses to open when the phone's SIM or network country is on a built-in block list (PK, BD, AF, CN, KP). The check runs only on the phone, uses no permission, no network call and no IP lookup, and nothing is stored or sent. With no signal, or an Indian SIM, it never blocks. It is a deterrent, not foolproof: removing the SIM or changing the language region bypasses it.
