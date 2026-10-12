@@ -32,7 +32,7 @@ import java.util.Date
 import java.util.Locale
 
 enum class HealthSubSection(val title: String, val icon: ImageVector) {
-    LIVE_HEALTH("Live Health", Icons.Default.Favorite),
+    LIVE_HEALTH("Sensors", Icons.Default.Favorite),
     DAILY_ACTIVITY("Daily Activity", Icons.Default.DirectionsWalk),
     DIGITAL_WELLNESS("Digital Wellness", Icons.Default.PhonelinkSetup),
     WALKING_STATS("Walking Stats", Icons.Default.Speed),
@@ -72,7 +72,13 @@ fun AiFusionHealthCenterScreen(
     val dwreNotifications by healthEngine.dwreNotifications.collectAsState()
     val dwreDailySummary by healthEngine.dwreDailySummary.collectAsState()
 
+    val ctxHc = androidx.compose.ui.platform.LocalContext.current
+    val hasSteps = com.example.stats.StepsStore.todayOrNull(ctxHc) != null
+    // Only sections that have real data are shown; empty ones are hidden.
+    val shownTabs = listOf(HealthSubSection.LIVE_HEALTH, HealthSubSection.DAILY_ACTIVITY, HealthSubSection.SAFETY_EVENTS)
+        .filter { it != HealthSubSection.DAILY_ACTIVITY || hasSteps }
     var selectedSection by remember { mutableStateOf(HealthSubSection.LIVE_HEALTH) }
+    if (selectedSection !in shownTabs) selectedSection = shownTabs.first()
 
     val deduplicatedRegistry = remember(capabilities) {
         healthEngine.getDeduplicatedSensorRegistry(capabilities)
@@ -125,13 +131,13 @@ fun AiFusionHealthCenterScreen(
         // Section Tabs Navigation Scrollable Row
         item {
             ScrollableTabRow(
-                selectedTabIndex = selectedSection.ordinal,
+                selectedTabIndex = shownTabs.indexOf(selectedSection).coerceAtLeast(0),
                 edgePadding = 0.dp,
                 containerColor = Color.Transparent,
                 contentColor = BentoGreenPrimary,
                 divider = {}
             ) {
-                HealthSubSection.values().forEach { tab ->
+                shownTabs.forEach { tab ->
                     FilterChip(
                         selected = (selectedSection == tab),
                         onClick = { selectedSection = tab },
@@ -152,7 +158,6 @@ fun AiFusionHealthCenterScreen(
         // Section Content Switcher
         when (selectedSection) {
             HealthSubSection.LIVE_HEALTH -> {
-                item { UnavailableCard("Live movement score", "Unavailable. A movement score needs a validated method; none is built yet, so no number is shown. The sensor list below is read from this phone.") }
                 item {
                     DeduplicatedSensorRegistryCard(sensors = deduplicatedRegistry)
                 }
@@ -160,24 +165,15 @@ fun AiFusionHealthCenterScreen(
 
             HealthSubSection.DAILY_ACTIVITY -> {
                 item { RealStepsCard() }
-                item { UnavailableCard("Distance, walking, standing and idle time", "Unavailable. These need activity recognition that is not built yet, so no number is shown. Steps above are the same count as on Home.") }
             }
 
-            HealthSubSection.DIGITAL_WELLNESS -> {
-                item { UnavailableCard("Digital wellness", "Unavailable. It needs Usage Access based screen-time data, which is not built yet, so no score, app or session is shown.") }
-            }
+            HealthSubSection.DIGITAL_WELLNESS -> { }
 
-            HealthSubSection.WALKING_STATS -> {
-                item { UnavailableCard("Walking stats", "Unavailable. Cadence, stride, speed and calories need verified walking detection, which is not built yet.") }
-            }
+            HealthSubSection.WALKING_STATS -> { }
 
-            HealthSubSection.STANDING_STATS -> {
-                item { UnavailableCard("Standing stats", "Unavailable. Standing ratio and posture need verified posture detection, which is not built yet.") }
-            }
+            HealthSubSection.STANDING_STATS -> { }
 
-            HealthSubSection.TIMELINE -> {
-                item { UnavailableCard("Movement timeline", "Unavailable. A timeline needs recorded activity segments; none are recorded yet.") }
-            }
+            HealthSubSection.TIMELINE -> { }
 
             HealthSubSection.SAFETY_EVENTS -> {
                 item {
@@ -214,13 +210,10 @@ fun AiFusionHealthCenterScreen(
                 }
             }
 
-            HealthSubSection.POWER_IMPACT -> {
-                item { UnavailableCard("Power impact", "Unavailable. Battery use per activity is not measured yet.") }
-            }
+            HealthSubSection.POWER_IMPACT -> { }
 
-            HealthSubSection.REPORTS -> {
-                item { UnavailableCard("Reports and trends", "Unavailable. Past days are not recorded yet, so yesterday, weekly average and trend are not shown.") }
-            }
+            HealthSubSection.REPORTS -> { }
+
         }
 
         item { Spacer(modifier = Modifier.height(24.dp)) }
