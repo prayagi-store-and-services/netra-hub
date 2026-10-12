@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Sections with no data are hidden (v1.4.9)
+
+Not a security patch. A tab, card or row that has no real data is now hidden instead of showing "Unavailable" or a zero. The Location card and Official Safety Alert Status use only the real location fix and hide when there is none. Walking, standing, timeline, digital wellness, power and report tabs are gone. No new permission, library or server.
+
 ## Only real values are shown (v1.4.8)
 
 Not a security patch. Placeholder numbers and test controls were removed so the app never shows a value it did not measure. Steps now come from the phone's own step counter and are the same everywhere in the app. Distance, walking, standing, idle, posture, timeline, trends and digital wellness now say Unavailable until a real, verified method exists. The simulate buttons (screen-time apps, frozen data, "Simulate Enabled") and the manual travel mode override are gone, and the setup wizard no longer marks a feature as on without checking it. No new permission, library or server.
