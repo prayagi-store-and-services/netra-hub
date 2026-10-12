@@ -152,68 +152,31 @@ fun AiFusionHealthCenterScreen(
         // Section Content Switcher
         when (selectedSection) {
             HealthSubSection.LIVE_HEALTH -> {
-                item {
-                    LiveHealthHeroCard(
-                        score = score,
-                        carryState = carryState,
-                        intensity = intensity
-                    )
-                }
+                item { UnavailableCard("Live movement score", "Unavailable. A movement score needs a validated method; none is built yet, so no number is shown. The sensor list below is read from this phone.") }
                 item {
                     DeduplicatedSensorRegistryCard(sensors = deduplicatedRegistry)
                 }
             }
 
             HealthSubSection.DAILY_ACTIVITY -> {
-                item {
-                    DailyActivityOverviewCard(metrics = dailyMetrics)
-                }
+                item { RealStepsCard() }
+                item { UnavailableCard("Distance, walking, standing and idle time", "Unavailable. These need activity recognition that is not built yet, so no number is shown. Steps above are the same count as on Home.") }
             }
 
             HealthSubSection.DIGITAL_WELLNESS -> {
-                item {
-                    DigitalWellnessSection(
-                        digitalMetrics = digitalMetrics,
-                        appUsageList = appUsageList,
-                        deviceEvents = deviceEvents,
-                        combinedTimeline = combinedTimeline,
-                        dwreSettings = dwreSettings,
-                        activeAppSession = activeAppSession,
-                        dwreNotifications = dwreNotifications,
-                        dwreDailySummary = dwreDailySummary,
-                        onUpdateDwreSettings = { healthEngine.updateDwreSettings(it) },
-                        onSwitchAppSession = { pkg, name, cat -> healthEngine.switchActiveAppSession(pkg, name, cat) },
-                        onSimulateAddSessionTime = { sec -> healthEngine.simulateAddSessionTime(sec) },
-                        onTriggerTestNotification = { healthEngine.triggerTestDwreNotification() }
-                    )
-                }
+                item { UnavailableCard("Digital wellness", "Unavailable. It needs Usage Access based screen-time data, which is not built yet, so no score, app or session is shown.") }
             }
 
             HealthSubSection.WALKING_STATS -> {
-                item {
-                    WalkingStatisticsCard(stats = walkingStats, distanceKm = dailyMetrics.walkingDistanceKm)
-                }
+                item { UnavailableCard("Walking stats", "Unavailable. Cadence, stride, speed and calories need verified walking detection, which is not built yet.") }
             }
 
             HealthSubSection.STANDING_STATS -> {
-                item {
-                    StandingStatisticsCard(stats = standingStats, standingSec = dailyMetrics.standingDurationSec)
-                }
+                item { UnavailableCard("Standing stats", "Unavailable. Standing ratio and posture need verified posture detection, which is not built yet.") }
             }
 
             HealthSubSection.TIMELINE -> {
-                item {
-                    Text(
-                        text = "TODAY'S MOVEMENT TIMELINE",
-                        color = BentoTextSecondary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                }
-                items(items = timeline, key = { it.id }) { item ->
-                    MovementTimelineCard(item = item)
-                }
+                item { UnavailableCard("Movement timeline", "Unavailable. A timeline needs recorded activity segments; none are recorded yet.") }
             }
 
             HealthSubSection.SAFETY_EVENTS -> {
@@ -252,15 +215,11 @@ fun AiFusionHealthCenterScreen(
             }
 
             HealthSubSection.POWER_IMPACT -> {
-                item {
-                    PowerImpactOverviewCard(metrics = dailyMetrics, powerList = powerImpacts)
-                }
+                item { UnavailableCard("Power impact", "Unavailable. Battery use per activity is not measured yet.") }
             }
 
             HealthSubSection.REPORTS -> {
-                item {
-                    ReportsAndTrendsCard(report = report)
-                }
+                item { UnavailableCard("Reports and trends", "Unavailable. Past days are not recorded yet, so yesterday, weekly average and trend are not shown.") }
             }
         }
 
@@ -842,6 +801,36 @@ fun DurationPill(label: String, formattedDuration: String, modifier: Modifier = 
             Text(label, color = BentoTextMuted, fontSize = 9.sp)
             Spacer(modifier = Modifier.height(2.dp))
             Text(formattedDuration, color = BentoTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+
+@Composable
+fun UnavailableCard(title: String, text: String) {
+    Column(
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(BentoCardBg).padding(20.dp)
+    ) {
+        Text(title.uppercase(), color = BentoTextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(text, color = BentoTextMuted, fontSize = 13.sp)
+    }
+}
+
+/** Steps from the phone's step counter, the same stored count the Home card shows. */
+@Composable
+fun RealStepsCard() {
+    val c = androidx.compose.ui.platform.LocalContext.current
+    val s = com.example.stats.StepsStore.todayOrNull(c)
+    if (s == null) {
+        UnavailableCard("Steps today", "Unavailable. Open Home once so the step counter can be read (it needs the Physical activity permission).")
+    } else {
+        Column(
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(BentoCardBg).padding(20.dp)
+        ) {
+            Text("STEPS TODAY", color = BentoTextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Text("${com.example.stats.StepMath.today(s)}", color = BentoTextPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text("From the phone's step counter, same as Home. Counted since the first reading today.", color = BentoTextMuted, fontSize = 11.sp)
         }
     }
 }
