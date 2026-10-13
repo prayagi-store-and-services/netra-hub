@@ -55,7 +55,7 @@ object UpdateAlert {
             try {
                 val result = AppUpdater.checkNow(app)
                 if (result is AppUpdater.CheckResult.Newer) {
-                    val file = AppUpdater.download(app, result.release)
+                    val file = AppUpdater.savedFile(app, result.release) ?: AppUpdater.download(app, result.release)
                     activity.runOnUiThread {
                         try { AppUpdater.install(app, file) } catch (e: Exception) {
                             Toast.makeText(app, e.message ?: "Update failed.", Toast.LENGTH_LONG).show()
@@ -70,7 +70,7 @@ object UpdateAlert {
         }.start()
     }
 
-    internal fun notifyIfNew(c: Context, release: AppRelease, appName: String) {
+    internal fun notifyIfNew(c: Context, release: AppRelease, appName: String, downloaded: Boolean = false) {
         val prefs = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (release.versionCode <= prefs.getLong("notified_code", 0L)) return
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -86,7 +86,7 @@ object UpdateAlert {
         val n = NotificationCompat.Builder(c, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
             .setContentTitle("Update available")
-            .setContentText("A new $appName (" + release.versionName + ") is out. Tap to update.")
+            .setContentText(if (downloaded) "A new $appName (" + release.versionName + ") is downloaded. Tap to install." else "A new $appName (" + release.versionName + ") is out. Tap to update.")
             .setContentIntent(open)
             .setAutoCancel(true)
             .build()
@@ -99,7 +99,14 @@ class UpdateAlertWorker(appContext: Context, params: WorkerParameters) : Corouti
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
             val r = AppUpdater.checkNow(applicationContext)
-            if (r is AppUpdater.CheckResult.Newer) UpdateAlert.notifyIfNew(applicationContext, r.release, AppUpdater.APP_LABEL)
+            if (r is AppUpdater.CheckResult.Newer) {
+                // Save the update now when the connection allows it, so one tap installs it. Nothing is sent anywhere.
+                var saved = AppUpdater.savedFile(applicationContext, r.release) != null
+                if (!saved && PreDownload.allowedNow(applicationContext, false, r.release.size)) {
+                    saved = try { AppUpdater.download(applicationContext, r.release); true } catch (_: Exception) { false }
+                }
+                UpdateAlert.notifyIfNew(applicationContext, r.release, AppUpdater.APP_LABEL, saved)
+            }
         } catch (_: Exception) {
             // Try again at the next run.
         }
