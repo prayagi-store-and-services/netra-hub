@@ -1,8 +1,8 @@
 # Security notes - netra-hub
 
-## Network library updated (v1.4.11)
+## Network library version pinned (v1.4.11, corrected in v1.4.12)
 
-Security patch. Hub's network library (OkHttp) was moved from 4.10.0 to 4.12.0, the last 4.x release. The old version pulled in Okio 3.0.0, which is in the range affected by CVE-2023-3635 (a flaw in reading gzip data, fixed in Okio 3.4.0; GitHub advisory GHSA-w33c-445m-f8w7). OkHttp 4.12.0 brings Okio 3.6.0. We could not confirm which Okio version was actually resolved before, because another library may already have raised it, so this is a precaution that closes the exposure either way. Same major version, so no code change. No new permission, library or server. Tested by the build and unit tests only, not yet on a phone.
+Not a security patch. v1.4.11 was first described as a security patch. That was wrong. It set the network library (OkHttp) to 4.12.0 in the version catalog (it was 4.10.0 there, which on its own would pull Okio 3.0.0, in the range affected by CVE-2023-3635, GHSA-w33c-445m-f8w7). But the Hub 1.4.10 build already contained OkHttp 4.12.0, because another library raised it, so the shipped app did not change. The pin only makes the version explicit. We found no vulnerable library in any released Hub build. No new permission, library or server. v1.4.12 only corrects the release notes.
 
 ## Sections with no data are hidden (v1.4.9)
 
