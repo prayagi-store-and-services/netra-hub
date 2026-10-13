@@ -154,21 +154,30 @@ object AppUpdater {
      * removes the downloaded installer file and nothing is left in storage.
      */
     fun cleanLeftovers(context: Context) {
-        try { cleanDir(File(context.cacheDir, "updates")) } catch (_: Exception) {}
+        try {
+            val installed = installedVersionName(context)
+            val now = System.currentTimeMillis()
+            File(context.cacheDir, "updates").listFiles()?.forEach { if (!PreDownload.keepFile(it.name, installed, now - it.lastModified())) it.delete() }
+        } catch (_: Exception) {}
     }
 
     /** Called when the app comes back to the front. Removes installer files older than one hour (cancelled or finished installs). */
     fun cleanStale(context: Context) {
         try {
             val now = System.currentTimeMillis()
-            File(context.cacheDir, "updates").listFiles()?.forEach { if (now - it.lastModified() > 3_600_000L) it.delete() }
+            val installed = installedVersionName(context)
+            File(context.cacheDir, "updates").listFiles()?.forEach { if (!PreDownload.keepFile(it.name, installed, now - it.lastModified())) it.delete() }
         } catch (_: Exception) {}
     }
+
+    /** The file for this release when it was already saved in the background (a verified download has exactly the expected size). */
+    fun savedFile(context: Context, release: AppRelease): File? =
+        File(File(context.cacheDir, "updates"), "$APP_LABEL-${release.tag}.apk").takeIf { it.exists() && it.length() == release.size }
 
     /** Downloads the APK and verifies size and sha256. Deletes the file and throws if anything is off. */
     fun download(context: Context, release: AppRelease, onProgress: ((Long, Long) -> Unit)? = null): File {
         val dir = File(context.cacheDir, "updates").apply { mkdirs() }
-        dir.listFiles()?.forEach { it.delete() }
+        dir.listFiles()?.filter { !it.name.endsWith("-${release.tag}.apk") }?.forEach { it.delete() }
         val file = File(dir, "$APP_LABEL-${release.tag}.apk")
         val c = open(release.apkUrl)
         if (c.responseCode != 200) throw IllegalStateException("Download failed (server answered ${c.responseCode}).")
