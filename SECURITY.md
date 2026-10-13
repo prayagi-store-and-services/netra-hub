@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Network library updated (v1.4.11)
+
+Security patch. Hub's network library (OkHttp) was moved from 4.10.0 to 4.12.0, the last 4.x release. The old version pulled in Okio 3.0.0, which is in the range affected by CVE-2023-3635 (a flaw in reading gzip data, fixed in Okio 3.4.0; GitHub advisory GHSA-w33c-445m-f8w7). OkHttp 4.12.0 brings Okio 3.6.0. We could not confirm which Okio version was actually resolved before, because another library may already have raised it, so this is a precaution that closes the exposure either way. Same major version, so no code change. No new permission, library or server. Tested by the build and unit tests only, not yet on a phone.
+
 ## Sections with no data are hidden (v1.4.9)
 
 Not a security patch. A tab, card or row that has no real data is now hidden instead of showing "Unavailable" or a zero. The Location card and Official Safety Alert Status use only the real location fix and hide when there is none. Walking, standing, timeline, digital wellness, power and report tabs are gone. No new permission, library or server.
