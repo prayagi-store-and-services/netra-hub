@@ -59,7 +59,7 @@ fun UpdateCheckCard(modifier: Modifier = Modifier) {
                         busy = true
                         try {
                             val meter = DownloadMeter()
-                            val file = withContext(Dispatchers.IO) { AppUpdater.download(context, r) { d, t -> line = meter.line(d, t, System.currentTimeMillis()); frac = DownloadMeter.fraction(d, t) } }
+                            val file = withContext(Dispatchers.IO) { AppUpdater.savedFile(context, r) ?: AppUpdater.download(context, r) { d, t -> line = meter.line(d, t, System.currentTimeMillis()); frac = DownloadMeter.fraction(d, t) } }
                             ready = file
                             line = null
                             AppUpdater.install(context, file)
