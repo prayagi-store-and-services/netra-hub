@@ -1,5 +1,10 @@
 # Security notes - netra-hub
 
+## Official alert XML parser hardening (v1.4.13)
+
+Reject DTD/entity declarations before parsing RSS or CAP XML, turn off entity expansion, disable external-entity/DTD features where the Android XML provider supports them, and block external resolution. Normal escaped text still parses. Regression tests use a harmless temporary local marker and reject external/internal entity declarations. A desktop JVM probe of the previous default parser read that marker; exploitability on a shipped Android device has not been verified. This is parser hardening, not a confirmed exploited vulnerability. No new permission, library, feed, server or location disclosure. Alert cadence and matching are unchanged.
+
+
 ## Network library version pinned (v1.4.11, corrected in v1.4.12)
 
 Not a security patch. v1.4.11 was first described as a security patch. That was wrong. It set the network library (OkHttp) to 4.12.0 in the version catalog (it was 4.10.0 there, which on its own would pull Okio 3.0.0, in the range affected by CVE-2023-3635, GHSA-w33c-445m-f8w7). But the Hub 1.4.10 build already contained OkHttp 4.12.0, because another library raised it, so the shipped app did not change. The pin only makes the version explicit. We found no vulnerable library in any released Hub build. No new permission, library or server. v1.4.12 only corrects the release notes.
