@@ -24,9 +24,31 @@ data class CapAlert(
 
 internal const val SACHET_RSS = "https://sachet.ndma.gov.in/cap_public_website/rss/rss_india.xml"
 
+/** Reject DTD declarations before parsing, so no external or recursive entity can be read.
+ * The resolver is a second guard. Optional factory flags vary between Android XML providers.
+ */
+internal fun parseOfficialXml(xml: String): org.w3c.dom.Document {
+    require(!Regex("<!\\s*(?:DOCTYPE|ENTITY)\\b", RegexOption.IGNORE_CASE).containsMatchIn(xml)) { "DTD declarations are not allowed" }
+    val factory = DocumentBuilderFactory.newInstance()
+    factory.isExpandEntityReferences = false
+    for ((feature, enabled) in listOf(
+        "http://apache.org/xml/features/disallow-doctype-decl" to true,
+        "http://xml.org/sax/features/external-general-entities" to false,
+        "http://xml.org/sax/features/external-parameter-entities" to false,
+        "http://apache.org/xml/features/nonvalidating/load-external-dtd" to false
+    )) {
+        try { factory.setFeature(feature, enabled) } catch (_: javax.xml.parsers.ParserConfigurationException) {
+            // The declaration rejection above and resolver below do not depend on provider features.
+        }
+    }
+    val builder = factory.newDocumentBuilder()
+    builder.setEntityResolver { _, _ -> throw org.xml.sax.SAXException("External entities are not allowed") }
+    return builder.parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
+}
+
 /** RSS item links (CAP XML addresses), keyed by guid. Null if the feed cannot be parsed. */
 internal fun parseSachetRss(xml: String): List<Pair<String, String>>? = try {
-    val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
+    val doc = parseOfficialXml(xml)
     val items = doc.getElementsByTagName("item")
     (0 until items.length).mapNotNull {
         val e = items.item(it) as Element
@@ -42,7 +64,7 @@ private fun parseCapTime(s: String): Long = try {
 
 /** Reads the first English "info" block of a CAP 1.2 alert. Null if it cannot be read. */
 internal fun parseCapAlert(xml: String): CapAlert? = try {
-    val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
+    val doc = parseOfficialXml(xml)
     val root = doc.documentElement
     fun first(el: Element, tag: String) = el.getElementsByTagName(tag).item(0)?.textContent?.trim() ?: ""
     val infos = root.getElementsByTagName("cap:info")

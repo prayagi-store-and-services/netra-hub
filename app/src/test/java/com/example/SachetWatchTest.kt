@@ -6,6 +6,7 @@ import com.example.data.engine.parseCapAlert
 import com.example.data.engine.parseSachetRss
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -36,5 +37,24 @@ class SachetWatchTest {
         assertFalse(capMatchesPlace(a, "Varanasi", "", "", a.expiresMillis + 1L))
         assertFalse(capMatchesPlace(a.copy(severity = "Minor"), "Varanasi", "", "", before))
         assertFalse(capMatchesPlace(a, "Location Unavailable", "Location Unavailable", "Location Unavailable", before))
+    }
+    @Test fun rejectsExternalEntitiesAndDtds() {
+        val file = java.io.File.createTempFile("sachet-probe", ".txt")
+        try {
+            file.writeText("LOCAL_TEST_ENTITY_ONLY")
+            val dtd = "<!DOCTYPE cap:alert [<!ENTITY probe SYSTEM '${file.toURI()}'>]>"
+            assertNull(parseCapAlert(dtd + cap.replace("Thunderstorm likely", "&probe;")))
+            val rss = "<!DOCTYPE rss [<!ENTITY probe SYSTEM '${file.toURI()}'>]><rss><channel><item><guid>7</guid><link>&probe;</link></item></channel></rss>"
+            assertNull(parseSachetRss(rss))
+        } finally { file.delete() }
+    }
+
+    @Test fun rejectsInternalEntityExpansionAndExternalDtd() {
+        assertNull(parseSachetRss("<!DOCTYPE rss [<!ENTITY a 'many'><!ENTITY b '&a;&a;&a;'>]><rss><channel>&b;</channel></rss>"))
+        assertNull(parseSachetRss("<!DOCTYPE rss SYSTEM 'https://example.invalid/never-fetch.dtd'><rss/>"))
+    }
+
+    @Test fun acceptsNormalXmlEntities() {
+        assertEquals(listOf("7" to "https://sachet.ndma.gov.in/?a=1&b=2"), parseSachetRss("<rss><channel><item><guid>7</guid><link>https://sachet.ndma.gov.in/?a=1&amp;b=2</link></item></channel></rss>"))
     }
 }
