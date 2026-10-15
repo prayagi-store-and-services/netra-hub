@@ -59,6 +59,10 @@ class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
             // Respect an off/filter change made while the request was in flight.
             val currentFilters = QuakeAlertSettings.read(ctx)
             if (!currentFilters.enabled) { save(prefs, now, "Off: earthquake notifications disabled on this phone."); return Result.success() }
+            if (currentFilters != filters) {
+                save(prefs, now, "Filters changed during this check. A new check is needed; no result was used.")
+                return Result.retry()
+            }
             val fresh = selectNewQuakes(quakes, seen, now, 24 * 3_600_000L)
                 .filter { currentFilters.accepts(it.distanceKm, it.magnitude) }
             if (fresh.isEmpty()) {
