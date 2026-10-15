@@ -62,9 +62,7 @@ internal fun parseUsgsQuakes(json: String, lat: Double, lon: Double, radiusKm: D
     null
 }
 
-private const val QUAKE_RADIUS_KM = 200.0
 private const val QUAKE_DAYS = 7
-private const val QUAKE_MIN_MAG = 2.5
 
 /**
  * Safety card: earthquakes within about 200 km of the phone in the last 7 days, from the USGS public feed.
@@ -75,6 +73,7 @@ fun EarthquakeCard() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
+    var filters by remember { mutableStateOf(com.example.data.engine.QuakeAlertSettings.read(context)) }
     var lines by remember { mutableStateOf<List<String>>(emptyList()) }
     val prefs = remember { context.getSharedPreferences(com.example.data.engine.QuakeWatchWorker.PREFS, android.content.Context.MODE_PRIVATE) }
     val autoLast = prefs.getLong(com.example.data.engine.QuakeWatchWorker.KEY_LAST, 0L)
@@ -88,12 +87,20 @@ fun EarthquakeCard() {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text("Earthquakes near you", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = BentoTextPrimary)
+        QuakeFilterControls(filters, onChange = { changed ->
+            filters = changed
+            com.example.data.engine.QuakeAlertSettings.write(context, changed)
+            com.example.data.engine.QuakeWatchWorker.schedule(context)
+            lines = emptyList()
+            headline = "Filters changed. Tap Check now for matching results."
+        }, editable = !busy)
         Text(
-            "Last " + QUAKE_DAYS + " days, within " + QUAKE_RADIUS_KM.toInt() + " km of this phone, magnitude " + QUAKE_MIN_MAG + " and above. Source: USGS (earthquake.usgs.gov). Hub also checks automatically about every 30 minutes and notifies you of a new quake (Android may delay this). Smaller quakes in India may be missing from this feed, and this is not an official warning.",
+            "Last " + QUAKE_DAYS + " days, within " + filters.distanceKm + " km of this phone, magnitude " + filters.minimumMagnitude + " and above. Source: USGS (earthquake.usgs.gov). When enabled, Hub also checks automatically about every 30 minutes and notifies you of a new quake (Android may delay this). Smaller quakes in India may be missing from this feed, and this is not an official warning.",
             fontSize = 12.sp, color = BentoTextSecondary
         )
         Text(
-            if (autoLast == 0L || autoMsg == null) "Automatic check: has not run yet on this phone (Android decides when it runs)."
+            if (!filters.enabled) "Automatic earthquake alerts: off on this phone."
+            else if (autoLast == 0L || autoMsg == null) "Automatic check: has not run yet on this phone (Android decides when it runs)."
             else "Automatic check (" + fmt.format(Date(autoLast)) + "): " + autoMsg,
             fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary
         )
@@ -116,8 +123,8 @@ fun EarthquakeCard() {
                 } else {
                     val start = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(System.currentTimeMillis() - QUAKE_DAYS * 86_400_000L))
                     val url = "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&latitude=" + loc.latitude +
-                        "&longitude=" + loc.longitude + "&maxradiuskm=" + QUAKE_RADIUS_KM.toInt() +
-                        "&minmagnitude=" + QUAKE_MIN_MAG + "&starttime=" + start + "&orderby=time&limit=50"
+                        "&longitude=" + loc.longitude + "&maxradiuskm=" + filters.distanceKm +
+                        "&minmagnitude=" + filters.minimumMagnitude + "&starttime=" + start + "&orderby=time&limit=50"
                     val body = withContext(Dispatchers.IO) {
                         try {
                             val c = URL(url).openConnection() as HttpURLConnection
@@ -125,7 +132,8 @@ fun EarthquakeCard() {
                             if (c.responseCode != 200) null else c.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
                         } catch (e: Exception) { null }
                     }
-                    val quakes = body?.let { parseUsgsQuakes(it, loc.latitude, loc.longitude, QUAKE_RADIUS_KM) }
+                    val quakes = body?.let { parseUsgsQuakes(it, loc.latitude, loc.longitude, filters.distanceKm.toDouble()) }
+                        ?.filter { filters.copy(enabled = true).accepts(it.distanceKm, it.magnitude) }
                     if (quakes == null) {
                         headline = "Unavailable: the USGS feed could not be read. Check your internet connection."
                         bad = true; lines = emptyList()
@@ -133,7 +141,7 @@ fun EarthquakeCard() {
                         bad = false
                         val where = com.example.data.service.LocationAccess.placeText(loc.locality, loc.district, loc.state).let { place ->
                             val fixAge = if (loc.timestamp > 0) " (location fix from " + fmt.format(Date(loc.timestamp)) + ", source " + loc.source + ")" else ""
-                            (if (place == "Unavailable") "within " + QUAKE_RADIUS_KM.toInt() + " km of " + String.format(Locale.US, "%.2f, %.2f", loc.latitude, loc.longitude) else "within " + QUAKE_RADIUS_KM.toInt() + " km of " + place) + fixAge
+                            (if (place == "Unavailable") "within " + filters.distanceKm + " km of " + String.format(Locale.US, "%.2f, %.2f", loc.latitude, loc.longitude) else "within " + filters.distanceKm + " km of " + place) + fixAge
                         }
                         headline = if (quakes.isEmpty()) "No earthquake listed by USGS " + where + " in the last " + QUAKE_DAYS + " days (checked " + fmt.format(Date()) + ")."
                         else quakes.size.toString() + " earthquake(s) listed by USGS (checked " + fmt.format(Date()) + "):"
