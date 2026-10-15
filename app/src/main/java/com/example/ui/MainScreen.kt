@@ -608,8 +608,8 @@ fun NetraVersionHeader(ownVersion: String, clockNow: java.util.Date, isLiteMode:
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(Modifier.weight(1f).padding(end = 8.dp)) {
-                        Text(text = "${com.example.Brand.name}", color = BentoTextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                        Text(text = "v" + ownVersion + " | Netra Ecosystem" + (if (isLiteMode) "  (lite mode)" else ""), color = if (isLiteMode) BentoAmber else BentoTextSecondary, fontSize = 12.sp, maxLines = 1)
+                        Text(text = "${com.example.Brand.name}" + (if (isLiteMode) " (lite)" else ""), color = BentoTextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text(text = "v" + ownVersion + " | Netra Ecosystem", color = if (isLiteMode) BentoAmber else BentoTextSecondary, fontSize = 12.sp, maxLines = 1)
                     }
                     Text(text = java.text.SimpleDateFormat("EEE d MMM, HH:mm", java.util.Locale.getDefault()).format(clockNow), color = BentoTextSecondary, fontSize = 12.sp, maxLines = 1)
                 }
