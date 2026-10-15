@@ -197,17 +197,7 @@ fun MainScreen(
                 var clockNow by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(java.util.Date()) }
                 androidx.compose.runtime.LaunchedEffect(Unit) { while (true) { clockNow = java.util.Date(); kotlinx.coroutines.delay(30_000) } }
                 val ownVersion = androidx.compose.runtime.remember { try { context.packageManager.getPackageInfo(context.packageName, 0).versionName } catch (e: Exception) { null } ?: "Unavailable" }
-                Row(
-                    modifier = Modifier.fillMaxWidth().background(BentoBackground).statusBarsPadding().height(56.dp).padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(text = "${com.example.Brand.name}", color = BentoTextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                        Text(text = "v" + ownVersion + (if (isLiteMode) "  (lite mode)" else ""), color = if (isLiteMode) BentoAmber else BentoTextSecondary, fontSize = 12.sp, maxLines = 1)
-                    }
-                    Text(text = java.text.SimpleDateFormat("EEE d MMM, HH:mm", java.util.Locale.getDefault()).format(clockNow), color = BentoTextSecondary, fontSize = 12.sp, maxLines = 1)
-                }
+                NetraVersionHeader(ownVersion, clockNow, isLiteMode)
             }
         },
         bottomBar = {
@@ -608,4 +598,19 @@ fun PermanentLiveStatusHeader(
             }
         }
     }
+}
+
+@androidx.compose.runtime.Composable
+fun NetraVersionHeader(ownVersion: String, clockNow: java.util.Date, isLiteMode: Boolean = false) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().background(BentoBackground).statusBarsPadding().height(56.dp).padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text(text = "${com.example.Brand.name}", color = BentoTextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text(text = "v" + ownVersion + " | Netra Ecosystem" + (if (isLiteMode) "  (lite mode)" else ""), color = if (isLiteMode) BentoAmber else BentoTextSecondary, fontSize = 12.sp, maxLines = 1)
+                    }
+                    Text(text = java.text.SimpleDateFormat("EEE d MMM, HH:mm", java.util.Locale.getDefault()).format(clockNow), color = BentoTextSecondary, fontSize = 12.sp, maxLines = 1)
+                }
 }
