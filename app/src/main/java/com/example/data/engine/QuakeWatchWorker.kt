@@ -22,8 +22,8 @@ internal fun selectNewQuakes(quakes: List<QuakeItem>, seenIds: Set<String>, nowM
 
 /**
  * Automatic earthquake watch. Android runs it about every 30 minutes when the phone has a network
- * (Doze and battery saver can delay it). It asks the USGS public feed for earthquakes of magnitude 2.5 or more
- * within 200 km of the last position the phone knows, and notifies once per new quake from the last 24 hours.
+ * (Doze and battery saver can delay it). It asks the USGS public feed for earthquakes matching the device-local magnitude filter
+ * within the user-selected radius of the last position the phone knows, and notifies once per new quake from the last 24 hours.
  * It never invents a position: with no recent location it records "Unavailable" and sends nothing.
  */
 class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -33,6 +33,8 @@ class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
         val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
         try {
+            val filters = QuakeAlertSettings.read(ctx)
+            if (!filters.enabled) { save(prefs, now, "Off: earthquake notifications disabled on this phone."); return Result.success() }
             val loc = OfficialLocationContextManager(ctx).refreshLocation()
             val ok = loc.locationStatus == "LOCATION_AVAILABLE" || loc.locationStatus == "COORDINATES_AVAILABLE" || loc.locationStatus == "GEOCODER_FAILED"
             if (!ok || (loc.latitude == 0.0 && loc.longitude == 0.0)) {
@@ -42,21 +44,25 @@ class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
             val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
             val start = fmt.format(Date(now - 2 * 86_400_000L))
             val url = "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&latitude=" + loc.latitude +
-                "&longitude=" + loc.longitude + "&maxradiuskm=200&minmagnitude=2.5&starttime=" + start + "&orderby=time&limit=50"
+                "&longitude=" + loc.longitude + "&maxradiuskm=" + filters.distanceKm + "&minmagnitude=" + filters.minimumMagnitude + "&starttime=" + start + "&orderby=time&limit=50"
             val body = try {
                 val c = URL(url).openConnection() as HttpURLConnection
                 c.connectTimeout = 10000; c.readTimeout = 10000
                 if (c.responseCode != 200) null else c.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
             } catch (e: Exception) { null }
-            val quakes = body?.let { parseUsgsQuakes(it, loc.latitude, loc.longitude, 200.0) }
+            val quakes = body?.let { parseUsgsQuakes(it, loc.latitude, loc.longitude, filters.distanceKm.toDouble()) }
             if (quakes == null) {
                 save(prefs, now, "Unavailable: the USGS feed could not be read.")
                 return Result.success()
             }
             val seen = prefs.getStringSet(KEY_SEEN, emptySet()) ?: emptySet()
+            // Respect an off/filter change made while the request was in flight.
+            val currentFilters = QuakeAlertSettings.read(ctx)
+            if (!currentFilters.enabled) { save(prefs, now, "Off: earthquake notifications disabled on this phone."); return Result.success() }
             val fresh = selectNewQuakes(quakes, seen, now, 24 * 3_600_000L)
+                .filter { currentFilters.accepts(it.distanceKm, it.magnitude) }
             if (fresh.isEmpty()) {
-                save(prefs, now, "OK: no new earthquake of M2.5 or more within 200 km in the last 24 hours.")
+                save(prefs, now, "OK: no new earthquake matching M${currentFilters.minimumMagnitude}+ within ${currentFilters.distanceKm} km in the last 24 hours.")
             } else if (!NotificationManagerCompat.from(ctx).areNotificationsEnabled()) {
                 // Do not mark as seen: notify once notifications are allowed.
                 save(prefs, now, "Unavailable: notifications are off, " + fresh.size + " new earthquake(s) could not be shown.")
@@ -91,6 +97,10 @@ class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
         const val KEY_MSG = "last_message"
 
         fun schedule(context: Context) {
+            if (!QuakeAlertSettings.read(context).enabled) {
+                WorkManager.getInstance(context).cancelUniqueWork("QuakeWatchPeriodicWork")
+                return
+            }
             val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
             val request = PeriodicWorkRequestBuilder<QuakeWatchWorker>(30, TimeUnit.MINUTES)
                 .setConstraints(constraints)
