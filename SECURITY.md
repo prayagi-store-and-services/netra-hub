@@ -231,3 +231,6 @@ About every 30 minutes when the phone has a network (Android may delay it), Hub 
 - History and Logs no longer fills with "WATCHDOG_CHECK ... Event/Passive" entries (the check still runs, it just does not write a log line for modules that need no heartbeat).
 - Settings no longer shows a developer note about a removed switch; it says only that event logs are kept in the app's private storage and are not encrypted by the app.
 - No new permission, library or network call.
+
+
+2026-10-15 family attribution: 1.4.14 adds " | Netra Ecosystem" immediately after the visible version. Production header extracted for 360dp rendering; no permissions, telemetry, signing, network or data-path changes. Not a security vulnerability patch. Phone testing remains pending.
