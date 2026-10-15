@@ -28,7 +28,7 @@ class QuakeAlertSettingsTest {
   assertEquals(12, QuakeAlertSettings.magnitudes.size)
  }
  @Test fun selectionsPersistOnlyInDevicePreferences() {
-  val ctx = RuntimeEnvironment.getApplication<Application>()
+  val ctx = RuntimeEnvironment.getApplication()
   val selected = QuakeAlertSettings(false, 1000, 5.5)
   QuakeAlertSettings.write(ctx, selected)
   assertEquals(selected, QuakeAlertSettings.read(ctx))
