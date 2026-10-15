@@ -44,6 +44,8 @@ jobs:
           gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest --stacktrace 2>&1 | tee app/build/ci-diagnostics/android-build.log
       - name: Render production version header
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.example.EcosystemHeaderScreenshotTest -Proborazzi.test.record=true --stacktrace
+      - name: Render earthquake filter controls and dialogs
+        run: gradle --no-daemon :app:testDebugUnitTest --tests com.example.QuakeFilterScreenshotTest -Proborazzi.test.record=true --stacktrace
       - name: Upload build log and test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -54,4 +56,5 @@ jobs:
             app/build/ui-shots/*.png
             app/build/ci-diagnostics/android-build.log
             app/build/outputs/ecosystem-version-header*.png
+            app/build/outputs/quake-*.png
           if-no-files-found: warn

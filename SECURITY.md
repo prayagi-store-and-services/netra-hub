@@ -234,3 +234,6 @@ About every 30 minutes when the phone has a network (Android may delay it), Hub 
 
 
 2026-10-15 family attribution: 1.4.14 adds " | Netra Ecosystem" immediately after the visible version. Production header extracted for 360dp rendering; no permissions, telemetry, signing, network or data-path changes. Not a security vulnerability patch. Phone testing remains pending.
+
+
+2026-10-15 earthquake filters, 1.4.15/code58: device-local on/off, radius100/200/250/500/1000km and minimum magnitude0..5.5 (0.5 steps). Existing200km/M2.5 defaults preserved. Shared filters apply to foreground USGS results and automatic worker. Off cancels periodic work and in-flight checks re-read off before notification. No new permissions, server credentials or backend writes. Existing fallback requests coordinates from USGS, not the unbuilt coarse-topic server-push design. Android scheduling and feed completeness remain limited; not early warning or guaranteed delivery. Unit and actual control/dialog PNG checks required; physical phone verification pending.
