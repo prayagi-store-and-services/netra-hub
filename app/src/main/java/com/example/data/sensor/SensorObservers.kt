@@ -12,6 +12,7 @@ import android.hardware.SensorManager
 import android.location.Location
 import android.os.BatteryManager
 import android.os.Looper
+import android.os.Handler
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationCallback
@@ -26,12 +27,20 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlin.math.sqrt
 
 class SensorObservers(private val context: Context) {
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+
+    // PowerManager.addThermalStatusListener keeps its listener map in a plain
+    // ArrayMap with no internal locking (platform bug, crash report 17 Oct 2026:
+    // ConcurrentModificationException in ArrayMap.put on RMX3471 / Android 14).
+    // Serialize ALL register/unregister calls on the main thread behind this lock.
+    private val thermalApiLock = Any()
 
     /**
      * Observe any motion or environmental hardware sensor by type.
@@ -192,13 +201,42 @@ class SensorObservers(private val context: Context) {
                 )
             }
 
-            pm.addThermalStatusListener(listener)
+            var registered = false
+            withContext(Dispatchers.Main) {
+                synchronized(thermalApiLock) {
+                    try {
+                        pm.addThermalStatusListener(listener)
+                        registered = true
+                    } catch (e: Exception) {
+                        trySend(
+                            RawSensorReading(
+                                sensorId = "thermal_subsystem",
+                                name = "Thermal Throttling HAL",
+                                category = SensorCategory.THERMAL,
+                                values = floatArrayOf(0f),
+                                unit = "Level",
+                                timestamp = System.currentTimeMillis(),
+                                classification = DataClassification.VERIFIED,
+                                extraDetails = mapOf("thermalStatus" to "Thermal listener registration failed: " + (e.javaClass.simpleName))
+                            )
+                        )
+                    }
+                }
+            }
             // Initial emit
             val initialStatus = pm.currentThermalStatus
             listener.onThermalStatusChanged(initialStatus)
 
             awaitClose {
-                pm.removeThermalStatusListener(listener)
+                if (registered) {
+                    Handler(Looper.getMainLooper()).post {
+                        synchronized(thermalApiLock) {
+                            try {
+                                pm.removeThermalStatusListener(listener)
+                            } catch (_: Exception) {}
+                        }
+                    }
+                }
             }
         } else {
             // Unsupported fallback emission
