@@ -69,7 +69,7 @@ object SosLogic {
     /** The emergency SMS. locationMessage is the LocationShare text, or null when there is no fix. Profile and battery are left out when unknown. */
     fun smsBody(locationMessage: String?, profile: String? = null, batteryPct: Int? = null): String {
         val loc = locationMessage ?: "Location Unavailable"
-        val sb = StringBuilder("SOS from Netra Hub: I may be in danger and need help. Please call me now.\n")
+        val sb = StringBuilder("SOS from Netra Human Safety: I may be in danger and need help. Please call me now.\n")
         if (profile != null) sb.append(profile).append('\n')
         if (batteryPct != null && batteryPct in 0..100) sb.append("Phone battery: ").append(batteryPct).append("%\n")
         return sb.append(loc).toString()
