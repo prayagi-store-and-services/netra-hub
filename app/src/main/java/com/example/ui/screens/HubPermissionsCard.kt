@@ -90,21 +90,21 @@ private fun hubPermissions(): List<HubPerm> = listOf(
         { runtime(it, android.Manifest.permission.ACCESS_FINE_LOCATION) }, { appDetails(it) }),
     HubPerm("Send SMS", "Used by the SOS flow to text your chosen contacts. Nothing is sent unless SOS runs.",
         { runtime(it, android.Manifest.permission.SEND_SMS) }, { appDetails(it) }),
-    HubPerm("Camera", "Used only for a self-check that the phone's camera hardware is present. Hub takes no photos or video. Travel Checking uses the torch, which needs no permission.",
+    HubPerm("Camera", "Used only for a self-check that the phone's camera hardware is present. The app takes no photos or video. Travel Checking uses the torch, which needs no permission.",
         { runtime(it, android.Manifest.permission.CAMERA) }, { appDetails(it) }),
     HubPerm("Physical activity", "Used to count your steps from the phone's step sensor.",
         { runtimeFrom(29, it, android.Manifest.permission.ACTIVITY_RECOGNITION) }, { appDetails(it) }),
     HubPerm("Notifications", "Used to show safety alerts and the running-service notice.",
         { runtimeFrom(33, it, android.Manifest.permission.POST_NOTIFICATIONS) }, { appDetails(it) }),
-    HubPerm("Nearby devices (Bluetooth)", "Used to read Bluetooth state for the security checks. No device is paired or connected by Hub.",
+    HubPerm("Nearby devices (Bluetooth)", "Used to read Bluetooth state for the security checks. No device is paired or connected.",
         { runtimeFrom(31, it, android.Manifest.permission.BLUETOOTH_CONNECT) }, { appDetails(it) }),
     HubPerm("Usage access", "Used by Digital Wellness to read how long apps are used on this phone. Nothing leaves the phone.",
         { usageStatus(it) }, { tryOpen(it, Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }),
-    HubPerm("Exact alarms", "Android lets apps set exact-time alarms with this. Hub currently only checks whether it is allowed.",
+    HubPerm("Exact alarms", "Android lets apps set exact-time alarms with this. The app currently only checks whether it is allowed.",
         { alarmStatus(it) }, { if (Build.VERSION.SDK_INT >= 31) tryOpen(it, Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + it.packageName))) else appDetails(it) }),
     HubPerm("Battery optimisation", "Lets the safety service keep running in the background. Tap to change it on the Android page.",
         { batteryStatus(it) }, { tryOpen(it, Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }),
-    HubPerm("Install apps", "Used only when you tap Install on an update, so Android can install the new Hub file.",
+    HubPerm("Install apps", "Used only when you tap Install on an update, so Android can install the new app file.",
         { installStatus(it) }, { if (Build.VERSION.SDK_INT >= 26) tryOpen(it, Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + it.packageName))) else appDetails(it) }),
     HubPerm("Internet and network state", "Used to check for updates and weather. Always allowed by Android (normal permission).", { "Always allowed" }, null),
     HubPerm("Run at start, keep awake, vibrate, foreground service", "Used so safety monitoring can restart after a reboot, run while the screen is off and vibrate on alerts. Normal permissions, always allowed.", { "Always allowed" }, null)
@@ -127,7 +127,7 @@ fun HubPermissionsCard() {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Permissions", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = BentoTextPrimary)
-        Text("What Hub uses and why. Tap a row to open its Android page.", fontSize = 12.sp, color = BentoTextSecondary)
+        Text("What this app uses and why. Tap a row to open its Android page.", fontSize = 12.sp, color = BentoTextSecondary)
         hubPermissions().forEach { p ->
             val st = remember(tick) { p.status(context) }
             val bad = st.startsWith("Not allowed")
