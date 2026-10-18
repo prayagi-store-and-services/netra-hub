@@ -37,7 +37,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * The single Netra Hub widget. Real values only; anything not known shows "Unavailable".
+ * The single Netra Human Safety widget. Real values only; anything not known shows "Unavailable".
  * - Battery temperature and charging state: the phone's battery broadcast, read when the widget is drawn.
  * - Steps today and the age based target: the values the Hub app itself saved on this phone the last time it read the
  *   step counter (the widget never reads the sensor, so no background work).
@@ -81,7 +81,7 @@ class NetraBatteryWidget : GlanceAppWidget() {
                     horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
                     verticalAlignment = Alignment.Vertical.CenterVertically
                 ) {
-                    Text("Netra Hub", style = TextStyle(color = ColorProvider(Color(0xFF00E5FF)), fontSize = 12.sp, fontWeight = FontWeight.Bold))
+                    Text("Netra Human Safety", style = TextStyle(color = ColorProvider(Color(0xFF00E5FF)), fontSize = 12.sp, fontWeight = FontWeight.Bold))
                     Spacer(modifier = GlanceModifier.height(4.dp))
                     Text(
                         text = batteryTempC?.let { String.format(Locale.US, "%.1f\u00B0C", it) } ?: "Unavailable",

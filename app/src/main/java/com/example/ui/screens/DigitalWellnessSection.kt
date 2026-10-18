@@ -1239,7 +1239,7 @@ private fun DwreControlAndActiveSessionCard(
                         )
                     }
                     Text(
-                        text = "• Emergency Dialer • In-Call UI • System Setup • Keyguard/Biometrics • Lockscreen • Netra Hub",
+                        text = "• Emergency Dialer • In-Call UI • System Setup • Keyguard/Biometrics • Lockscreen • Netra Human Safety",
                         fontSize = 10.sp,
                         color = BentoTextSecondary
                     )
@@ -1654,4 +1654,3 @@ private fun PlatformHardeningStatusCard() {
         }
     }
 }
-

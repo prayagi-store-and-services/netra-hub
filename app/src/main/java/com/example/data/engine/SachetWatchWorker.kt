@@ -96,6 +96,21 @@ internal fun capMatchesPlace(a: CapAlert, district: String, locality: String, st
     return false
 }
 
+/** District nowcast-style status: names the place, the source, and what was read. Never invents a warning. */
+internal fun noWarningStatus(district: String, locality: String, state: String, readCount: Int, matchedCount: Int): String {
+    fun known(v: String) = v.isNotBlank() && !v.contains("unavailable", true)
+    val place = when {
+        known(district) -> district
+        known(locality) -> locality
+        known(state) -> state
+        else -> "your area"
+    }
+    return if (matchedCount == 0)
+        "No official warning for " + place + " right now. Source: NDMA SACHET, which carries IMD warnings; " + readCount + " new alert(s) read, none named your area."
+    else
+        "Notified: " + matchedCount + " matching official alert(s) for " + place + ". Source: NDMA SACHET, which carries IMD warnings."
+}
+
 /**
  * Automatic official alerts from NDMA SACHET, about every 30 minutes when the phone has a network (Android may delay it).
  * Matching is by area name only, never by coordinates, and the notification shows the alert's own area text.
@@ -137,6 +152,7 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
             }
             if (matched.isNotEmpty()) {
                 val top = matched.first()
+                OfficialAlertAnnouncer.announce(ctx, "sachet", top.event, top.headline, top.areaDesc)
                 NetraNotificationManager(ctx).sendEmergencyAlert(
                     title = top.event + " (NDMA SACHET, official)",
                     message = top.headline + " Area in the alert: " + top.areaDesc + ". Issued by " + top.sender +
@@ -146,8 +162,7 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
             }
             val updated = (seen + checked).toList().takeLast(400).toSet()
             prefs.edit().putStringSet(KEY_SEEN, updated).apply()
-            save(if (matched.isEmpty()) "OK: " + checked.size + " new official alert(s) read, none matched by area name to " + loc.state + "."
-                 else "Notified: " + matched.size + " matching official alert(s).")
+            save(noWarningStatus(loc.district, loc.locality, loc.state, checked.size, matched.size))
             return Result.success()
         } catch (e: Exception) {
             save("Unavailable: check failed.")
@@ -160,6 +175,16 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
         const val KEY_SEEN = "seen_ids"
         const val KEY_LAST = "last_check"
         const val KEY_MSG = "last_message"
+
+        /** One immediate check (e.g. fresh location fix or permission just granted). Android may still delay it without a network. */
+        fun enqueueNow(context: Context) {
+            val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+            val request = OneTimeWorkRequestBuilder<SachetWatchWorker>()
+                .setConstraints(constraints)
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork("SachetWatchNow", ExistingWorkPolicy.KEEP, request)
+        }
 
         fun schedule(context: Context) {
             val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()

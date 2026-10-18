@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -95,7 +96,7 @@ fun EarthquakeCard() {
             headline = "Filters changed. Tap Check now for matching results."
         }, editable = !busy)
         Text(
-            "Last " + QUAKE_DAYS + " days, within " + filters.distanceKm + " km of this phone, magnitude " + filters.minimumMagnitude + " and above. Source: USGS (earthquake.usgs.gov). When enabled, Hub also checks automatically about every 30 minutes and notifies you of a new quake (Android may delay this). Smaller quakes in India may be missing from this feed, and this is not an official warning.",
+            "Last " + QUAKE_DAYS + " days, within " + filters.distanceKm + " km of this phone, magnitude " + filters.minimumMagnitude + " and above. Source: USGS (earthquake.usgs.gov). When enabled, the app also checks automatically about every 30 minutes and notifies you of a new quake (Android may delay this). Smaller quakes in India may be missing from this feed, and this is not an official warning.",
             fontSize = 12.sp, color = BentoTextSecondary
         )
         Text(
@@ -112,6 +113,34 @@ fun EarthquakeCard() {
             else "Official alerts, NDMA SACHET (" + fmt.format(Date(sLast)) + "): " + sMsg,
             fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary
         )
+        var announceOn by remember { mutableStateOf(com.example.data.engine.OfficialAlertAnnouncer.isEnabled(context)) }
+        androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Announce official alerts aloud", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary)
+                Text(
+                    "Reads sarkari (official) weather/disaster and earthquake alerts aloud even in silent time, using the alarm sound channel. Official alerts only, never anything else.",
+                    fontSize = 11.sp, color = BentoTextSecondary
+                )
+            }
+            Switch(checked = announceOn, onCheckedChange = { on ->
+                announceOn = on
+                com.example.data.engine.OfficialAlertAnnouncer.setEnabled(context, on)
+                if (on && !com.example.data.engine.OfficialAlertAnnouncer.hasPolicyAccess(context)) {
+                    try {
+                        context.startActivity(android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                    } catch (_: Exception) {}
+                }
+            })
+        }
+        run {
+            val am = context.getSystemService(android.content.Context.AUDIO_SERVICE) as? android.media.AudioManager
+            val nm = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager
+            val limit = com.example.data.engine.OfficialAlertAnnouncer.limitsText(
+                nm?.currentInterruptionFilter ?: android.app.NotificationManager.INTERRUPTION_FILTER_ALL,
+                am?.getStreamVolume(android.media.AudioManager.STREAM_ALARM) ?: 1
+            )
+            if (limit != null) Text(limit, fontSize = 11.sp, color = BentoRed)
+        }
         Button(enabled = !busy, onClick = {
             busy = true
             scope.launch {

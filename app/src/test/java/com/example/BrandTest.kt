@@ -16,7 +16,7 @@ class BrandTest {
     }
 
     @Test fun newNameFromMidnight() {
-        assertEquals("Netra Hub", Brand.nameAt(at(2026, Calendar.OCTOBER, 11, 0, 0)))
+        assertEquals("Netra Human Safety", Brand.nameAt(at(2026, Calendar.OCTOBER, 11, 0, 0)))
         assertNotNull(Brand.rePinNote(at(2026, Calendar.OCTOBER, 11, 0, 1)))
     }
 }

@@ -26,7 +26,7 @@ class EcosystemHeaderScreenshotTest {
  @Test fun liteVersionNamesFamily() {
   compose.setContent { MaterialTheme { Surface { NetraVersionHeader("1.4.15", java.util.Date(1792067400000L), true) } } }
   compose.onNodeWithText("v1.4.15 | Netra Ecosystem").assertIsDisplayed()
-  compose.onNodeWithText("Netra Hub (lite)").assertIsDisplayed()
+  compose.onNodeWithText("Netra Human Safety (lite)").assertIsDisplayed()
   compose.onRoot().captureRoboImage(filePath = "build/outputs/ecosystem-version-header-lite.png")
  }
 }
