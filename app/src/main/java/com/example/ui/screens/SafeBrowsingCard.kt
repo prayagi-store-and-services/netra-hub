@@ -28,7 +28,7 @@ const val SENSORGUARD_PACKAGE = "com.aistudio.sensorguard.prvsec"
 const val SENSORGUARD_RELEASES = "https://github.com/prayagi-store-and-services/prayagi-Privacy-/releases/latest"
 
 /**
- * Status card only. Blocking adult and gambling sites runs in SensorGuard (it holds the one local VPN); Hub has no VPN of its own.
+ * Status card only. Blocking adult and gambling sites runs in SensorGuard (it holds the one local VPN); This app has no VPN of its own.
  * Hub cannot read SensorGuard's on/off state, so it shows only whether SensorGuard is installed and opens it.
  */
 @Composable
@@ -46,8 +46,8 @@ fun SafeBrowsingCard() {
     ) {
         Text("Safe browsing", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = BentoTextPrimary)
         Text(
-            if (launch != null) "SensorGuard is installed. Turn on \"Block adult and gambling sites\" inside SensorGuard. Hub cannot see whether it is on."
-            else "Blocking adult and gambling sites is done by SensorGuard (not installed on this phone). Hub has no VPN of its own.",
+            if (launch != null) "SensorGuard is installed. Turn on \"Block adult and gambling sites\" inside SensorGuard. This app cannot see whether it is on."
+            else "Blocking adult and gambling sites is done by SensorGuard (not installed on this phone). This app has no VPN of its own.",
             fontSize = 12.sp, color = BentoTextSecondary
         )
         Text(
