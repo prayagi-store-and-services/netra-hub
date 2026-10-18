@@ -73,6 +73,7 @@ class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
             } else {
                 val top = fresh.maxByOrNull { it.magnitude }!!
                 val tf = SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault())
+                OfficialAlertAnnouncer.announce(ctx, "quake", "Earthquake magnitude " + top.magnitude, top.place, top.distanceKm.toInt().toString() + " km from your area")
                 NetraNotificationManager(ctx).sendEmergencyAlert(
                     title = "Earthquake M" + top.magnitude + " near you (USGS)",
                     message = top.distanceKm.toInt().toString() + " km away, " + tf.format(Date(top.timeMillis)) + ", " + top.place +
@@ -99,6 +100,17 @@ class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
         const val KEY_SEEN = "seen_ids"
         const val KEY_LAST = "last_check"
         const val KEY_MSG = "last_message"
+
+        /** One immediate check (e.g. fresh location fix or permission just granted). Android may still delay it without a network. */
+        fun enqueueNow(context: Context) {
+            if (!QuakeAlertSettings.read(context).enabled) return
+            val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+            val request = OneTimeWorkRequestBuilder<QuakeWatchWorker>()
+                .setConstraints(constraints)
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork("QuakeWatchNow", ExistingWorkPolicy.KEEP, request)
+        }
 
         fun schedule(context: Context) {
             if (!QuakeAlertSettings.read(context).enabled) {
