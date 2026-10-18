@@ -382,6 +382,7 @@ class SensorObservers(private val context: Context) {
         val liveCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 val location = result.lastLocation ?: return
+                com.example.data.engine.SafetyCheckTrigger.onFreshLocation(context)
                 val hasSpeed = location.hasSpeed()
                 val speedKmH = location.speed * 3.6f
                 trySend(
