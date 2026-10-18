@@ -22,7 +22,7 @@ object LocationShare {
         if (!hasFix(lat, lon, timestampMs, nowMs)) return null
         val fmt = SimpleDateFormat("dd MM yyyy HH:mm:ss", Locale.US)
         val acc = if (accuracyM > 0f) "about " + accuracyM.toInt() + " m" else "Unavailable"
-        return "My location from Netra Hub: " + mapsLink(lat, lon) +
+        return "My location from Netra Human Safety: " + mapsLink(lat, lon) +
             "\nAccuracy: " + acc + ". Fix taken at " + fmt.format(Date(timestampMs)) +
             ".\nThis is a one-time snapshot, not a live track."
     }
