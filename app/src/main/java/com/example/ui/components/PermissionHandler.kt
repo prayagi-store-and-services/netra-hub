@@ -136,7 +136,7 @@ fun PermissionHandler(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "Netra Hub works without these. Each one only switches on the feature named below. You can change them later in Settings > Permissions.",
+                        text = "Netra Human Safety works without these. Each one only switches on the feature named below. You can change them later in Settings > Permissions.",
                         color = BentoTextSecondary,
                         fontSize = 13.sp,
                         textAlign = TextAlign.Center,
