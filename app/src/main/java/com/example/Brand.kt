@@ -9,7 +9,7 @@ import com.example.ui.theme.RedesignGate
 /** The app name shown inside the app. Switches with the date gate (11 Oct 2026 00:00 device clock, no network). */
 object Brand {
     const val OLD_NAME = "Netra Human Safety"
-    const val NEW_NAME = "Netra Hub"
+    const val NEW_NAME = "Netra Human Safety"
 
     fun nameAt(nowMillis: Long): String = if (RedesignGate.isOn(nowMillis)) NEW_NAME else OLD_NAME
 
