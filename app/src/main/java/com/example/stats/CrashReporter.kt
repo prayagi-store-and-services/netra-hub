@@ -74,8 +74,9 @@ object CrashReporter {
         Thread { sendPending(app) }.start()
     }
 
+    /** Compile-time version constant: readable even mid-crash, when PackageManager can be unavailable. */
     private fun appVersion(c: Context): String =
-        runCatching { c.packageManager.getPackageInfo(c.packageName, 0).versionName ?: "unknown" }.getOrDefault("unknown")
+        com.aistudio.netrasensorhub.kxmpzq.BuildConfig.VERSION_NAME.ifBlank { "unknown" }
 
     fun sendPending(context: Context): Boolean {
         val file = File(context.filesDir, FILE)
