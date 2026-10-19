@@ -3,7 +3,9 @@ package com.example.data.engine
 import android.app.NotificationManager
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.os.Build
 import android.media.RingtoneManager
 import android.os.Bundle
 import android.os.Handler
@@ -18,6 +20,9 @@ import java.util.Locale
  * Do Not Disturb in its default and "alarms only" modes. No app can override alarm volume zero or
  * a DND mode that blocks alarms; limitsStatus() says so honestly. Without a TTS voice the phone's
  * alarm ringtone plays instead. Controlled by a user-visible toggle (default ON).
+ * Standing ecosystem rule (19 Oct 2026): while an announcement plays, other media must pause (audio
+ * focus, not mute) and resume when it ends. Focus is requested before playback and abandoned when the
+ * utterance finishes, errors, or the watchdog fires - never held open.
  */
 object OfficialAlertAnnouncer {
     const val PREFS = "official_alert_announcer"
@@ -58,6 +63,30 @@ object OfficialAlertAnnouncer {
         return nm.isNotificationPolicyAccessGranted
     }
 
+    private object LegacyFocus
+
+    /** Requests transient audio focus so other media pauses for the announcement. Null when not granted. */
+    private fun requestFocus(am: AudioManager?, attrs: AudioAttributes): Any? {
+        if (am == null) return null
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT).setAudioAttributes(attrs).build()
+                if (am.requestAudioFocus(req) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) req else null
+            } else {
+                @Suppress("DEPRECATION")
+                if (am.requestAudioFocus(null, AudioManager.STREAM_ALARM, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) LegacyFocus else null
+            }
+        } catch (_: Exception) { null }
+    }
+
+    private fun abandonFocus(am: AudioManager?, handle: Any?) {
+        if (am == null || handle == null) return
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && handle is AudioFocusRequest) am.abandonAudioFocusRequest(handle)
+            else @Suppress("DEPRECATION") am.abandonAudioFocus(null)
+        } catch (_: Exception) { }
+    }
+
     /** Announce aloud if enabled and the category is official. Silently does nothing otherwise. */
     fun announce(context: Context, category: String, event: String, headline: String, areaDesc: String) {
         if (!shouldAnnounce(category) || !isEnabled(context)) return
@@ -75,6 +104,7 @@ object OfficialAlertAnnouncer {
 
     private fun speak(context: Context, text: String) {
         val app = context.applicationContext
+        val am = app.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         var tts: TextToSpeech? = null
         tts = TextToSpeech(app) { status ->
             if (status == TextToSpeech.SUCCESS) {
@@ -86,12 +116,24 @@ object OfficialAlertAnnouncer {
                         .build()
                     tts?.setAudioAttributes(attrs)
                     val engine = tts
+                    // Pause other media for the announcement; resume them when it ends. If focus is not
+                    // granted the alert still plays (an official warning must not be silenced for it).
+                    val focus = requestFocus(am, attrs)
+                    val done = java.util.concurrent.atomic.AtomicBoolean(false)
+                    fun finish() {
+                        if (done.compareAndSet(false, true)) {
+                            abandonFocus(am, focus)
+                            try { engine?.shutdown() } catch (_: Exception) { }
+                        }
+                    }
                     engine?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                         override fun onStart(utteranceId: String?) {}
-                        override fun onDone(utteranceId: String?) { engine.shutdown() }
+                        override fun onDone(utteranceId: String?) { finish() }
                         @Deprecated("Deprecated in Java")
-                        override fun onError(utteranceId: String?) { engine.shutdown() }
+                        override fun onError(utteranceId: String?) { finish() }
                     })
+                    // Watchdog: focus is never held open even if the engine drops the utterance callbacks.
+                    Handler(Looper.getMainLooper()).postDelayed({ finish() }, 60_000L)
                     val params = Bundle()
                     params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_ALARM)
                     engine?.speak(text, TextToSpeech.QUEUE_FLUSH, params, "official_alert")
@@ -109,12 +151,18 @@ object OfficialAlertAnnouncer {
             val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION) ?: return
             val ringtone = RingtoneManager.getRingtone(context, uri) ?: return
-            ringtone.audioAttributes = AudioAttributes.Builder()
+            val attrs = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_ALARM)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build()
+            ringtone.audioAttributes = attrs
+            val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            val focus = requestFocus(am, attrs)
             ringtone.play()
-            Handler(Looper.getMainLooper()).postDelayed({ try { ringtone.stop() } catch (_: Exception) {} }, 8000L)
+            Handler(Looper.getMainLooper()).postDelayed({
+                try { ringtone.stop() } catch (_: Exception) {}
+                abandonFocus(am, focus)
+            }, 8000L)
         } catch (_: Exception) {
         }
     }
