@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Official weather alerts: precise matching, once-per-alert voice, audio focus (v1.4.21)
+
+User-reported fixes, not a vulnerability patch. (1) False-area alerts: a Severe/Extreme warning issued by a state body for one district used to alert every phone in that state, because the sender name alone matched. On 19 Oct a phone in Prayagraj was alerted for an area ~70-80 km away this way. The sender name no longer decides. Matching now uses the alert's own polygon/circle against the phone's coordinates when both exist, otherwise only exact whole-word district/locality/state names in the alert's area text. An alert that cannot be verified for the phone's area is not shown. (2) Repeat announcements: the same warning re-issued by SACHET under a new feed id used to speak and notify again. Alerts are now remembered by event and area with their severity; they speak and notify once, again only when the severity changes (up or down) or the warning is over. (3) Spoken announcements now hold transient audio focus so other playing media pauses and then resumes, instead of talking over music. Focus is always released, with a watchdog, so media is never left paused. No new permission, library, feed or server; nothing new is stored or sent.
+
 ## Official alert XML parser hardening (v1.4.13)
 
 Reject DTD/entity declarations before parsing RSS or CAP XML, turn off entity expansion, disable external-entity/DTD features where the Android XML provider supports them, and block external resolution. Normal escaped text still parses. Regression tests use a harmless temporary local marker and reject external/internal entity declarations. A desktop JVM probe of the previous default parser read that marker; exploitability on a shipped Android device has not been verified. This is parser hardening, not a confirmed exploited vulnerability. No new permission, library, feed, server or location disclosure. Alert cadence and matching are unchanged.

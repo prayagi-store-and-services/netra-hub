@@ -1,7 +1,12 @@
 package com.example.util
 
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import java.util.Calendar
@@ -22,17 +27,29 @@ class NetraTtsManager(private val context: Context) : TextToSpeech.OnInitListene
                 override fun onStart(utteranceId: String?) {}
                 
                 override fun onDone(utteranceId: String?) {
+                    utteranceId?.let { releaseFocusFor(it) }
                     speakingFinishedCallback?.invoke()
                 }
                 
                 @Deprecated("Deprecated in Java")
-                override fun onError(utteranceId: String?) {}
+                override fun onError(utteranceId: String?) {
+                    utteranceId?.let { releaseFocusFor(it) }
+                }
             })
         }
     }
 
     fun setSpeakingFinishedCallback(callback: () -> Unit) {
         this.speakingFinishedCallback = callback
+    }
+
+    private fun isCallActive(): Boolean {
+        return try {
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
+            audioManager.mode == AudioManager.MODE_IN_CALL || audioManager.mode == AudioManager.MODE_IN_COMMUNICATION
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /**
@@ -71,8 +88,9 @@ class NetraTtsManager(private val context: Context) : TextToSpeech.OnInitListene
             return // Silently drop prohibited battery voice announcements
         }
 
-        // Suppress during media playback or phone call
-        if (isAudioInterruptionActive()) {
+        // Never speak into a phone call. Media is NOT suppressed here: the standing ecosystem rule
+        // (19 Oct 2026) is that other media pauses via audio focus while we speak, then resumes.
+        if (isCallActive()) {
             return
         }
 
@@ -87,7 +105,37 @@ class NetraTtsManager(private val context: Context) : TextToSpeech.OnInitListene
         val params = android.os.Bundle()
         params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, id)
         val mode = if (isCriticalSafety) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-        tts?.speak(message, mode, params, id)
+        val focus = requestSpeechFocus()
+        pendingFocus[id] = focus
+        if (focus == null) tts?.speak(message, mode, params, id) else {
+            // Watchdog: focus is released even if the utterance callbacks never arrive.
+            Handler(Looper.getMainLooper()).postDelayed({ releaseFocusFor(id) }, 60_000L)
+            tts?.speak(message, mode, params, id)
+        }
+    }
+
+    private val pendingFocus = java.util.concurrent.ConcurrentHashMap<String, Any?>()
+
+    private fun requestSpeechFocus(): Any? {
+        val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return null
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT).build()
+                if (am.requestAudioFocus(req) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) req else null
+            } else {
+                @Suppress("DEPRECATION")
+                if (am.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) Any() else null
+            }
+        } catch (_: Exception) { null }
+    }
+
+    private fun releaseFocusFor(id: String) {
+        val handle = pendingFocus.remove(id) ?: return
+        val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && handle is AudioFocusRequest) am.abandonAudioFocusRequest(handle)
+            else if (handle != null) @Suppress("DEPRECATION") am.abandonAudioFocus(null)
+        } catch (_: Exception) { }
     }
 
     fun shutdown() {

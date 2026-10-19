@@ -16,10 +16,12 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import javax.xml.parsers.DocumentBuilderFactory
 
-/** One alert read from the NDMA SACHET (CAP) public feed. */
+/** One alert read from the NDMA SACHET (CAP) public feed. Geometry (polygon/circle) is read when the alert carries it. */
 data class CapAlert(
     val id: String, val sender: String, val event: String, val severity: String,
-    val headline: String, val areaDesc: String, val expiresMillis: Long
+    val headline: String, val areaDesc: String, val expiresMillis: Long,
+    val polygon: List<Pair<Double, Double>>? = null,
+    val circleKm: Triple<Double, Double, Double>? = null
 )
 
 internal const val SACHET_RSS = "https://sachet.ndma.gov.in/cap_public_website/rss/rss_india.xml"
@@ -72,27 +74,84 @@ internal fun parseCapAlert(xml: String): CapAlert? = try {
     for (i in 0 until infos.length) { val e = infos.item(i) as Element; if (first(e, "cap:language").startsWith("en")) { info = e; break } }
     if (info == null && infos.length > 0) info = infos.item(0) as Element
     if (first(root, "cap:status") != "Actual" || info == null) null
-    else CapAlert(
-        id = first(root, "cap:identifier"), sender = first(root, "cap:sender"), event = first(info, "cap:event"),
-        severity = first(info, "cap:severity"), headline = first(info, "cap:headline"),
-        areaDesc = first(info, "cap:areaDesc"), expiresMillis = parseCapTime(first(info, "cap:expires"))
-    )
+    else {
+        val poly = first(info, "cap:polygon").trim().split(Regex("\\s+")).mapNotNull { pt ->
+            val ab = pt.split(",")
+            if (ab.size == 2) (ab[0].toDoubleOrNull() ?: return@mapNotNull null) to (ab[1].toDoubleOrNull() ?: return@mapNotNull null) else null
+        }
+        val circ = first(info, "cap:circle").trim().split(Regex("\\s+")).let { parts ->
+            if (parts.size == 2) {
+                val ab = parts[0].split(",")
+                val r = parts[1].toDoubleOrNull()
+                if (ab.size == 2 && r != null && r > 0) Triple(ab[0].toDoubleOrNull() ?: 0.0, ab[1].toDoubleOrNull() ?: 0.0, r) else null
+            } else null
+        }
+        CapAlert(
+            id = first(root, "cap:identifier"), sender = first(root, "cap:sender"), event = first(info, "cap:event"),
+            severity = first(info, "cap:severity"), headline = first(info, "cap:headline"),
+            areaDesc = first(info, "cap:areaDesc"), expiresMillis = parseCapTime(first(info, "cap:expires")),
+            polygon = if (poly.size >= 3) poly else null, circleKm = circ
+        )
+    }
 } catch (e: Exception) { null }
 
 private fun norm(s: String) = s.lowercase(Locale.ROOT).replace("-", " ").replace("_", " ").trim()
 
+/** Whole-word match: the area text names the place as its own word(s), never a substring of a longer name. */
+internal fun wordMatch(areaNorm: String, termNorm: String): Boolean =
+    termNorm.isNotBlank() && Regex("(^|[^a-z0-9])" + Regex.escape(termNorm) + "([^a-z0-9]|$)").containsMatchIn(areaNorm)
+
+/** Standard ray-casting point-in-polygon on (lat, lon) pairs. */
+internal fun pointInPolygon(lat: Double, lon: Double, poly: List<Pair<Double, Double>>): Boolean {
+    var inside = false
+    var j = poly.size - 1
+    for (i in poly.indices) {
+        val (ilat, ilon) = poly[i]
+        val (jlat, jlon) = poly[j]
+        if ((ilon > lon) != (jlon > lon) && lat < (jlat - ilat) * (lon - ilon) / (jlon - ilon) + ilat) inside = !inside
+        j = i
+    }
+    return inside
+}
+
+internal fun haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+    val r = 6371.0
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+    val h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    return 2 * r * Math.asin(Math.sqrt(h))
+}
+
+internal fun plausibleCoords(lat: Double?, lon: Double?): Boolean =
+    lat != null && lon != null && lat in -90.0..90.0 && lon in -180.0..180.0 && !(lat == 0.0 && lon == 0.0)
+
 /**
- * Text match only (the feed gives area names, not coordinates): the alert must be unexpired, Severe or Extreme,
- * and its area text must contain the phone's district or locality, or the issuing state body must name the phone's state.
+ * Truth-only matching (owner rule, 19 Oct 2026): alert only for the phone's own area.
+ * 1) When the alert carries a polygon or circle and the phone has coordinates, the phone must lie
+ *    inside that area - the alert's own geometry decides, nothing else.
+ * 2) Otherwise the alert's area text must name the phone's district, locality, or state as a whole
+ *    word - never a substring of a longer place name.
+ * The issuing body's name never decides: a state body issuing a warning for one far district used to
+ * alert every phone in the state (the 19 Oct false alert ~70-80 km away came from that).
+ * No verifiable match means no alert.
  */
-internal fun capMatchesPlace(a: CapAlert, district: String, locality: String, state: String, nowMillis: Long): Boolean {
+internal fun capMatchesPlace(
+    a: CapAlert, district: String, locality: String, state: String,
+    latitude: Double? = null, longitude: Double? = null, nowMillis: Long
+): Boolean {
     if (a.expiresMillis != 0L && a.expiresMillis < nowMillis) return false
     if (a.severity != "Severe" && a.severity != "Extreme") return false
+    if (plausibleCoords(latitude, longitude)) {
+        a.polygon?.let { return pointInPolygon(latitude!!, longitude!!, it) }
+        a.circleKm?.let { return haversineKm(latitude!!, longitude!!, it.first, it.second) <= it.third }
+    }
     val area = norm(a.areaDesc)
+    if (area.isBlank()) return false
     fun known(v: String) = v.isNotBlank() && !v.contains("unavailable", true)
-    if (known(district) && area.contains(norm(district))) return true
-    if (known(locality) && area.contains(norm(locality))) return true
-    if (known(state) && (area.contains(norm(state)) || norm(a.sender).contains(norm(state)))) return true
+    if (known(district) && wordMatch(area, norm(district))) return true
+    if (known(locality) && wordMatch(area, norm(locality))) return true
+    if (known(state) && wordMatch(area, norm(state))) return true
     return false
 }
 
@@ -113,7 +172,9 @@ internal fun noWarningStatus(district: String, locality: String, state: String, 
 
 /**
  * Automatic official alerts from NDMA SACHET, about every 30 minutes when the phone has a network (Android may delay it).
- * Matching is by area name only, never by coordinates, and the notification shows the alert's own area text.
+ * Matching uses the alert's own polygon/circle when the phone has coordinates, otherwise exact whole-word
+ * district/locality/state names only; the notification shows the alert's own area text. Each alert speaks
+ * and notifies once; again only when its severity changes or the warning is over (see SachetAlertState).
  */
 class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -139,27 +200,56 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
             if (rss == null) { save("Unavailable: the NDMA SACHET feed could not be read."); return Result.success() }
             val seen = prefs.getStringSet(KEY_SEEN, emptySet()) ?: emptySet()
             val fresh = rss.filter { it.first !in seen }.take(40)
+            val lat = if (plausibleCoords(loc.latitude, loc.longitude)) loc.latitude else null
+            val lon = if (plausibleCoords(loc.latitude, loc.longitude)) loc.longitude else null
             val matched = mutableListOf<CapAlert>()
             val checked = mutableListOf<String>()
             for ((guid, link) in fresh) {
                 val cap = get(link)?.let { parseCapAlert(it) } ?: continue
                 checked.add(guid)
-                if (capMatchesPlace(cap, loc.district, loc.locality, loc.state, now)) matched.add(cap)
+                if (capMatchesPlace(cap, loc.district, loc.locality, loc.state, lat, lon, now)) matched.add(cap)
             }
             if (matched.isNotEmpty() && !NotificationManagerCompat.from(ctx).areNotificationsEnabled()) {
                 save("Unavailable: notifications are off, " + matched.size + " matching official alert(s) could not be shown.")
                 return Result.success()
             }
-            if (matched.isNotEmpty()) {
-                val top = matched.first()
-                OfficialAlertAnnouncer.announce(ctx, "sachet", top.event, top.headline, top.areaDesc)
+            val active = SachetAlertState.decode(prefs.getString(KEY_ACTIVE, "") ?: "").toMutableMap()
+            // Speak/notify once per alert; again only on a severity change. Same severity stays silent.
+            val toAnnounce = mutableListOf<Pair<CapAlert, SachetDecision>>()
+            for (cap in matched) {
+                val key = SachetAlertState.identityKey(cap.event, cap.areaDesc)
+                val decision = SachetAlertState.decide(active[key], cap.severity)
+                active[key] = SachetAlertEntry(cap.severity, cap.expiresMillis)
+                if (decision != SachetDecision.SAME_SEVERITY_SKIP) toAnnounce.add(cap to decision)
+            }
+            if (toAnnounce.isNotEmpty()) {
+                val (top, decision) = toAnnounce.first()
+                val headline = if (decision == SachetDecision.SEVERITY_CHANGED)
+                    "Warning updated. Severity is now " + top.severity + ". " + top.headline else top.headline
+                OfficialAlertAnnouncer.announce(ctx, "sachet", top.event, headline, top.areaDesc)
                 NetraNotificationManager(ctx).sendEmergencyAlert(
-                    title = top.event + " (NDMA SACHET, official)",
-                    message = top.headline + " Area in the alert: " + top.areaDesc + ". Issued by " + top.sender +
-                        (if (matched.size > 1) " (+" + (matched.size - 1) + " more)" else "") + ". Matched by area name to your place.",
+                    title = top.event + " (NDMA SACHET, official)" + (if (decision == SachetDecision.SEVERITY_CHANGED) " - updated" else ""),
+                    message = headline + " Area in the alert: " + top.areaDesc + ". Issued by " + top.sender +
+                        (if (toAnnounce.size > 1) " (+" + (toAnnounce.size - 1) + " more)" else "") +
+                        ". Matched by the alert's own area map or your exact district name.",
                     riskLevel = SafetyRiskLevel.WARNING
                 )
             }
+            // Warnings that have passed their expiry are over: say so once, then forget them.
+            val over = SachetAlertState.expiredKeys(active, now)
+            if (over.isNotEmpty()) {
+                val first = over.first()
+                OfficialAlertAnnouncer.announce(ctx, "sachet", "Weather warning over",
+                    "The earlier official warning has ended. " + SachetAlertState.readable(first) + ".", "")
+                NetraNotificationManager(ctx).sendEmergencyAlert(
+                    title = "Warning over (NDMA SACHET, official)",
+                    message = "The earlier official warning has ended: " + SachetAlertState.readable(first) +
+                        (if (over.size > 1) " (+" + (over.size - 1) + " more)" else "") + ".",
+                    riskLevel = SafetyRiskLevel.SAFE
+                )
+                over.forEach { active.remove(it) }
+            }
+            prefs.edit().putString(KEY_ACTIVE, SachetAlertState.encode(active)).apply()
             val updated = (seen + checked).toList().takeLast(400).toSet()
             prefs.edit().putStringSet(KEY_SEEN, updated).apply()
             save(noWarningStatus(loc.district, loc.locality, loc.state, checked.size, matched.size))
@@ -173,6 +263,7 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
     companion object {
         const val PREFS = "sachet_watch"
         const val KEY_SEEN = "seen_ids"
+        const val KEY_ACTIVE = "active_alerts"
         const val KEY_LAST = "last_check"
         const val KEY_MSG = "last_message"
 
