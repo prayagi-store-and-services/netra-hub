@@ -75,11 +75,11 @@ internal fun parseCapAlert(xml: String): CapAlert? = try {
     if (info == null && infos.length > 0) info = infos.item(0) as Element
     if (first(root, "cap:status") != "Actual" || info == null) null
     else {
-        val poly = first(info, "cap:polygon").trim().split(Regex("\s+")).mapNotNull { pt ->
+        val poly = first(info, "cap:polygon").trim().split(Regex("\\s+")).mapNotNull { pt ->
             val ab = pt.split(",")
             if (ab.size == 2) (ab[0].toDoubleOrNull() ?: return@mapNotNull null) to (ab[1].toDoubleOrNull() ?: return@mapNotNull null) else null
         }
-        val circ = first(info, "cap:circle").trim().split(Regex("\s+")).let { parts ->
+        val circ = first(info, "cap:circle").trim().split(Regex("\\s+")).let { parts ->
             if (parts.size == 2) {
                 val ab = parts[0].split(",")
                 val r = parts[1].toDoubleOrNull()
