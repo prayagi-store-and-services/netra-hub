@@ -36,7 +36,7 @@ object SachetAlertState {
 
     // Storage: one line per alert "key=severity,expiresMillis". Keys hold no '=' or newline.
     fun encode(active: Map<String, SachetAlertEntry>): String =
-        active.entries.takeLast(150).joinToString("\n") { it.key + "=" + it.value.severity + "," + it.value.expiresMillis }
+        active.entries.toList().takeLast(150).joinToString("\n") { it.key + "=" + it.value.severity + "," + it.value.expiresMillis }
 
     fun decode(s: String): Map<String, SachetAlertEntry> =
         s.lines().mapNotNull { line ->
