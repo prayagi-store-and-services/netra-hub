@@ -87,6 +87,28 @@ object OfficialAlertAnnouncer {
         } catch (_: Exception) { }
     }
 
+    /** Clearly labelled test line: unmistakably a drill, never emergency wording. */
+    const val TEST_TEXT = "This is a test announcement from Netra Hub. This is only a test. There is no emergency."
+
+    /**
+     * Plays the clearly labelled TEST announcement through the exact same path a real official
+     * alert uses (alarm stream, TTS, transient audio focus with watchdog, ringtone fallback).
+     * Runs even when the announce switch is off, because the user explicitly asked for a test.
+     * Returns an honest status line for the UI; when a hard limit blocks playback, that limit
+     * text is returned instead and nothing plays.
+     */
+    fun sendTestAnnouncement(context: Context): String {
+        val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        val limit = limitsText(
+            nm?.currentInterruptionFilter ?: NotificationManager.INTERRUPTION_FILTER_ALL,
+            am?.getStreamVolume(AudioManager.STREAM_ALARM) ?: 1
+        )
+        if (limit != null) return "Test announcement could not play. $limit"
+        Handler(Looper.getMainLooper()).post { speak(context, TEST_TEXT) }
+        return "Playing a test announcement now. It is only a test."
+    }
+
     /** Announce aloud if enabled and the category is official. Silently does nothing otherwise. */
     fun announce(context: Context, category: String, event: String, headline: String, areaDesc: String) {
         if (!shouldAnnounce(category) || !isEnabled(context)) return
