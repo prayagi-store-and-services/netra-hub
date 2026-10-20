@@ -141,6 +141,21 @@ fun EarthquakeCard() {
             )
             if (limit != null) Text(limit, fontSize = 11.sp, color = BentoRed)
         }
+        // Clearly labelled TEST buttons (ecosystem rule, 19 Oct): each exercises the real
+        // alert path - same alarm stream, focus handling and emergency channel - with wording
+        // that can never be mistaken for a real emergency.
+        var testNote by remember { mutableStateOf<String?>(null) }
+        androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = {
+                testNote = com.example.data.engine.OfficialAlertAnnouncer.sendTestAnnouncement(context)
+            }) { Text("Test announcement", fontSize = 12.sp) }
+            Button(onClick = {
+                val posted = com.example.util.NetraNotificationManager(context).sendTestNotification()
+                testNote = if (posted) "Test notification posted. It is only a test - real alerts say NETRA ALERT."
+                else "Test notification could not be posted: notification permission is off for this app."
+            }) { Text("Test notification", fontSize = 12.sp) }
+        }
+        testNote?.let { Text(it, fontSize = 11.sp, color = BentoTextSecondary) }
         Button(enabled = !busy, onClick = {
             busy = true
             scope.launch {

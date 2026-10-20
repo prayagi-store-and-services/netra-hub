@@ -1,5 +1,10 @@
 # Security notes - netra-hub
 
+## Clearly labelled TEST buttons (v1.4.22)
+
+Both alert paths now have a user-facing TEST control, per the ecosystem rule of 19 Oct 2026. "Test announcement" speaks a fixed line ("This is a test announcement from Netra Hub...") through the exact machinery of a real official alert (alarm stream, TTS, transient audio focus with watchdog, ringtone fallback); it runs even when the announce switch is off because the user explicitly asked, and it still respects the honest hard limits (Do Not Disturb total silence, zero alarm volume). "Test notification" posts a notification titled "NETRA TEST: emergency alert channel" through the same high-priority channel real alerts use, under its own notification id. Neither test uses emergency wording, sends anything off the phone, or changes any setting. No new permission, library or server.
+
+
 ## Official weather alerts: precise matching, once-per-alert voice, audio focus (v1.4.21)
 
 User-reported fixes, not a vulnerability patch. (1) False-area alerts: a Severe/Extreme warning issued by a state body for one district used to alert every phone in that state, because the sender name alone matched. On 19 Oct a phone in Prayagraj was alerted for an area ~70-80 km away this way. The sender name no longer decides. Matching now uses the alert's own polygon/circle against the phone's coordinates when both exist, otherwise only exact whole-word district/locality/state names in the alert's area text. An alert that cannot be verified for the phone's area is not shown. (2) Repeat announcements: the same warning re-issued by SACHET under a new feed id used to speak and notify again. Alerts are now remembered by event and area with their severity; they speak and notify once, again only when the severity changes (up or down) or the warning is over. (3) Spoken announcements now hold transient audio focus so other playing media pauses and then resumes, instead of talking over music. Focus is always released, with a watchdog, so media is never left paused. No new permission, library, feed or server; nothing new is stored or sent.
