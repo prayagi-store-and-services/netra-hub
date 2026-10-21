@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Verified web link (v1.4.23)
+
+The app now declares a verified web link for its own page, https://prayagi-store-and-services.github.io/netra-eco/app/hub. Android opens the link in the app only when the website's assetlinks.json confirms this app's package and signing certificate; otherwise the link stays in the browser. The link is only an entry point: no screen reads data from it, nothing is stored or sent. No new permission, library or server.
+
 ## Clearly labelled TEST buttons (v1.4.22)
 
 Both alert paths now have a user-facing TEST control, per the ecosystem rule of 19 Oct 2026. "Test announcement" speaks a fixed line ("This is a test announcement from Netra Hub...") through the exact machinery of a real official alert (alarm stream, TTS, transient audio focus with watchdog, ringtone fallback); it runs even when the announce switch is off because the user explicitly asked, and it still respects the honest hard limits (Do Not Disturb total silence, zero alarm volume). "Test notification" posts a notification titled "NETRA TEST: emergency alert channel" through the same high-priority channel real alerts use, under its own notification id. Neither test uses emergency wording, sends anything off the phone, or changes any setting. No new permission, library or server.
