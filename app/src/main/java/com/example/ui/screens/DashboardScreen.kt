@@ -107,7 +107,8 @@ fun DashboardScreen(
     onTogglePrivacyScanner: (Boolean) -> Unit,
     viewModel: MainViewModel,
     modifier: Modifier = Modifier,
-    topActions: @Composable () -> Unit = {}
+    topActions: @Composable () -> Unit = {},
+    onOpenSos: () -> Unit = {}
 ) {
     val supportedCount = capabilities.count { it.isSupported }
     val totalCount = capabilities.size
@@ -189,26 +190,7 @@ fun DashboardScreen(
     ) {
         item { topActions() }
         item { com.example.stats.StepsCard() }
-        item {
-            val drivingNow by com.example.data.sensor.DrivingState.driving.collectAsStateWithLifecycle()
-            if (drivingNow) {
-                Card(
-                    modifier = Modifier.fillMaxWidth().testTag("driving_mode_card"),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = BentoAmber.copy(alpha = 0.15f)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, BentoAmber)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Driving mode", fontWeight = FontWeight.Bold, color = BentoTextPrimary)
-                        Text("Moving at 30 km/h or more: safety sensors are listening. It ends after 30 seconds below that speed.", fontSize = 12.sp, color = BentoTextPrimary)
-                        Text("Speed limit warnings: Unavailable (no on-device source)", fontSize = 12.sp, color = BentoTextPrimary)
-                        if (com.example.sos.SosStore.contacts(androidx.compose.ui.platform.LocalContext.current).isEmpty()) {
-                            Text("No emergency contacts yet. Open the SOS tab and add at least one so help can be reached.", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = BentoTextPrimary)
-                        }
-                    }
-                }
-            }
-        }
+        item { DrivingStatusCard(onOpenSos) }
 
         // --- Global Safety Status Indicator (Phase 3) ---
         item {
@@ -1067,8 +1049,8 @@ fun DashboardScreen(
                     detailText = if (fusionState.isDrivingConfirmed) {
                         "Active Drive: %.1f km/h  |  Max: %.1f km/h  |  Dur: ${fusionState.drivingDurationSec}s"
                             .format(fusionState.currentSpeedKmH, fusionState.maxSpeedKmH)
-                    } else {
-                        "Drive detection is not available in this version. GPS speed: %.1f km/h"
+                    } else {                        "Not driving. GPS speed: %.1f km/h (see Driving detection card above)"
+
                             .format(fusionState.currentSpeedKmH)
                     },
                     icon = Icons.Default.Speed,

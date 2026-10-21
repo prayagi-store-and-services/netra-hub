@@ -313,6 +313,7 @@ fun MainScreen(
                             privacyScannerState = privacyScannerState,
                             onTogglePrivacyScanner = { enabled -> viewModel.togglePrivacyScanner(enabled) },
                             viewModel = viewModel,
+                            onOpenSos = { selectedTab = NavigationTab.SOS },
                             topActions = {
                                 Column(Modifier.fillMaxWidth()) {
                                 PermanentLiveStatusHeader(

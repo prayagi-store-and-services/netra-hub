@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Driving detection fixes and a visible driving log (v1.4.24)
+
+Driving mode now starts at 15 km/h (was 30) and ends after 90 seconds below that (was 30), uses high-accuracy GPS every 5 seconds, and works out the speed from two fixes when the phone sends a position without a speed. Home shows a Driving detection card (mode, GPS speed and its age, a switch for a spoken announcement, a TEST announcement button, and a driving log of time, speed and reason). The log is kept only in the app's private storage (newest 200 entries, never sent anywhere, no backup) and uninstalling or clearing data removes it. No new permission, library or server. High-accuracy GPS uses more battery than before. Not tested on a real ride yet.
+
 ## Verified web link (v1.4.23)
 
 The app now declares a verified web link for its own page, https://prayagi-store-and-services.github.io/netra-eco/app/hub. Android opens the link in the app only when the website's assetlinks.json confirms this app's package and signing certificate; otherwise the link stays in the browser. The link is only an entry point: no screen reads data from it, nothing is stored or sent. No new permission, library or server.

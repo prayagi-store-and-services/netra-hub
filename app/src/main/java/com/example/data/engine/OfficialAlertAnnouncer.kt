@@ -109,6 +109,14 @@ object OfficialAlertAnnouncer {
         return "Playing a test announcement now. It is only a test."
     }
 
+    /** Speaks a short Netra notice (driving mode on/off, test lines) with the same audio focus and watchdog as alerts. */
+    fun speakNotice(context: Context, text: String) {
+        val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        if (limitsText(nm?.currentInterruptionFilter ?: NotificationManager.INTERRUPTION_FILTER_ALL, am?.getStreamVolume(AudioManager.STREAM_ALARM) ?: 1) != null) return
+        Handler(Looper.getMainLooper()).post { speak(context, text) }
+    }
+
     /** Announce aloud if enabled and the category is official. Silently does nothing otherwise. */
     fun announce(context: Context, category: String, event: String, headline: String, areaDesc: String) {
         if (!shouldAnnounce(category) || !isEnabled(context)) return

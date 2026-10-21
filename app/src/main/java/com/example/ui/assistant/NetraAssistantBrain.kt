@@ -145,8 +145,8 @@ object NetraAssistantBrain {
 
             normalizedQuery.contains("speed") || normalizedQuery.contains("गति") || normalizedQuery.contains("drive") || normalizedQuery.contains("driving") || normalizedQuery.contains("travel") || normalizedQuery.contains("यात्रा") -> {
                 """
-                🚗 *Driving & Travel Monitor*:
-                • *Active Driving State*: ${if (state.isDrivingConfirmed) "🔴 Monitoring actively" else "Unavailable (drive detection is not built into this version)"}
+                🚗 *Driving & Trave                • *Active Driving State*: ${if (state.isDrivingConfirmed) "🔴 Monitoring actively" else "Not driving (see the Driving detection card on Home)"}
+s version)"}
                 • *Travel Type*: ${state.classifiedTravelType}
                 • *Current Speed*: ${"%.1f".format(state.currentSpeedKmH)} km/h
                 • *Max Speed Recorded*: ${"%.1f".format(state.maxSpeedKmH)} km/h

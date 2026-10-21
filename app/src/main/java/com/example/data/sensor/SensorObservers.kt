@@ -373,18 +373,24 @@ class SensorObservers(private val context: Context) {
                     )
                 }
 
-                kotlinx.coroutines.delay(2000L)
+                kotlinx.coroutines.delay(10_000L)
             }
         }
 
-        // Live speed: lastLocation alone can be old, so also take balanced-power updates every 10 s.
-        // Balanced power does not always report a speed; then the speed stays "Unavailable" and the gate stays closed.
+        // Live speed: lastLocation alone can be old, so also take high-accuracy updates every 5 s (balanced power often has no speed, which kept driving mode off).
+        var prevFix: android.location.Location? = null
         val liveCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 val location = result.lastLocation ?: return
                 com.example.data.engine.SafetyCheckTrigger.onFreshLocation(context)
-                val hasSpeed = location.hasSpeed()
-                val speedKmH = location.speed * 3.6f
+                // Some phones send a position with no speed. Then work the speed out from two fixes instead of staying blind.
+                val prev = prevFix
+                val derived = if (!location.hasSpeed() && prev != null)
+                    com.example.driving.DerivedSpeed.kmh(prev.latitude, prev.longitude, prev.time, location.latitude, location.longitude, location.time, location.accuracy)
+                else null
+                prevFix = location
+                val hasSpeed = location.hasSpeed() || derived != null
+                val speedKmH = if (location.hasSpeed()) location.speed * 3.6f else (derived ?: 0f)
                 trySend(
                     RawSensorReading(
                         sensorId = "gnss_location",
@@ -410,7 +416,7 @@ class SensorObservers(private val context: Context) {
                 context, android.Manifest.permission.ACCESS_FINE_LOCATION
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
             if (hasFine) {
-                val req = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10_000L).build()
+                val req = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5_000L).setMinUpdateIntervalMillis(3_000L).build()
                 fusedLocationClient.requestLocationUpdates(req, liveCallback, Looper.getMainLooper())
                 updatesRequested = true
             }
