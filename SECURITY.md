@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Last security scan survives an update (v1.4.25)
+
+The security score, last scan time and scan duration are now saved in the app's private storage and shown again right after an update or restart, until the fresh scan finishes (a few seconds). Nothing is sent anywhere. No new permission, library or server. Not a vulnerability fix.
+
 ## Driving detection fixes and a visible driving log (v1.4.24)
 
 Driving mode now starts at 15 km/h (was 30) and ends after 90 seconds below that (was 30), uses high-accuracy GPS every 5 seconds, and works out the speed from two fixes when the phone sends a position without a speed. Home shows a Driving detection card (mode, GPS speed and its age, a switch for a spoken announcement, a TEST announcement button, and a driving log of time, speed and reason). The log is kept only in the app's private storage (newest 200 entries, never sent anywhere, no backup) and uninstalling or clearing data removes it. No new permission, library or server. High-accuracy GPS uses more battery than before. Not tested on a real ride yet.

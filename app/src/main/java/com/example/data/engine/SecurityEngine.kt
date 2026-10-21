@@ -51,7 +51,10 @@ class SecurityEngine(
     private val _features = MutableStateFlow<List<SecurityFeature>>(emptyList())
     val features: StateFlow<List<SecurityFeature>> = _features.asStateFlow()
 
-    private val _securityScore = MutableStateFlow(0)
+    // Last scan result kept on this phone so an app update or restart does not show 0 / "never" until the new scan ends.
+    private val scanPrefs = context.getSharedPreferences("security_engine_last_scan", Context.MODE_PRIVATE)
+
+    private val _securityScore = MutableStateFlow(scanPrefs.getInt("score", 0))
     val securityScore: StateFlow<Int> = _securityScore.asStateFlow()
 
     private val _validationStatus = MutableStateFlow("INVALID")
@@ -63,10 +66,10 @@ class SecurityEngine(
     private val _simulatedManufacturer = MutableStateFlow("AUTO")
     val simulatedManufacturer: StateFlow<String> = _simulatedManufacturer.asStateFlow()
 
-    private val _scanDurationMs = MutableStateFlow(0L)
+    private val _scanDurationMs = MutableStateFlow(scanPrefs.getLong("duration", 0L))
     val scanDurationMs: StateFlow<Long> = _scanDurationMs.asStateFlow()
 
-    private val _lastScanTime = MutableStateFlow(0L)
+    private val _lastScanTime = MutableStateFlow(scanPrefs.getLong("time", 0L))
     val lastScanTime: StateFlow<Long> = _lastScanTime.asStateFlow()
 
     private val db = NetraDatabase.getInstance(context)
@@ -616,6 +619,8 @@ class SecurityEngine(
 
             _lastScanTime.value = System.currentTimeMillis()
             _scanDurationMs.value = System.currentTimeMillis() - startTime
+            scanPrefs.edit().putInt("score", finalScore).putLong("time", _lastScanTime.value)
+                .putLong("duration", _scanDurationMs.value).apply()
 
             // Log changes automatically
             val afterBiometric = featuresList.find { it.id == "biometric" }?.status
