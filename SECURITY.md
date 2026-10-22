@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Fuller crash reports (v1.4.26)
+
+Automatic crash reports used to be cut off before the root cause when an exception was wrapped in others (a crash in KBC showed only the wrappers). The report now keeps a few frames of each wrapper and more frames of the root cause, within a larger size limit (6000 characters). It still holds only class names and code locations, never exception messages. No new permission, library or server. Not a vulnerability fix.
+
 ## Last security scan survives an update (v1.4.25)
 
 The security score, last scan time and scan duration are now saved in the app's private storage and shown again right after an update or restart, until the fresh scan finishes (a few seconds). Nothing is sent anywhere. No new permission, library or server. Not a vulnerability fix.
