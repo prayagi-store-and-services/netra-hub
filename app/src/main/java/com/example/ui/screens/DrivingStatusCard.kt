@@ -79,8 +79,8 @@ fun DrivingStatusCard(onOpenSos: () -> Unit) {
             Button(onClick = onOpenSos, modifier = Modifier.fillMaxWidth().testTag("open_sos_button")) { Text("Open SOS and crash alert settings") }
             if (showLog) {
                 if (entries.isEmpty()) Text("Nothing recorded yet. Entries appear here when driving mode turns on or off, or when GPS gives no speed.", fontSize = 12.sp)
-                entries.take(40).forEach { e ->
-                    val what = when (e.kind) { DrivingLog.STARTED -> "Driving ON"; DrivingLog.ENDED -> "Driving OFF"; else -> "Note" }
+                entries.take(80).forEach { e ->
+                    val what = when (e.kind) { DrivingLog.STARTED -> "Driving ON"; DrivingLog.ENDED -> "Driving OFF"; DrivingLog.SPEED -> "Speed change"; DrivingLog.BRAKE -> "Braking"; DrivingLog.BUMP -> "Bump"; else -> "Note" }
                     Text(fmt.format(Date(e.at)) + "  " + what + (e.speedKmH?.let { "  %.0f km/h".format(it) } ?: ""), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text(e.reason, fontSize = 11.sp)
                 }
