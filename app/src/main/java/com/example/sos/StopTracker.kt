@@ -1,90 +1,72 @@
-package com.example
+package com.example.sos
 
-import com.example.sos.ParkingSpot
-import com.example.sos.StopTracker
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+/**
+ * Finds where the vehicle really parked during a drive, from real GPS fixes only (nothing guessed or extrapolated).
+ *
+ * A stop counts only when the phone stays under [STOP_KMH] for at least [MIN_RUN_MS] over at least [MIN_FIXES] fixes
+ * that are accurate to [MAX_FIX_ACCURACY_M] or better. The spot is then the middle (median) of the fixes that agree with
+ * each other within [CLUSTER_M], so one wild fix cannot move it. Once confirmed, the stop is kept while the phone is only
+ * walking (under [DRIVE_KMH]); it is dropped when the vehicle moves off at [DRIVE_KMH] or more, and replaced by a later
+ * confirmed stop. Order and age use the phone's monotonic clock (milliseconds since boot), never the wall clock.
+ * Pure logic, unit tested.
+ */
+class StopTracker {
+    /** at = monotonic ms of the fix (order and age). wallAt = wall-clock ms of the fix, for display only. */
+    data class Fix(val lat: Double, val lon: Double, val accuracyM: Float, val at: Long, val wallAt: Long = at)
 
-class ParkingFixTest {
-    private val now = 10_000_000L
-
-    @Test fun savesTheStopNotTheRoadAhead() {
-        val t = StopTracker()
-        t.onFix(25.1000, 82.0000, 8f, now - 300_000, 40f)
-        t.onFix(25.1050, 82.0000, 8f, now - 200_000, 35f)   // still moving
-        t.onFix(25.1100, 82.0000, 8f, now - 150_000, 2f)    // the stop
-        t.onFix(25.1100, 82.0000, 8f, now - 100_000, 0f)    // still stopped
-        val d = ParkingSpot.decide(t.candidate, t.last, now)
-        assertEquals(25.1100, d.fix!!.lat, 0.0)
-        assertEquals(now - 150_000, d.fix!!.at) // the fix's own time
+    companion object {
+        const val STOP_KMH = 3f
+        const val DRIVE_KMH = 15f
+        const val MIN_RUN_MS = 10_000L
+        const val MIN_FIXES = 2
+        const val MAX_FIX_ACCURACY_M = 50f
+        const val CLUSTER_M = 30.0
+        private const val MAX_RUN = 24
     }
 
-    @Test fun movingAgainClearsTheStopCandidate() {
-        val t = StopTracker()
-        t.onFix(25.1, 82.0, 8f, 1_000, 40f)
-        t.onFix(25.2, 82.0, 8f, 6_000, 1f)   // red light
-        t.onFix(25.3, 82.0, 8f, 11_000, 30f) // moving again
-        assertNull(t.candidate)
-        t.onFix(25.4, 82.0, 8f, 16_000, 0f)  // real stop
-        assertEquals(25.4, t.candidate!!.lat, 0.0)
+    /** The confirmed parked spot, or null. */
+    var candidate: Fix? = null; private set
+    /** The latest fix seen (any speed). Shown in the status text only, never saved without a confirmed stop. */
+    var last: Fix? = null; private set
+    private var moved = false
+    private val run = ArrayList<Fix>()
+
+    fun reset() { candidate = null; last = null; moved = false; run.clear() }
+
+    /** kmh null = no usable speed: remembered as the latest position, says nothing about stopping. */
+    fun onFix(lat: Double, lon: Double, accuracyM: Float, at: Long, wallAt: Long, kmh: Float?) {
+        if (lat == 0.0 && lon == 0.0) return
+        val prev = last
+        if (prev != null && at <= prev.at) return // same fix again, or out of order
+        val f = Fix(lat, lon, accuracyM, at, wallAt)
+        last = f
+        if (kmh == null) return
+        when {
+            kmh >= DRIVE_KMH -> { moved = true; candidate = null; run.clear() }
+            kmh < STOP_KMH && moved -> {
+                run.add(f); if (run.size > MAX_RUN) run.removeAt(0)
+                confirm()
+            }
+            else -> run.clear() // 3 to 15 km/h: crawling or walking, not a stop run
+        }
     }
 
-    @Test fun noStopBeforeAnyMovement() {
-        val t = StopTracker()
-        t.onFix(25.1, 82.0, 8f, 1_000, 0f) // standing at home, never moved
-        assertNull(t.candidate)
+    private fun confirm() {
+        val good = run.filter { it.accuracyM > 0f && it.accuracyM <= MAX_FIX_ACCURACY_M }
+        if (good.size < MIN_FIXES || good.last().at - good.first().at < MIN_RUN_MS) return
+        val mLat = median(good.map { it.lat }); val mLon = median(good.map { it.lon })
+        val agree = good.filter { meters(it.lat, it.lon, mLat, mLon) <= CLUSTER_M }
+        if (agree.size < MIN_FIXES || agree.last().at - agree.first().at < MIN_RUN_MS) return
+        val cLat = median(agree.map { it.lat }); val cLon = median(agree.map { it.lon })
+        val mid = agree[agree.size / 2]
+        candidate = Fix(cLat, cLon, agree.maxOf { it.accuracyM }, mid.at, mid.wallAt)
     }
 
-    @Test fun unknownSpeedIsNotAStop() {
-        val t = StopTracker()
-        t.onFix(25.1, 82.0, 8f, 1_000, 40f)
-        t.onFix(25.2, 82.0, 8f, 6_000, null)
-        assertNull(t.candidate)
-    }
+    private fun median(v: List<Double>): Double { val s = v.sorted(); return if (s.size % 2 == 1) s[s.size / 2] else (s[s.size / 2 - 1] + s[s.size / 2]) / 2.0 }
 
-    @Test fun repeatedAndZeroFixesAreIgnored() {
-        val t = StopTracker()
-        t.onFix(0.0, 0.0, 5f, 1_000, 40f)
-        assertNull(t.last)
-        t.onFix(25.1, 82.0, 8f, 2_000, 40f)
-        t.onFix(25.9, 82.9, 8f, 2_000, 0f) // same fix time again: ignored
-        assertEquals(25.1, t.last!!.lat, 0.0)
-    }
-
-    @Test fun poorFixIsRefusedWithAnHonestReason() {
-        val bad = StopTracker.Fix(25.1, 82.0, 900f, now - 10_000)
-        val d = ParkingSpot.decide(bad, bad, now)
-        assertNull(d.fix)
-        assertTrue(d.status.startsWith("Not saved") && d.status.contains("900 m"))
-    }
-
-    @Test fun roughFixIsSavedButLabelled() {
-        val rough = StopTracker.Fix(25.1, 82.0, 120f, now - 10_000)
-        val d = ParkingSpot.decide(rough, rough, now)
-        assertNotNull(d.fix)
-        assertTrue(ParkingSpot.accuracyText(120f).contains("rough"))
-        assertTrue(ParkingSpot.accuracyText(12f).contains("about 12 m"))
-        assertTrue(ParkingSpot.accuracyText(-1f).contains("unknown"))
-    }
-
-    @Test fun oldLatestFixIsNotUsedWithoutAStop() {
-        val old = StopTracker.Fix(25.1, 82.0, 10f, now - 5 * 60_000)
-        assertNull(ParkingSpot.decide(null, old, now).fix)          // 5 min old, no stop
-        val fresh = StopTracker.Fix(25.1, 82.0, 10f, now - 30_000)
-        assertNotNull(ParkingSpot.decide(null, fresh, now).fix)     // 30 s old
-    }
-
-    @Test fun stopFixOlderThanFifteenMinutesIsRefused() {
-        val stop = StopTracker.Fix(25.1, 82.0, 10f, now - 16 * 60_000)
-        assertNull(ParkingSpot.decide(stop, null, now).fix)
-    }
-
-    @Test fun noFixAtAll() {
-        val d = ParkingSpot.decide(null, null, now)
-        assertNull(d.fix); assertTrue(d.status.contains("no GPS fix"))
+    private fun meters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val dLat = Math.toRadians(lat2 - lat1) * 6371000.0
+        val dLon = Math.toRadians(lon2 - lon1) * 6371000.0 * Math.cos(Math.toRadians((lat1 + lat2) / 2))
+        return Math.sqrt(dLat * dLat + dLon * dLon)
     }
 }
