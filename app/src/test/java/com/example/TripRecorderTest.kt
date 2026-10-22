@@ -86,4 +86,37 @@ class TripRecorderTest {
         feedAccel(r, 1_000L, 1.5f)
         assertEquals(0, out.count { it.kind == "BUMP" })
     }
+
+    @Test fun brakingOverAFiveSecondGpsGapIsStillSeen() {
+        val out = mutableListOf<Ev>(); val r = rec(out)
+        r.start(70f, 0L)
+        r.onSpeed(70f, 1f, 1f, 1_000L)
+        r.onSpeed(20f, 1f, 1.1f, 6_000L) // 50 km/h in 5 s = 2.8 m/s2 average
+        assertEquals(1, out.count { it.kind == "BRAKE" })
+        assertTrue(out.first { it.kind == "BRAKE" }.text.contains("average"))
+    }
+
+    @Test fun newTripDoesNotReuseOldCoordinates() {
+        val out = mutableListOf<Ev>(); val r = rec(out)
+        r.start(60f, 0L); r.onSpeed(60f, 25.5f, 82.5f, 1_000L)
+        r.start(60f, 100_000L)
+        r.onSpeed(40f, 0f, 0f, 107_000L)
+        assertTrue(out.last().text.contains("location unavailable"))
+    }
+
+    @Test fun sameFixTimeIsOneSample() {
+        val out = mutableListOf<Ev>(); val r = rec(out)
+        r.start(60f, 0L)
+        r.onSpeed(60f, 1f, 1f, 1_000L)
+        r.onSpeed(30f, 1f, 1f, 1_000L) // same fix time again (cached position): ignored
+        assertTrue(out.isEmpty())
+    }
+
+    @Test fun firstBrakeAfterStartIsNotSuppressed() {
+        val out = mutableListOf<Ev>(); val r = rec(out)
+        r.start(60f, 0L)
+        r.onSpeed(60f, 1f, 1f, 1_000L)
+        r.onSpeed(40f, 1f, 1f, 3_000L)
+        assertEquals(3_000L, out.first { it.kind == "BRAKE" }.at)
+    }
 }
