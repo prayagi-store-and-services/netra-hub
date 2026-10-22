@@ -99,12 +99,6 @@ class NetraForegroundService : Service() {
                     
                     val drivingNow = isMotionDetected || com.example.data.sensor.DrivingState.driving.value
                     com.example.driving.DrivingSignal.publish(applicationContext, drivingNow)
-                    if (com.example.sos.ParkingSpot.shouldSave(wasDriving, drivingNow, com.example.sos.ParkingSpot.enabled(applicationContext))) {
-                        val fix = com.example.data.service.OfficialLocationContextManager(applicationContext).refreshLocation()
-                        if (com.example.sos.ParkingSpot.usable(fix.latitude, fix.longitude, fix.timestamp)) {
-                            com.example.sos.ParkingSpot.save(applicationContext, fix.latitude, fix.longitude, System.currentTimeMillis())
-                        } else com.example.sos.ParkingSpot.markUnavailable(applicationContext)
-                    }
                     wasDriving = drivingNow
                     val newMode = repository?.powerManagerEngine?.determineMode(isScreenOn, isCharging, isMotionDetected)
                     newMode?.let { repository?.powerManagerEngine?.updateMode(it) }
