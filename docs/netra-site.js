@@ -132,13 +132,13 @@ function whatsNew(){
 }
 
 /* ---- Live stats: visits and downloads. No personal data is collected.
-   Visits: one anonymous counter increment per browser session (abacus.jasoncameron.dev, namespace netra-pages), no cookies, no IP stored by us.
+   Visits: one anonymous counter increment per browser session (own Firestore counter, collection netra_active), no cookies, no IP stored by us.
    Downloads: read live from the GitHub Releases API (asset download_count, summed over every release; includes in-app updates). */
-var AB="https://abacus.jasoncameron.dev/";
 function statKey(){var s=window.NETRA_SITE||{};return s.appId?("visits-"+s.appId):"visits-eco"}
 function visitCount(){
- var k=statKey(),path=(sessionStorage.getItem("netra_v_"+k)?"get/":"hit/")+"netra-pages/"+k;
- return fetch(AB+path).then(function(r){return r.json()}).then(function(d){sessionStorage.setItem("netra_v_"+k,"1");return typeof d.value==="number"?d.value:null}).catch(function(){return null});
+ var k=statKey(),seen=sessionStorage.getItem("netra_v_"+k);
+ if(seen)return NetraCounter.get(k);
+ return NetraCounter.hit(k).then(function(ok){if(ok)sessionStorage.setItem("netra_v_"+k,"1");return NetraCounter.get(k)});
 }
 function stats(){
  var s=window.NETRA_SITE||{};var visits=visitCount();
