@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Parking spot: only a good GPS fix, with its accuracy (v1.4.28)
+
+A user saw the parking spot saved about 1 km from where the phone really was. The old code used the phone's cached position (up to 15 minutes old, or 30 minutes for the passive source) at the moment driving mode ended, and saved the time of saving instead of the time of the fix. Now the spot is the first real GPS fix where the vehicle stopped (speed under 5 km/h after moving), or the latest GPS fix if it is under 2 minutes old. A fix worse than 200 m is not saved and the screen says why. A fix between 50 and 200 m is saved and labelled rough. The spot stores the fix's own time and accuracy. Still one spot, in the app's private storage, never sent anywhere. No new permission, library or server. A location-accuracy fix, not a vulnerability fix.
+
 ## Driving log now records the trip (v1.4.27)
 
 While driving mode is on, the driving log now also records speed changes (10 km/h or more), hard braking, and bumps seen by the accelerometer (speed breaker or pothole, always marked "likely"), each with time, speed and, when GPS has it, the coordinates. The accelerometer is read only while driving mode is on. The log stays in the app's private storage (newest 500 entries), is never sent anywhere, and is removed by uninstalling or clearing the app's data. No new permission, library or server. Not a vulnerability fix.
