@@ -21,9 +21,10 @@ class DrivingLogTest {
     }
     @Test fun capKeepsNewest() {
         var l = emptyList<DrivingLog.Entry>()
-        for (i in 1..250) l = DrivingLog.append(l, DrivingLog.Entry(i.toLong(), DrivingLog.NOTE, null, "n$i"))
+        val total = DrivingLog.MAX + 50
+        for (i in 1..total) l = DrivingLog.append(l, DrivingLog.Entry(i.toLong(), DrivingLog.NOTE, null, "n$i"))
         assertEquals(DrivingLog.MAX, l.size)
-        assertEquals(250L, l.first().at)
+        assertEquals(total.toLong(), l.first().at)
     }
     @Test fun badLinesAreSkipped() = assertTrue(DrivingLog.decode("junk\n\nx|y").isEmpty())
 
@@ -48,6 +49,8 @@ class DrivingLogTest {
         assertTrue(com.example.driving.DrivingEvents.reasonFor(true, 42f).contains("42 km/h"))
         assertTrue(com.example.driving.DrivingEvents.reasonFor(true, 42f).contains("15 km/h"))
         assertTrue(com.example.driving.DrivingEvents.reasonFor(false, null).contains("90 seconds"))
+        val blind = com.example.driving.DrivingEvents.reasonFor(false, 55f, blindClose = true)
+        assertTrue(blind.contains("no speed") && blind.contains("55 km/h") && !blind.contains("90 seconds"))
         assertTrue(com.example.driving.DrivingEvents.TEST_TEXT.lowercase().contains("only a test"))
     }
     @Test fun statusLinesAreHonest() {
