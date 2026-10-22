@@ -3,19 +3,22 @@ package com.example.driving
 import android.content.Context
 
 /**
- * Local history of driving-mode changes (time, speed, reason). Kept in this app's private storage, newest 200 entries,
+ * Local history of driving-mode changes (time, speed, reason). Kept in this app's private storage, newest 500 entries,
  * never sent anywhere. Survives app updates and restarts (uninstall or clearing app data removes it).
  */
 object DrivingLog {
     const val PREFS = "netra_driving_log"
     const val KEY = "entries"
-    const val MAX = 200
+    const val MAX = 500
 
     data class Entry(val at: Long, val kind: String, val speedKmH: Float?, val reason: String)
 
     const val STARTED = "STARTED"
     const val ENDED = "ENDED"
     const val NOTE = "NOTE"
+    const val SPEED = "SPEED"
+    const val BRAKE = "BRAKE"
+    const val BUMP = "BUMP"
 
     fun encode(list: List<Entry>): String = list.joinToString("\n") { e ->
         listOf(e.at.toString(), e.kind, e.speedKmH?.toString() ?: "", e.reason.replace('|', '/').replace('\n', ' ')).joinToString("|")
