@@ -3,88 +3,126 @@ package com.example
 import com.example.sos.ParkingSpot
 import com.example.sos.StopTracker
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ParkingFixTest {
-    private val now = 10_000_000L
+    private val base = 1_000_000L
+    private fun StopTracker.fix(sec: Int, lat: Double, lon: Double, kmh: Float?, acc: Float = 8f) =
+        onFix(lat, lon, acc, base + sec * 1000L, 5_000_000L + sec * 1000L, kmh)
 
-    @Test fun savesTheStopNotTheRoadAhead() {
-        val t = StopTracker()
-        t.onFix(25.1000, 82.0000, 8f, now - 300_000, 40f)
-        t.onFix(25.1050, 82.0000, 8f, now - 200_000, 35f)   // still moving
-        t.onFix(25.1100, 82.0000, 8f, now - 150_000, 2f)    // the stop
-        t.onFix(25.1100, 82.0000, 8f, now - 100_000, 0f)    // still stopped
-        val d = ParkingSpot.decide(t.candidate, t.last, now)
-        assertEquals(25.1100, d.fix!!.lat, 0.0)
-        assertEquals(now - 150_000, d.fix!!.at) // the fix's own time
+    private fun parkedAfterDrive(t: StopTracker) {
+        t.fix(0, 25.1000, 82.0, 40f); t.fix(5, 25.1050, 82.0, 35f)
+        t.fix(10, 25.1100, 82.0, 1f); t.fix(15, 25.1100, 82.0, 0f); t.fix(20, 25.1100, 82.0, 0f)
     }
 
-    @Test fun movingAgainClearsTheStopCandidate() {
-        val t = StopTracker()
-        t.onFix(25.1, 82.0, 8f, 1_000, 40f)
-        t.onFix(25.2, 82.0, 8f, 6_000, 1f)   // red light
-        t.onFix(25.3, 82.0, 8f, 11_000, 30f) // moving again
-        assertNull(t.candidate)
-        t.onFix(25.4, 82.0, 8f, 16_000, 0f)  // real stop
-        assertEquals(25.4, t.candidate!!.lat, 0.0)
+    @Test fun savesTheSustainedStopNotTheRoadAhead() {
+        val t = StopTracker(); parkedAfterDrive(t)
+        val d = ParkingSpot.decide(t.candidate, t.last, base + 100_000)
+        assertEquals(25.1100, d.fix!!.lat, 1e-9)
     }
 
-    @Test fun noStopBeforeAnyMovement() {
+    @Test fun singleSlowSampleIsNotAStop() {
         val t = StopTracker()
-        t.onFix(25.1, 82.0, 8f, 1_000, 0f) // standing at home, never moved
+        t.fix(0, 25.1, 82.0, 40f); t.fix(5, 25.2, 82.0, 1f); t.fix(10, 25.3, 82.0, 30f)
         assertNull(t.candidate)
     }
 
-    @Test fun unknownSpeedIsNotAStop() {
+    @Test fun crawlAboveThreeKmhIsNotAStop() {
         val t = StopTracker()
-        t.onFix(25.1, 82.0, 8f, 1_000, 40f)
-        t.onFix(25.2, 82.0, 8f, 6_000, null)
+        t.fix(0, 25.1, 82.0, 40f)
+        for (i in 1..8) t.fix(i * 5, 25.1 + i * 0.0001, 82.0, 4f)
         assertNull(t.candidate)
     }
 
-    @Test fun repeatedAndZeroFixesAreIgnored() {
+    @Test fun tenSecondsStillOnAccurateFixesIsRequired() {
         val t = StopTracker()
-        t.onFix(0.0, 0.0, 5f, 1_000, 40f)
-        assertNull(t.last)
-        t.onFix(25.1, 82.0, 8f, 2_000, 40f)
-        t.onFix(25.9, 82.9, 8f, 2_000, 0f) // same fix time again: ignored
-        assertEquals(25.1, t.last!!.lat, 0.0)
+        t.fix(0, 25.1, 82.0, 40f); t.fix(5, 25.2, 82.0, 0f); t.fix(8, 25.2, 82.0, 0f)
+        assertNull(t.candidate)          // only 3 s
+        t.fix(16, 25.2, 82.0, 0f)
+        assertNotNull(t.candidate)       // 11 s
     }
 
-    @Test fun poorFixIsRefusedWithAnHonestReason() {
-        val bad = StopTracker.Fix(25.1, 82.0, 900f, now - 10_000)
-        val d = ParkingSpot.decide(bad, bad, now)
-        assertNull(d.fix)
-        assertTrue(d.status.startsWith("Not saved") && d.status.contains("900 m"))
+    @Test fun inaccurateFixesNeverConfirmAStop() {
+        val t = StopTracker()
+        t.fix(0, 25.1, 82.0, 40f)
+        for (i in 1..6) t.fix(i * 5, 25.2, 82.0, 0f, acc = 300f)
+        assertNull(t.candidate)
     }
 
-    @Test fun roughFixIsSavedButLabelled() {
-        val rough = StopTracker.Fix(25.1, 82.0, 120f, now - 10_000)
-        val d = ParkingSpot.decide(rough, rough, now)
-        assertNotNull(d.fix)
-        assertTrue(ParkingSpot.accuracyText(120f).contains("rough"))
+    @Test fun outlierFixIsRejectedByTheMedian() {
+        val t = StopTracker()
+        t.fix(0, 25.1, 82.0, 40f)
+        t.fix(5, 25.2000, 82.0000, 0f); t.fix(10, 25.2000, 82.0000, 0f)
+        t.fix(15, 25.2100, 82.0000, 0f)  // one wild fix about 1 km away
+        t.fix(20, 25.2000, 82.0000, 0f); t.fix(25, 25.2000, 82.0000, 0f)
+        assertEquals(25.2000, t.candidate!!.lat, 1e-6)
+    }
+
+    @Test fun walkingAwayDoesNotMoveTheSpot() {
+        val t = StopTracker(); parkedAfterDrive(t)
+        val spot = t.candidate!!
+        for (i in 1..10) t.fix(20 + i * 5, 25.1100 + i * 0.0001, 82.0, 5f) // walking 5 km/h away
+        assertEquals(spot.lat, t.candidate!!.lat, 0.0)
+    }
+
+    @Test fun drivingOffClearsTheOldStop() {
+        val t = StopTracker(); parkedAfterDrive(t)
+        t.fix(30, 25.12, 82.0, 25f)
+        assertNull(t.candidate)
+    }
+
+    @Test fun laterStopReplacesEarlierOne() {
+        val t = StopTracker(); parkedAfterDrive(t)
+        t.fix(30, 25.12, 82.0, 25f)
+        t.fix(40, 25.13, 82.0, 0f); t.fix(46, 25.13, 82.0, 0f); t.fix(52, 25.13, 82.0, 0f)
+        assertEquals(25.13, t.candidate!!.lat, 1e-9)
+    }
+
+    @Test fun standingAtHomeWithoutMovingIsNotAStop() {
+        val t = StopTracker()
+        for (i in 0..6) t.fix(i * 5, 25.1, 82.0, 0f)
+        assertNull(t.candidate)
+    }
+
+    @Test fun unknownSpeedZeroAndRepeatedFixesAreIgnored() {
+        val t = StopTracker()
+        t.onFix(0.0, 0.0, 5f, base, base, 40f); assertNull(t.last)
+        t.fix(1, 25.1, 82.0, 40f); t.fix(6, 25.2, 82.0, null)
+        assertNull(t.candidate)
+        t.onFix(25.9, 82.9, 8f, base + 6000L, base, 0f) // not newer than the last fix
+        assertEquals(25.2, t.last!!.lat, 1e-9)
+    }
+
+    @Test fun savedTimeIsTheFixTimeAndAccuracyIsKept() {
+        val t = StopTracker(); parkedAfterDrive(t)
+        val d = ParkingSpot.decide(t.candidate, t.last, base + 100_000)
+        assertTrue(d.fix!!.wallAt in 5_000_000L..5_100_000L)
+        assertEquals(8f, d.fix!!.accuracyM, 0f)
+    }
+
+    @Test fun staleOrFutureOrPoorStopIsRefusedWithReason() {
+        val old = StopTracker.Fix(25.1, 82.0, 10f, base)
+        assertTrue(ParkingSpot.decide(old, old, base + 11 * 60_000L).status.contains("too old"))
+        val fut = StopTracker.Fix(25.1, 82.0, 10f, base + 60_000L)
+        assertTrue(ParkingSpot.decide(fut, fut, base).status.contains("future"))
+        val poor = StopTracker.Fix(25.1, 82.0, 80f, base)
+        val d = ParkingSpot.decide(poor, poor, base + 1000L)
+        assertNull(d.fix); assertTrue(d.status.contains("80 m"))
+    }
+
+    @Test fun noConfirmedStopKeepsEarlierSpotWithReason() {
+        val last = StopTracker.Fix(25.1, 82.0, 5f, base)
+        val d = ParkingSpot.decide(null, last, base + 5000L)
+        assertNull(d.fix); assertTrue(d.status.contains("no confirmed stop"))
+        assertTrue(ParkingSpot.decide(null, null, base).status.contains("no GPS fix"))
+    }
+
+    @Test fun accuracyWording() {
         assertTrue(ParkingSpot.accuracyText(12f).contains("about 12 m"))
+        assertTrue(ParkingSpot.accuracyText(40f).contains("fair"))
         assertTrue(ParkingSpot.accuracyText(-1f).contains("unknown"))
-    }
-
-    @Test fun oldLatestFixIsNotUsedWithoutAStop() {
-        val old = StopTracker.Fix(25.1, 82.0, 10f, now - 5 * 60_000)
-        assertNull(ParkingSpot.decide(null, old, now).fix)          // 5 min old, no stop
-        val fresh = StopTracker.Fix(25.1, 82.0, 10f, now - 30_000)
-        assertNotNull(ParkingSpot.decide(null, fresh, now).fix)     // 30 s old
-    }
-
-    @Test fun stopFixOlderThanFifteenMinutesIsRefused() {
-        val stop = StopTracker.Fix(25.1, 82.0, 10f, now - 16 * 60_000)
-        assertNull(ParkingSpot.decide(stop, null, now).fix)
-    }
-
-    @Test fun noFixAtAll() {
-        val d = ParkingSpot.decide(null, null, now)
-        assertNull(d.fix); assertTrue(d.status.contains("no GPS fix"))
     }
 }
