@@ -294,6 +294,7 @@ class SensorManager(
     private val AGGREGATION_INTERVAL = 5000L // 5 seconds
 
     private val speedGate = SpeedGate()
+    private val stopTracker = com.example.sos.StopTracker()
 
     /** Updates the speed gate from a GNSS reading and re-evaluates the sensor streams when it opens or closes. */
     private fun updateSpeedGate(reading: RawSensorReading) {
@@ -302,12 +303,18 @@ class SensorManager(
         val now = System.currentTimeMillis()
         val changed = speedGate.update(speedKmH, now)
         val fixTime = reading.extraDetails["fixTimeMs"]?.toLongOrNull()
+        if (changed && speedGate.isOpen) stopTracker.reset()
+        val monoNow = android.os.SystemClock.elapsedRealtime()
+        val fixMono = reading.extraDetails["fixElapsedMs"]?.toLongOrNull() ?: monoNow
+        stopTracker.onFix(reading.extraDetails["latitude"]?.toDoubleOrNull() ?: 0.0, reading.extraDetails["longitude"]?.toDoubleOrNull() ?: 0.0,
+            reading.values.getOrElse(3) { 0f }, fixMono, now - (monoNow - fixMono), speedKmH)
         // Log first, then publish the state, so a crash between the two cannot lose the entry.
         if (changed) com.example.driving.DrivingEvents.onGateChange(context, speedGate.isOpen, speedKmH ?: DrivingState.speed.value.kmh, now, blindClose = !speedGate.isOpen && speedGate.closedByBlindSpell)
         DrivingState.set(speedGate.isOpen)
         DrivingState.updateSpeed(speedKmH, now)
         if (speedGate.isOpen) com.example.driving.DrivingTrip.onSpeed(speedKmH, reading.values.getOrElse(0) { 0f }, reading.values.getOrElse(1) { 0f }, fixTime ?: now)
         if (speedKmH == null && now - DrivingState.speed.value.speedAt > 60_000L) com.example.driving.DrivingEvents.noteBlind(context, "GPS gave no usable speed (no fix, old fix, or the phone sent a position without speed)", now)
+        if (changed && !speedGate.isOpen) com.example.sos.ParkingSpot.onDrivingEnded(context, stopTracker, monoNow)
         if (changed) evaluateSensorStreams()
     }
 

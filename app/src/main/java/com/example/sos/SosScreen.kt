@@ -120,7 +120,7 @@ fun SosScreen() {
         if (park) {
             val s = spot ?: ParkingSpot.get(ctx)
             if (s != null) {
-                Text("Last parking spot saved " + java.text.SimpleDateFormat("d MMM, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(s.at)), fontSize = 13.sp)
+                Text("Last parking spot: GPS fix from " + java.text.SimpleDateFormat("d MMM, HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(s.at)) + ", " + ParkingSpot.accuracyText(s.accuracyM), fontSize = 13.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = {
                         try { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ParkingSpot.mapsUri(s.lat, s.lon))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }

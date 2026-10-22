@@ -312,7 +312,8 @@ class SensorObservers(private val context: Context) {
                                         "longitude" to "%.5f".format(location.longitude),
                                         "speedKmH" to (if (fresh) "%.1f km/h".format(speedKmH) else "Verified data is currently unavailable."),
                                         "accuracy" to "±%.1f m".format(location.accuracy),
-                                        "fixTimeMs" to location.time.toString()
+                                        "fixTimeMs" to location.time.toString(),
+                                        "fixElapsedMs" to (location.elapsedRealtimeNanos / 1_000_000L).toString()
                                     )
                                 )
                             )
@@ -406,7 +407,8 @@ class SensorObservers(private val context: Context) {
                             "longitude" to "%.5f".format(location.longitude),
                             "speedKmH" to (if (hasSpeed) "%.1f km/h".format(speedKmH) else "Verified data is currently unavailable."),
                             "accuracy" to "±%.1f m".format(location.accuracy),
-                            "fixTimeMs" to location.time.toString()
+                            "fixTimeMs" to location.time.toString(),
+                                        "fixElapsedMs" to (location.elapsedRealtimeNanos / 1_000_000L).toString()
                         )
                     )
                 )
