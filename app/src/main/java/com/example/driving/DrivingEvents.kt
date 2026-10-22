@@ -23,6 +23,7 @@ object DrivingEvents {
 
     fun onGateChange(c: Context, started: Boolean, speedKmH: Float?, now: Long = System.currentTimeMillis()) {
         DrivingLog.add(c, DrivingLog.Entry(now, if (started) DrivingLog.STARTED else DrivingLog.ENDED, speedKmH, reasonFor(started, speedKmH)))
+        if (started) DrivingTrip.start(c, speedKmH, now) else DrivingTrip.stop()
         if (announceEnabled(c)) OfficialAlertAnnouncer.speakNotice(c, if (started) startedText() else endedText())
     }
 
