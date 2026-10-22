@@ -32,42 +32,41 @@ object ParkingSpot {
             .putLong("at", at).putFloat("acc", accuracyM).putString("status", "").apply()
     }
 
-    const val GOOD_ACCURACY_M = 50f
-    const val MAX_ACCURACY_M = 200f
-    const val STOP_FIX_MAX_AGE_MS = 15 * 60 * 1000L
-    const val LAST_FIX_MAX_AGE_MS = 120 * 1000L
+    const val GOOD_ACCURACY_M = 25f
+    const val MAX_ACCURACY_M = 50f
+    /** A confirmed stop is kept while the phone only walks; this is how old it may be when driving mode ends (monotonic ms). */
+    const val STOP_MAX_AGE_MS = 10 * 60 * 1000L
 
     class Decision(val fix: StopTracker.Fix?, val status: String)
 
     /**
-     * Picks what to save when driving ends. Order: the fix where the vehicle stopped, else the latest GPS fix if it is under
-     * two minutes old. A fix worse than 200 m is never saved. A fix between 50 and 200 m is saved but labelled as rough.
+     * Picks what to save when driving ends. Only a confirmed stop (a sustained stationary run of accurate GPS fixes) is saved.
+     * Without one, the earlier spot is kept and the status says why. [nowMono] is the monotonic clock (elapsedRealtime).
      */
-    fun decide(candidate: StopTracker.Fix?, last: StopTracker.Fix?, now: Long): Decision {
-        fun ok(f: StopTracker.Fix?, maxAge: Long) = f != null && now - f.at in -60_000L..maxAge
-        val pick = when {
-            ok(candidate, STOP_FIX_MAX_AGE_MS) && candidate!!.accuracyM in 0.1f..MAX_ACCURACY_M -> candidate
-            ok(last, LAST_FIX_MAX_AGE_MS) && last!!.accuracyM in 0.1f..MAX_ACCURACY_M -> last
-            else -> null
+    fun decide(candidate: StopTracker.Fix?, last: StopTracker.Fix?, nowMono: Long): Decision {
+        if (candidate != null) {
+            val age = nowMono - candidate.at
+            if (age < -2_000L) return Decision(null, "Not saved: the GPS fix time was in the future, so it was not trusted")
+            if (age > STOP_MAX_AGE_MS) return Decision(null, "Not saved: the last confirmed stop was %d min ago, too old".format(age / 60_000))
+            if (candidate.accuracyM !in 0.1f..MAX_ACCURACY_M) return Decision(null, "Not saved: the stop fix was only %.0f m accurate (limit %.0f m)".format(candidate.accuracyM, MAX_ACCURACY_M))
+            return Decision(candidate, "")
         }
-        if (pick != null) return Decision(pick, "")
-        val best = last ?: candidate
-        return Decision(null, if (best == null) "Not saved: no GPS fix during this drive"
-            else "Not saved: the best GPS fix was %.0f m accurate and %d s old (limit %.0f m, and a stop fix under 15 min or a latest fix under 2 min)".format(best.accuracyM, ((now - best.at) / 1000).coerceAtLeast(0), MAX_ACCURACY_M))
+        return Decision(null, if (last == null) "Not saved: no GPS fix during this drive"
+            else "Not saved: no confirmed stop (the phone was not still for 10 s on accurate GPS fixes). The earlier spot is kept, if any")
     }
 
     fun accuracyText(acc: Float): String = when {
         acc < 0f -> "accuracy unknown (saved by an older version)"
         acc <= GOOD_ACCURACY_M -> "about %.0f m accurate".format(acc)
-        else -> "rough fix, only about %.0f m accurate, the spot may be off by that much".format(acc)
+        else -> "fair fix, about %.0f m accurate (the spot may be off by that much)".format(acc)
     }
 
     /** Called once when driving mode ends. Saves the stop fix, or records honestly why nothing was saved. */
-    fun onDrivingEnded(c: Context, t: StopTracker, now: Long = System.currentTimeMillis()) {
+    fun onDrivingEnded(c: Context, t: StopTracker, nowMono: Long = android.os.SystemClock.elapsedRealtime()) {
         if (!enabled(c)) return
-        val d = decide(t.candidate, t.last, now)
+        val d = decide(t.candidate, t.last, nowMono)
         val f = d.fix
-        if (f != null) save(c, f.lat, f.lon, f.at, f.accuracyM) else p(c).edit().putString("status", d.status).apply()
+        if (f != null) save(c, f.lat, f.lon, f.wallAt, f.accuracyM) else p(c).edit().putString("status", d.status).apply()
     }
 
     fun markUnavailable(c: Context) { p(c).edit().putString("status", "Not saved: location unavailable").apply() }
