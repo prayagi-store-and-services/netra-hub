@@ -361,8 +361,7 @@ class SensorManager(
         readingBuffer.add(enrichedReading)
         val now = System.currentTimeMillis()
         if (now - lastAggregationTime > AGGREGATION_INTERVAL) {
-            val batch = readingBuffer.toList()
-            readingBuffer.clear()
+            val batch = com.example.util.drainAll(readingBuffer)
             lastAggregationTime = now
             healthCenterEngine.update(finalFusion, batch.associateBy { it.sensorId })
         }
