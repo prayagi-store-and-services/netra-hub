@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Driving log now records the trip (v1.4.27)
+
+While driving mode is on, the driving log now also records speed changes (10 km/h or more), hard braking, and bumps seen by the accelerometer (speed breaker or pothole, always marked "likely"), each with time, speed and, when GPS has it, the coordinates. The accelerometer is read only while driving mode is on. The log stays in the app's private storage (newest 500 entries), is never sent anywhere, and is removed by uninstalling or clearing the app's data. No new permission, library or server. Not a vulnerability fix.
+
 ## Fuller crash reports (v1.4.26)
 
 Automatic crash reports used to be cut off before the root cause when an exception was wrapped in others (a crash in KBC showed only the wrappers). The report now keeps a few frames of each wrapper and more frames of the root cause, within a larger size limit (6000 characters). It still holds only class names and code locations, never exception messages. No new permission, library or server. Not a vulnerability fix.
