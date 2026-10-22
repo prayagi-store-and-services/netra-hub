@@ -16,6 +16,9 @@ class SpeedGate(
 ) {
     var isOpen: Boolean = false
         private set
+    /** True when the gate last closed because GPS gave no speed for a long time (not because speed was low). */
+    var closedByBlindSpell: Boolean = false
+        private set
     private var belowSinceMs: Long = -1L
     private var unknownSinceMs: Long = -1L
     private var lastValidMs: Long = 0L
@@ -30,7 +33,7 @@ class SpeedGate(
             blindSinceLastValid = true
             if (isOpen) {
                 if (unknownSinceMs < 0) unknownSinceMs = nowMs
-                if (nowMs - unknownSinceMs >= UNKNOWN_CLOSE_MS) { isOpen = false; belowSinceMs = -1L; unknownSinceMs = -1L }
+                if (nowMs - unknownSinceMs >= UNKNOWN_CLOSE_MS) { isOpen = false; closedByBlindSpell = true; belowSinceMs = -1L; unknownSinceMs = -1L }
             }
             return before != isOpen
         }
@@ -43,6 +46,7 @@ class SpeedGate(
             if (belowSinceMs < 0 || (blindSinceLastValid && nowMs - lastValidMs > GAP_RESTARTS_MS)) belowSinceMs = nowMs
             if (nowMs - belowSinceMs >= closeDelayMs) {
                 isOpen = false
+                closedByBlindSpell = false
                 belowSinceMs = -1L
             }
         }
