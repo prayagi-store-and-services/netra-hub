@@ -2,7 +2,7 @@
 
 ## Parking spot: only a good GPS fix, with its accuracy (v1.4.28)
 
-A user saw the parking spot saved about 1 km from where the phone really was. The old code used the phone's cached position (up to 15 minutes old, or 30 minutes for the passive source) at the moment driving mode ended, and saved the time of saving instead of the time of the fix. Now the spot is the first real GPS fix where the vehicle stopped (speed under 5 km/h after moving), or the latest GPS fix if it is under 2 minutes old. A fix worse than 200 m is not saved and the screen says why. A fix between 50 and 200 m is saved and labelled rough. The spot stores the fix's own time and accuracy. Still one spot, in the app's private storage, never sent anywhere. No new permission, library or server. A location-accuracy fix, not a vulnerability fix.
+A user saw the parking spot saved about 1 km from where the phone really was. The old code used the phone's cached position (up to 15 minutes old, or 30 minutes for the passive source) at the moment driving mode ended, and saved the time of saving instead of the time of the fix. Now the spot is the middle of the real GPS fixes where the phone stayed under 3 km/h for at least 10 seconds after driving, using only fixes accurate to 50 m or better. A confirmed stop is kept while you only walk away. With no confirmed stop nothing is saved, the earlier spot stays, and the screen says why. Ages and order use the phone's monotonic clock. The spot stores the fix's own time and accuracy. Still one spot, in the app's private storage, never sent anywhere. No new permission, library or server. A location-accuracy fix, not a vulnerability fix.
 
 ## Driving log now records the trip (v1.4.27)
 
