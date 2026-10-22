@@ -17,19 +17,22 @@ object DrivingEvents {
     fun startedText() = "Netra driving mode is on. Safety sensors are listening."
     fun endedText() = "Netra driving mode is off."
 
-    fun reasonFor(started: Boolean, speedKmH: Float?): String = if (started)
+    fun reasonFor(started: Boolean, speedKmH: Float?, blindClose: Boolean = false): String = if (!started && blindClose)
+        "GPS gave no speed for " + (com.example.data.sensor.SpeedGate.UNKNOWN_CLOSE_MS / 60_000) + " minutes, so driving mode was closed" + (speedKmH?.let { " (last known speed %.0f km/h)".format(it) } ?: "")
+    else if (started)
         "GPS speed reached " + (speedKmH?.let { "%.0f km/h".format(it) } ?: "the limit") + " (limit " + "%.0f".format(com.example.data.sensor.SpeedGate.DEFAULT_THRESHOLD_KMH) + " km/h)"
     else "Speed stayed under " + "%.0f".format(com.example.data.sensor.SpeedGate.DEFAULT_THRESHOLD_KMH) + " km/h for " + (com.example.data.sensor.SpeedGate.DEFAULT_CLOSE_DELAY_MS / 1000) + " seconds"
 
-    fun onGateChange(c: Context, started: Boolean, speedKmH: Float?, now: Long = System.currentTimeMillis()) {
-        DrivingLog.add(c, DrivingLog.Entry(now, if (started) DrivingLog.STARTED else DrivingLog.ENDED, speedKmH, reasonFor(started, speedKmH)))
+    fun onGateChange(c: Context, started: Boolean, speedKmH: Float?, now: Long = System.currentTimeMillis(), blindClose: Boolean = false) {
+        DrivingLog.add(c, DrivingLog.Entry(now, if (started) DrivingLog.STARTED else DrivingLog.ENDED, speedKmH, reasonFor(started, speedKmH, blindClose)))
+        if (started) DrivingTrip.start(c, speedKmH, now) else DrivingTrip.stop()
         if (announceEnabled(c)) OfficialAlertAnnouncer.speakNotice(c, if (started) startedText() else endedText())
     }
 
     /** Records (at most once per 10 minutes) that detection is blind, so a missing detection is explained in the log. */
     fun noteBlind(c: Context, reason: String, now: Long = System.currentTimeMillis()) {
         if (now - lastNoteAt < NOTE_GAP_MS) return
-        if (DrivingLog.list(c).firstOrNull()?.kind == DrivingLog.NOTE) return // never let notes push real entries out
+        if (DrivingLog.list(c).firstOrNull()?.let { it.kind == DrivingLog.NOTE && it.reason.startsWith("GPS gave no usable speed") } == true) return // never let repeated blind notes push real entries out
         lastNoteAt = now
         DrivingLog.add(c, DrivingLog.Entry(now, DrivingLog.NOTE, null, reason))
     }

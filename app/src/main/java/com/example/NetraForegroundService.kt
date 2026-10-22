@@ -120,6 +120,7 @@ class NetraForegroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceJob.cancel()
+        com.example.driving.DrivingTrip.stop()
         Log.d("NetraForegroundService", "NetraForegroundService destroyed. Attempting cleanup.")
     }
 

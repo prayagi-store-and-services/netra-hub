@@ -227,6 +227,7 @@ class SensorManager(
 
     fun stopMonitoring() {
         _isMonitoringActive.value = false
+        com.example.driving.DrivingTrip.stop()
         batteryManager.stopMonitoring()
         sensorJobs.values.forEach { it.cancel() }
         sensorJobs.clear()
@@ -300,13 +301,14 @@ class SensorManager(
         val speedKmH: Float? = if (reading.extraDetails["speedKmH"]?.endsWith("km/h") == true && reading.values.size > 2) reading.values[2] else null
         val now = System.currentTimeMillis()
         val changed = speedGate.update(speedKmH, now)
+        val fixTime = reading.extraDetails["fixTimeMs"]?.toLongOrNull()
+        // Log first, then publish the state, so a crash between the two cannot lose the entry.
+        if (changed) com.example.driving.DrivingEvents.onGateChange(context, speedGate.isOpen, speedKmH ?: DrivingState.speed.value.kmh, now, blindClose = !speedGate.isOpen && speedGate.closedByBlindSpell)
         DrivingState.set(speedGate.isOpen)
         DrivingState.updateSpeed(speedKmH, now)
+        if (speedGate.isOpen) com.example.driving.DrivingTrip.onSpeed(speedKmH, reading.values.getOrElse(0) { 0f }, reading.values.getOrElse(1) { 0f }, fixTime ?: now)
         if (speedKmH == null && now - DrivingState.speed.value.speedAt > 60_000L) com.example.driving.DrivingEvents.noteBlind(context, "GPS gave no usable speed (no fix, old fix, or the phone sent a position without speed)", now)
-        if (changed) {
-            com.example.driving.DrivingEvents.onGateChange(context, speedGate.isOpen, speedKmH, now)
-            evaluateSensorStreams()
-        }
+        if (changed) evaluateSensorStreams()
     }
 
     private fun handleIncomingReading(reading: RawSensorReading) {
