@@ -144,7 +144,7 @@ function stats(){
  var s=window.NETRA_SITE||{};var visits=visitCount();
  if(!s.appId)return; /* the family site draws its own stats table */
  var foot=document.querySelector("footer");if(!foot)return;
- var box=document.createElement("div");box.id="netra-stats";box.style.cssText="text-align:center;padding:10px 16px;font-size:.9rem;opacity:.9";box.textContent="Loading live stats...";
+ var box=document.createElement("section");box.id="netra-stats";box.setAttribute("aria-label","Live stats");box.style.cssText="text-align:center;padding:10px 16px;font-size:.9rem;opacity:.9";box.textContent="Loading live stats...";
  foot.parentNode.insertBefore(box,foot);
  var dl=fetch("https://api.github.com/repos/"+s.repo+"/releases?per_page=100").then(function(r){if(!r.ok)throw 0;return r.json()}).catch(function(){return null});
  Promise.all([visits,dl]).then(function(a){
