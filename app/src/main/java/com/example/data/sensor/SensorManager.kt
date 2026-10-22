@@ -302,6 +302,7 @@ class SensorManager(
         val changed = speedGate.update(speedKmH, now)
         DrivingState.set(speedGate.isOpen)
         DrivingState.updateSpeed(speedKmH, now)
+        if (speedGate.isOpen) com.example.driving.DrivingTrip.onSpeed(speedKmH, reading.values.getOrElse(0) { 0f }, reading.values.getOrElse(1) { 0f }, now)
         if (speedKmH == null && now - DrivingState.speed.value.speedAt > 60_000L) com.example.driving.DrivingEvents.noteBlind(context, "GPS gave no usable speed (no fix, old fix, or the phone sent a position without speed)", now)
         if (changed) {
             com.example.driving.DrivingEvents.onGateChange(context, speedGate.isOpen, speedKmH, now)
