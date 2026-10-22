@@ -304,7 +304,7 @@ class ReliabilityManager : INetraEngine {
             mtbfHours = if (degradedCount == 0) 120.0 else 24.0,
             mttrAvgMs = avgMttr,
             engineHealthScores = engineHealthScores.toMap(),
-            recentRecoveryHistory = recoveryHistory.toList(),
+            recentRecoveryHistory = com.example.util.safeSnapshot(recoveryHistory),
             engineStatus = getStatus()
         )
     }
