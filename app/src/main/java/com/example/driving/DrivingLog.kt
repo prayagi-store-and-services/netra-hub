@@ -37,7 +37,7 @@ object DrivingLog {
     @Synchronized
     fun add(context: Context, e: Entry) {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        p.edit().putString(KEY, encode(append(decode(p.getString(KEY, "") ?: ""), e))).apply()
+        p.edit().putString(KEY, encode(append(decode(p.getString(KEY, "") ?: ""), e))).commit() // commit, not apply: the entry must be on disk before the announcement
     }
 
     fun list(context: Context): List<Entry> =
