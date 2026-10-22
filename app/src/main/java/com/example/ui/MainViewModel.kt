@@ -180,7 +180,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     if (liveGraphBuffer.size > MAX_BUFFER_SIZE) {
                         liveGraphBuffer.removeFirst()
                     }
-                    _liveGraphState.value = _liveGraphState.value.copy(buffer = liveGraphBuffer.toList())
+                    _liveGraphState.value = _liveGraphState.value.copy(buffer = com.example.util.safeSnapshot(liveGraphBuffer))
                 }
             }
         }

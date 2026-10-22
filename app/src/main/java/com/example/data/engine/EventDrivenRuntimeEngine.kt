@@ -173,5 +173,5 @@ class EventDrivenRuntimeEngine : INetraEngine {
         return (10 + (criticalAndHigh % 20)).toInt()
     }
 
-    fun getReplayBuffer(): List<ClassifiedEvent> = eventReplayBuffer.toList()
+    fun getReplayBuffer(): List<ClassifiedEvent> = com.example.util.safeSnapshot(eventReplayBuffer)
 }
