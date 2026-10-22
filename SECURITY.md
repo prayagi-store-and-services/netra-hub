@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Crash fix: copying a live queue (v1.4.29)
+
+An automatic crash report (Android 16) showed NoSuchElementException while the app copied a lock-free queue (the engine event buffer, the recovery history or the sensor reading buffer) at the same moment another thread emptied it. Copies now go through a helper that cannot throw for a concurrent change, and the sensor batch is taken by draining the queue so no reading is lost between the copy and the clear. A stability fix with a stress test. No new permission, library or server. Not a vulnerability fix.
+
 ## Emergency alert skeleton, 112 gated OFF (M1, no release)
 
 Internal code only, not wired into any screen and not released. Defines alert channels, the alert message, the state machine with a local audit log, and a 112 gate that needs three things at once (build constant, signed server flag, user consent). All three default to false, so 112 can never be reached. Family and 112 channels are tested with fake senders only; the ERSS channel is a stub that always reports Unavailable. No new permission or network. Not a vulnerability fix.
