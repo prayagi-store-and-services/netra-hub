@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## Emergency alert skeleton, 112 gated OFF (M1, no release)
+
+Internal code only, not wired into any screen and not released. Defines alert channels, the alert message, the state machine with a local audit log, and a 112 gate that needs three things at once (build constant, signed server flag, user consent). All three default to false, so 112 can never be reached. Family and 112 channels are tested with fake senders only; the ERSS channel is a stub that always reports Unavailable. No new permission or network. Not a vulnerability fix.
+
 ## Parking spot: only a good GPS fix, with its accuracy (v1.4.28)
 
 A user saw the parking spot saved about 1 km from where the phone really was. The old code used the phone's cached position (up to 15 minutes old, or 30 minutes for the passive source) at the moment driving mode ended, and saved the time of saving instead of the time of the fix. Now the spot is the middle of the real GPS fixes where the phone stayed under 3 km/h for at least 10 seconds after driving, using only fixes accurate to 50 m or better. A confirmed stop is kept while you only walk away. With no confirmed stop nothing is saved, the earlier spot stays, and the screen says why. Ages and order use the phone's monotonic clock. The spot stores the fix's own time and accuracy. Still one spot, in the app's private storage, never sent anywhere. No new permission, library or server. A location-accuracy fix, not a vulnerability fix.
