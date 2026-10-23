@@ -293,23 +293,41 @@ class SensorManager(
     private var lastAggregationTime = 0L
     private val AGGREGATION_INTERVAL = 5000L // 5 seconds
 
-    private val speedGate = SpeedGate()
+    private val speedGate = SpeedGate(openDelayMs = SpeedGate.openDelayMs(context))
     private val stopTracker = com.example.sos.StopTracker()
+    @Volatile private var lastFedFixMonoMs: Long = -1L
+    /** Bounded diagnostics: last few speeds fed to the gate ("?" = unknown). No coordinates, capped at 10. */
+    private val recentGateSamples = java.util.ArrayDeque<String>(10)
 
     /** Updates the speed gate from a GNSS reading and re-evaluates the sensor streams when it opens or closes. */
     private fun updateSpeedGate(reading: RawSensorReading) {
         if (reading.sensorId != "gnss_location") return
-        val speedKmH: Float? = if (reading.extraDetails["speedKmH"]?.endsWith("km/h") == true && reading.values.size > 2) reading.values[2] else null
+        val monoNow = android.os.SystemClock.elapsedRealtime()
+        val fixMono = reading.extraDetails["fixElapsedMs"]?.toLongOrNull()
+        // Reject cached, duplicate or out-of-order fixes: an old fix must never look fresh at processing time.
+        if (fixMono != null) {
+            if (fixMono <= lastFedFixMonoMs) return
+            lastFedFixMonoMs = fixMono
+        }
+        // A fix older than 30 s at processing time says nothing about the speed now: speed is unknown.
+        val stale = fixMono != null && monoNow - fixMono > 30_000L
+        // NaN, infinite or implausible readings are UNKNOWN, never low or high speed.
+        val rawSpeed: Float? = if (reading.extraDetails["speedKmH"]?.endsWith("km/h") == true && reading.values.size > 2) reading.values[2] else null
+        val speedKmH: Float? = if (stale) null else SpeedTrust.cleanSpeed(rawSpeed)
+        synchronized(recentGateSamples) {
+            if (recentGateSamples.size >= 10) recentGateSamples.removeFirst()
+            recentGateSamples.addLast(speedKmH?.let { "%.0f".format(it) } ?: "?")
+        }
+        // The gate runs on the monotonic clock, so wall-clock jumps cannot open or close it early.
+        val changed = speedGate.update(speedKmH, monoNow)
         val now = System.currentTimeMillis()
-        val changed = speedGate.update(speedKmH, now)
         val fixTime = reading.extraDetails["fixTimeMs"]?.toLongOrNull()
         if (changed && speedGate.isOpen) stopTracker.reset()
-        val monoNow = android.os.SystemClock.elapsedRealtime()
-        val fixMono = reading.extraDetails["fixElapsedMs"]?.toLongOrNull() ?: monoNow
         stopTracker.onFix(reading.extraDetails["latitude"]?.toDoubleOrNull() ?: 0.0, reading.extraDetails["longitude"]?.toDoubleOrNull() ?: 0.0,
-            reading.values.getOrElse(3) { 0f }, fixMono, now - (monoNow - fixMono), speedKmH)
+            reading.values.getOrElse(3) { 0f }, fixMono ?: monoNow, now - (monoNow - (fixMono ?: monoNow)), speedKmH)
         // Log first, then publish the state, so a crash between the two cannot lose the entry.
-        if (changed) com.example.driving.DrivingEvents.onGateChange(context, speedGate.isOpen, speedKmH ?: DrivingState.speed.value.kmh, now, blindClose = !speedGate.isOpen && speedGate.closedByBlindSpell)
+        if (changed) com.example.driving.DrivingEvents.onGateChange(context, speedGate.isOpen, speedKmH ?: DrivingState.speed.value.kmh, now, blindClose = !speedGate.isOpen && speedGate.closedByBlindSpell,
+            recentSamples = synchronized(recentGateSamples) { recentGateSamples.toList() })
         DrivingState.set(speedGate.isOpen)
         DrivingState.updateSpeed(speedKmH, now)
         if (speedGate.isOpen) com.example.driving.DrivingTrip.onSpeed(speedKmH, reading.values.getOrElse(0) { 0f }, reading.values.getOrElse(1) { 0f }, fixTime ?: now)
