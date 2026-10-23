@@ -36,6 +36,7 @@ class SpeedGate(
             // Unknown speed is NOT evidence of slowing down: it never advances the close timer.
             // Only a long blind spell (GPS lost) closes the gate, so a stuck ON state cannot last.
             blindSinceLastValid = true
+            aboveSinceMs = -1L // a blind gap is not consecutive fresh evidence: the high window restarts
             if (isOpen) {
                 if (unknownSinceMs < 0) unknownSinceMs = nowMs
                 if (nowMs - unknownSinceMs >= UNKNOWN_CLOSE_MS) { isOpen = false; closedByBlindSpell = true; belowSinceMs = -1L; unknownSinceMs = -1L }
@@ -47,7 +48,7 @@ class SpeedGate(
             // One fast reading is not driving: GPS on a still phone can spike. The gate opens only after
             // the speed has stayed at/above the threshold for openDelayMs. A long blind gap makes an old
             // high run stale, so the window restarts after it.
-            if (aboveSinceMs < 0 || (blindSinceLastValid && nowMs - lastValidMs > GAP_RESTARTS_MS)) aboveSinceMs = nowMs
+            if (aboveSinceMs < 0 || nowMs - lastValidMs > GAP_RESTARTS_MS) aboveSinceMs = nowMs
             belowSinceMs = -1L
             if (!isOpen && nowMs - aboveSinceMs >= openDelayMs) isOpen = true
         } else {
@@ -59,6 +60,7 @@ class SpeedGate(
                 isOpen = false
                 closedByBlindSpell = false
                 belowSinceMs = -1L
+            }
             }
         }
         blindSinceLastValid = false
