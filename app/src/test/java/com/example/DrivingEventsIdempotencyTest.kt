@@ -64,8 +64,8 @@ private class FakePrefs(@Volatile var commitOk: Boolean) : android.content.Share
     override fun getBoolean(k: String, d: Boolean): Boolean = map[k] as? Boolean ?: d
     override fun contains(k: String) = map.containsKey(k)
     override fun edit() = Ed()
-    override fun registerOnSharedPreferenceChangeListener(l: OnSharedPreferenceChangeListener?) {}
-    override fun unregisterOnSharedPreferenceChangeListener(l: OnSharedPreferenceChangeListener?) {}
+    override fun registerOnSharedPreferenceChangeListener(l: android.content.SharedPreferences.OnSharedPreferenceChangeListener?) {}
+    override fun unregisterOnSharedPreferenceChangeListener(l: android.content.SharedPreferences.OnSharedPreferenceChangeListener?) {}
     inner class Ed : android.content.SharedPreferences.Editor {
         private val writes = HashMap<String, Any?>()
         override fun putString(k: String, v: String?) = apply { writes[k] = v }
