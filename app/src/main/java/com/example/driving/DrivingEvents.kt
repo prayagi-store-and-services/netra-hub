@@ -39,7 +39,7 @@ object DrivingEvents {
      * process death drops it; the next genuine edge after death announces fresh, and the HELD transition entry
      * remains in the log wherever log persistence itself worked. A pending intent is NEVER replayed once the
      * world has moved to the opposite state - recovery reconciles with the authoritative current state. */
-    private data class PendingAnnouncement(val started: Boolean, val speedKmH: Float?, val blindClose: Boolean, val diag: String, val at: Long, val attempt: Int)
+    private data class PendingAnnouncement(val started: Boolean, val speedKmH: Float?, val blindClose: Boolean, val diag: String, val at: Long, val attempt: Int, val seq: Long?)
     @Volatile private var pendingAnnouncement: PendingAnnouncement? = null
     private var heldAttempt = 0
 
@@ -65,7 +65,9 @@ object DrivingEvents {
     private fun retryPending(c: Context, now: Long) {
         val pa = pendingAnnouncement ?: return
         val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val seq = p.getLong(KEY_TRANSITION_SEQ, 0L) + 1L
+        // The ONE accepted record for this transition: the id the first attempt already persisted when it
+        // exists, otherwise a fresh id minted now. Held attempts never carry a T#, so no id is ever reused.
+        val seq = pa.seq ?: (p.getLong(KEY_TRANSITION_SEQ, 0L) + 1L)
         if (!p.edit().putLong(KEY_TRANSITION_SEQ, seq).commit()) return
         if (!DrivingLog.add(c, DrivingLog.Entry(now, if (pa.started) DrivingLog.STARTED else DrivingLog.ENDED, pa.speedKmH,
                 "T#" + seq + " " + reasonFor(pa.started, pa.speedKmH, pa.blindClose) + pa.diag +
@@ -104,15 +106,20 @@ object DrivingEvents {
         val diag = if (recentSamples.isEmpty()) "" else " Recent gate samples: " + recentSamples.joinToString(", ") + "."
         // Persist the transition and the announcement request BEFORE any speech. Bounded diagnostics, no coordinates.
         val enabled = announceEnabled(c)
-        val attempt = if (idPersisted) 0 else ++heldAttempt
-        val logPersisted = DrivingLog.add(c, DrivingLog.Entry(now, if (started) DrivingLog.STARTED else DrivingLog.ENDED, speedKmH,
-            "T#" + seq + " " + reasonFor(started, speedKmH, blindClose) + diag +
-                if (!idPersisted) " Announcement HELD (attempt #" + attempt + ", no id issued): transition id could not be persisted (fail-closed, retried on next edge)."
-                else if (!enabled) " Announcement driving_T" + seq + " disabled by the user; skipped."
-                else " Announcement driving_T" + seq + " requested."))
+        val attempt = ++heldAttempt
+        // A HELD attempt is a diagnostic NOTE with NO T# id: the STARTED/ENDED record with its unique id is
+        // written exactly once, on durable accept (here or in retryPending) - never twice, never reused.
+        val logPersisted =
+            if (!idPersisted) DrivingLog.add(c, DrivingLog.Entry(now, DrivingLog.NOTE, speedKmH,
+                "Driving " + (if (started) "ON" else "OFF") + " transition accepted but not durable (held attempt #" + attempt + ", no id issued): " +
+                    reasonFor(started, speedKmH, blindClose) + diag + " Fail-closed: the announcement is retried on the next edge."))
+            else DrivingLog.add(c, DrivingLog.Entry(now, if (started) DrivingLog.STARTED else DrivingLog.ENDED, speedKmH,
+                "T#" + seq + " " + reasonFor(started, speedKmH, blindClose) + diag +
+                    if (!enabled) " Announcement driving_T" + seq + " disabled by the user; skipped."
+                    else " Announcement driving_T" + seq + " requested."))
         if (started) DrivingTrip.start(c, speedKmH, now) else DrivingTrip.stop()
         if (idPersisted && logPersisted) speakAccepted(c, started, seq, speedKmH, now)
-        else pendingAnnouncement = PendingAnnouncement(started, speedKmH, blindClose, diag, now, if (attempt > 0) attempt else ++heldAttempt)
+        else pendingAnnouncement = PendingAnnouncement(started, speedKmH, blindClose, diag, now, attempt, if (idPersisted) seq else null)
     }
 
     /** Trip recording resumed without a new driving edge (monitoring restart while the gate stayed open). */
