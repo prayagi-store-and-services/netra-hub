@@ -1,5 +1,11 @@
 # Security notes - netra-hub
 
+# Optional saved alert area for Official alerts and earthquakes (v1.5.0)
+
+- New choice on the Earthquake card: "Use current location each check" (default, same as before) or "Use saved area". Saved area stores a chosen place on the phone only. Existing installs keep the current-location mode until the user changes it.
+- The automatic background checks (official weather alerts and earthquake watch) no longer send any coordinates to USGS; the earthquake feed is fetched as a general list and filtered on the phone. Alert memory is scoped to the active area, so changing area does not suppress or repeat alerts wrongly. A coordinator lock stops two checks from running at once.
+- Limits, stated plainly: the manual "Check now" button still sends the coordinates to USGS. Current-location mode does not guarantee a fresh GPS fix. Validation is automated Android unit tests, Robolectric renders and CI only. Physical-device, real GPS, TTS, WorkManager/Doze behaviour and battery impact have NOT been verified. This is not a vulnerability patch and not the full Human Safety system.
+
 # Stationary-phone driving detection repair (v1.4.32)
 
 - A stationary phone could enter driving mode after an isolated GPS speed spike. Independent repository instances could also create competing sensor pipelines and repeated announcements. This repair uses one repository owner per process, at least three fresh valid readings across the configured confirmation window (default 10 seconds), original fix timestamps, and accuracy/plausibility checks. The threshold remains 15 km/h, the low-speed close delay remains 90 seconds, and unknown speed uses an explicit 5-minute blind timeout. Unknown is not zero speed.
