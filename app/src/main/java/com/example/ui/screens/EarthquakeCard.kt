@@ -214,7 +214,7 @@ private fun AlertAreaControls() {
     Text("Alert area", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary)
     Text(
         area?.let { "Official alerts use your saved area: " + com.example.data.engine.AlertArea.placeText(it) + " (saved " + fmt.format(Date(it.savedAtMillis)) + "). It is saved on this phone only. Automatic alert checks use it instead of asking for a new location each time, and do not send it anywhere (the manual Check now button still sends your coordinates to USGS). Changing it starts alert tracking fresh for the new area." }
-            ?: "No area saved. Automatic checks ask for a fresh location each time. Save your area once to use it instead. It is saved on this phone only. Naming the place uses Android's location service when you save.",
+            ?: "No area saved. Automatic checks ask for a fresh location each time. Save your area once to use it instead. It is saved on this phone only. Naming the place uses Android's location service when you save. The manual Check now button sends your coordinates to USGS whether or not an area is saved.",
         fontSize = 11.sp, color = BentoTextSecondary
     )
     area?.let { a -> com.example.data.engine.AlertArea.staleNote(a, now)?.let { Text(it, fontSize = 11.sp, color = BentoRed) } }
