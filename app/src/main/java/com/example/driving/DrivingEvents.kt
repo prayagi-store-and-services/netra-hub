@@ -34,7 +34,11 @@ object DrivingEvents {
     @Volatile internal var speaker: (Context, String, String, ((Boolean, String?) -> Unit)?) -> String? =
         { c, text, id, cb -> OfficialAlertAnnouncer.speakNotice(c, text, id, cb) }
 
-    /** An accepted transition whose id could not be persisted: speech is held (fail-closed) until the id lands. */
+    /** An accepted transition whose id or request log could not be persisted: speech is held (fail-closed)
+     * until persistence recovers. Crash semantics, defined: the pending intent is process-memory only, so a
+     * process death drops it; the next genuine edge after death announces fresh, and the HELD transition entry
+     * remains in the log wherever log persistence itself worked. A pending intent is NEVER replayed once the
+     * world has moved to the opposite state - recovery reconciles with the authoritative current state. */
     private data class PendingAnnouncement(val started: Boolean, val seq: Long, val speedKmH: Float?)
     @Volatile private var pendingAnnouncement: PendingAnnouncement? = null
 
@@ -54,22 +58,30 @@ object DrivingEvents {
             "Driving mode " + (if (started) "ON" else "OFF") + " announcement could not play: " + limit))
     }
 
-    /** Retries a held announcement: the id is persisted first, and only then does speech go out. */
+    /** Retries a held announcement: id AND request log must both be durable before speech goes out. */
     private fun retryPending(c: Context, now: Long) {
         val pa = pendingAnnouncement ?: return
         val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (p.edit().putLong(KEY_TRANSITION_SEQ, pa.seq).commit()) {
-            pendingAnnouncement = null
-            DrivingLog.add(c, DrivingLog.Entry(now, DrivingLog.NOTE, pa.speedKmH,
-                "Transition id driving_T" + pa.seq + " persisted on retry; the held announcement now plays."))
-            speakAccepted(c, pa.started, pa.seq, pa.speedKmH, now)
-        }
+        if (!p.edit().putLong(KEY_TRANSITION_SEQ, pa.seq).commit()) return
+        if (!DrivingLog.add(c, DrivingLog.Entry(now, DrivingLog.NOTE, pa.speedKmH,
+                "Transition id driving_T" + pa.seq + " persisted on retry; the held announcement now plays."))) return
+        pendingAnnouncement = null
+        speakAccepted(c, pa.started, pa.seq, pa.speedKmH, now)
     }
 
     @Synchronized
     fun onGateChange(c: Context, started: Boolean, speedKmH: Float?, now: Long = System.currentTimeMillis(), blindClose: Boolean = false, recentSamples: List<String> = emptyList()) {
-        // A held announcement gets its retry before anything else, on every edge that reaches us.
-        retryPending(c, now)
+        // Reconcile a held announcement against the authoritative CURRENT state before anything else:
+        // same direction -> retry it; opposite edge -> the held one is stale history, never replay it.
+        pendingAnnouncement?.let { pa ->
+            if (pa.started == started) {
+                retryPending(c, now)
+            } else {
+                pendingAnnouncement = null
+                DrivingLog.add(c, DrivingLog.Entry(now, DrivingLog.NOTE, speedKmH,
+                    "Held announcement driving_T" + pa.seq + " superseded by driving " + (if (started) "ON" else "OFF") + " before persistence recovered; not played."))
+            }
+        }
         // Duplicate same-state edge: no transition id consumed, no accepted-transition log, no speech, no trip.
         if (lastAnnouncedState == started) {
             DrivingLog.add(c, DrivingLog.Entry(now, DrivingLog.NOTE, speedKmH,
@@ -78,20 +90,22 @@ object DrivingEvents {
         }
         val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val seq = p.getLong(KEY_TRANSITION_SEQ, 0L) + 1L
-        // Persist-before-TTS is the contract: if the id cannot be persisted the announcement is HELD
+        // Persist-before-TTS is the contract: id AND request entry must BOTH be durable before any speech.
+        // A committed id alone proves nothing about the log; either failure HOLDS the announcement
         // (fail-closed), retried on the next edge. The state change and the trip still happen - only speech waits.
-        val persisted = p.edit().putLong(KEY_TRANSITION_SEQ, seq).commit()
+        val idPersisted = p.edit().putLong(KEY_TRANSITION_SEQ, seq).commit()
         lastAnnouncedState = started
         val diag = if (recentSamples.isEmpty()) "" else " Recent gate samples: " + recentSamples.joinToString(", ") + "."
         // Persist the transition and the announcement request BEFORE any speech. Bounded diagnostics, no coordinates.
         val enabled = announceEnabled(c)
-        DrivingLog.add(c, DrivingLog.Entry(now, if (started) DrivingLog.STARTED else DrivingLog.ENDED, speedKmH,
+        val logPersisted = DrivingLog.add(c, DrivingLog.Entry(now, if (started) DrivingLog.STARTED else DrivingLog.ENDED, speedKmH,
             "T#" + seq + " " + reasonFor(started, speedKmH, blindClose) + diag +
-                if (!persisted) " Announcement driving_T" + seq + " HELD: transition id could not be persisted (fail-closed, retried on next edge)."
+                if (!idPersisted) " Announcement driving_T" + seq + " HELD: transition id could not be persisted (fail-closed, retried on next edge)."
                 else if (!enabled) " Announcement driving_T" + seq + " disabled by the user; skipped."
                 else " Announcement driving_T" + seq + " requested."))
         if (started) DrivingTrip.start(c, speedKmH, now) else DrivingTrip.stop()
-        if (persisted) speakAccepted(c, started, seq, speedKmH, now) else pendingAnnouncement = PendingAnnouncement(started, seq, speedKmH)
+        if (idPersisted && logPersisted) speakAccepted(c, started, seq, speedKmH, now)
+        else pendingAnnouncement = PendingAnnouncement(started, seq, speedKmH)
     }
 
     /** Trip recording resumed without a new driving edge (monitoring restart while the gate stayed open). */
