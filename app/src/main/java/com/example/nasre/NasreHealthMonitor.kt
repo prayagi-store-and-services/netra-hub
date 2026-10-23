@@ -21,7 +21,7 @@ class NasreHealthMonitor(
     private var repository: NetraSafetyRepository? = null
 
     override fun initialize() {
-        repository = NetraSafetyRepository(context)
+        repository = NetraSafetyRepository.get(context)
     }
 
     override fun start() {
@@ -37,7 +37,7 @@ class NasreHealthMonitor(
         Log.d("NasreHealthMonitor", "Performing health check...")
         
         if (repository == null) {
-            repository = NetraSafetyRepository(context)
+            repository = NetraSafetyRepository.get(context)
         }
         
         repository?.sensorManager?.let { sensorMgr ->
