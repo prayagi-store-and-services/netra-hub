@@ -176,6 +176,27 @@ class SpeedGateTest {
         assertFalse(g.update(20f, 35_000L))  // sample 2 only: two endpoints are not sustained evidence
         assertTrue(g.update(20f, 45_000L))   // sample 3 in the restarted window
     }
+    @Test fun blindTickDoesNotRestartTheConfirmationWindow() {
+        // A speed-less poller tick during confirmation must not cancel the window (cached-poll regression).
+        val g = SpeedGate()
+        g.update(20f, 0L)
+        g.update(20f, 5_000L)
+        assertFalse(g.onBlindTick(6_000L))   // speed-less tick: no close, no window restart
+        assertTrue(g.update(20f, 10_000L))   // third accepted sample: window continued, gate opens
+    }
+    @Test fun blindTickClosesAnOpenGateAfterTheBlindLimit() {
+        val g = SpeedGate()
+        openGate(g, 40f)                     // open at 10 s
+        assertFalse(g.onBlindTick(11_000L))
+        assertTrue(g.onBlindTick(11_000L + SpeedGate.UNKNOWN_CLOSE_MS))
+        assertFalse(g.isOpen)
+        assertTrue(g.closedByBlindSpell)
+    }
+    @Test fun blindTickOnAClosedGateIsANoOp() {
+        val g = SpeedGate()
+        assertFalse(g.onBlindTick(400_000L))
+        assertFalse(g.isOpen)
+    }
     @Test fun resetClearsEverything() {
         val g = SpeedGate()
         openGate(g, 40f); g.reset()
