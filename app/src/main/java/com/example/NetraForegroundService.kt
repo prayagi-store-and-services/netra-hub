@@ -31,7 +31,7 @@ class NetraForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        repository = NetraSafetyRepository(applicationContext)
+        repository = NetraSafetyRepository.get(applicationContext)
         createNotificationChannel()
     }
 
@@ -80,7 +80,7 @@ class NetraForegroundService : Service() {
                     Log.d("NetraForegroundService", "Heartbeat tick: Background monitoring active, sensors and AI engine running.")
                     
                     if (repository == null) {
-                        repository = NetraSafetyRepository(applicationContext)
+                        repository = NetraSafetyRepository.get(applicationContext)
                     }
                     
                     repository?.sensorManager?.let { sensorMgr ->
