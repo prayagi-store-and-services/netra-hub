@@ -47,6 +47,9 @@ object DrivingEvents {
 
     @Synchronized internal fun clearHistory(c: Context): Boolean = journal(c).clearHistory()
 
+    @Synchronized internal fun latestTransitionIdentity(c: Context): Pair<String, String>? =
+        journal(c).snapshot().lastOrNull()?.let { it.id to it.audio }
+
     /** UI history comes from durable snapshots, not a failed SharedPreferences memory write. */
     @Synchronized internal fun acceptedHistory(c: Context): List<DrivingLog.Entry> {
         journal(c) // applies the explicit no-replay restart policy once
