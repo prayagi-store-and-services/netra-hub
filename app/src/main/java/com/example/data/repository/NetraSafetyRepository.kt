@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 import com.example.data.db.SystemAuditEntity
 import com.example.data.audit.SystemSelfAuditEngine
 
-class NetraSafetyRepository(private val context: Context) {
+class NetraSafetyRepository private constructor(private val context: Context) {
 
     companion object {
         @Volatile private var instance: NetraSafetyRepository? = null
