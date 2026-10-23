@@ -88,12 +88,58 @@ class DrivingPipelineIntegrationTest {
         val first = Robolectric.buildService(NetraForegroundService::class.java).create().startCommand(0, 1)
         val owner = first.get().monitoringOwnerForTests()
         assertNotNull(owner)
+        // Drive the actual repository manager with Robolectric's monotonic clock, not the helper manager.
+        synchronized(owner!!) {
+            repeat(3) {
+                if (it > 0) org.robolectric.shadows.ShadowSystemClock.advanceBy(java.time.Duration.ofSeconds(5))
+                val fix = android.os.SystemClock.elapsedRealtime()
+                owner.acceptLocationReading(reading(20f, fix).copy(extraDetails = reading(20f, fix).extraDetails +
+                    ("fixTimeMs" to System.currentTimeMillis().toString())))
+            }
+            assertTrue(owner.drivingDiagnosticState().open)
+            assertTrue(DrivingTrip.isRecording())
+            assertEquals(1, spoken.size)
+        }
         first.destroy()
+        assertTrue(owner.drivingDiagnosticState().open)
+        assertTrue(DrivingTrip.isRecording())
         val second = Robolectric.buildService(NetraForegroundService::class.java).create().startCommand(0, 2)
         try {
             assertSame(owner, second.get().monitoringOwnerForTests())
             assertTrue(owner!!.isMonitoringActive.value)
+            assertTrue(owner.drivingDiagnosticState().open)
+            assertTrue(DrivingTrip.isRecording())
+            assertEquals(1, spoken.size)
+            assertEquals(1, store.disk.count { it.started })
         } finally { second.destroy(); owner?.stopMonitoring() }
+    }
+    @Test fun staleObserverGenerationCannotApplyAfterRestart() = synchronized(manager) {
+        manager.startMonitoring()
+        val oldReceiver = manager.monitoringReceiver()
+        manager.stopMonitoring()
+        manager.startMonitoring()
+        try {
+            val currentReceiver = manager.monitoringReceiver()
+            // Explicitly deliver an old registration after restart. No scheduling race or sleep needed.
+            repeat(3) {
+                mono += 5000; wall += 5000
+                oldReceiver(reading(20f))
+            }
+            assertFalse(manager.drivingDiagnosticState().open)
+            assertFalse(DrivingTrip.isRecording())
+            assertTrue(spoken.isEmpty())
+            assertTrue(store.disk.isEmpty())
+            repeat(3) {
+                mono += 5000; wall += 5000
+                currentReceiver(reading(20f))
+            }
+            assertTrue(manager.drivingDiagnosticState().open)
+            assertTrue(DrivingTrip.isRecording())
+            assertEquals(1, spoken.size)
+            manager.stopMonitoring()
+            repeat(3) { mono += 5000; wall += 5000; currentReceiver(reading(0f)) }
+            assertEquals(1, store.disk.size)
+        } finally { manager.stopMonitoring() }
     }
     @Test fun sampleAndAcceptedEventShareExplicitCorrelationId() {
         open()
