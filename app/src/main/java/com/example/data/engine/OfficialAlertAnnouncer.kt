@@ -109,12 +109,18 @@ object OfficialAlertAnnouncer {
         return "Playing a test announcement now. It is only a test."
     }
 
-    /** Speaks a short Netra notice (driving mode on/off, test lines) with the same audio focus and watchdog as alerts. */
-    fun speakNotice(context: Context, text: String) {
+    /**
+     * Speaks a short Netra notice (driving mode on/off, test lines) with the same audio focus and watchdog as alerts.
+     * Returns the limit text when nothing could play, null when the utterance was submitted. utteranceId identifies
+     * the request; onComplete reports success/failure (also when the engine never calls back, via the watchdog).
+     */
+    fun speakNotice(context: Context, text: String, utteranceId: String = "netra_notice", onComplete: ((Boolean, String?) -> Unit)? = null): String? {
         val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-        if (limitsText(nm?.currentInterruptionFilter ?: NotificationManager.INTERRUPTION_FILTER_ALL, am?.getStreamVolume(AudioManager.STREAM_ALARM) ?: 1) != null) return
-        Handler(Looper.getMainLooper()).post { speak(context, text) }
+        val limit = limitsText(nm?.currentInterruptionFilter ?: NotificationManager.INTERRUPTION_FILTER_ALL, am?.getStreamVolume(AudioManager.STREAM_ALARM) ?: 1)
+        if (limit != null) return limit
+        Handler(Looper.getMainLooper()).post { speak(context, text, utteranceId, onComplete) }
+        return null
     }
 
     /** Announce aloud if enabled and the category is official. Silently does nothing otherwise. */
@@ -132,7 +138,7 @@ object OfficialAlertAnnouncer {
         Handler(Looper.getMainLooper()).post { speak(context, text) }
     }
 
-    private fun speak(context: Context, text: String) {
+    private fun speak(context: Context, text: String, utteranceId: String = "official_alert", onComplete: ((Boolean, String?) -> Unit)? = null) {
         val app = context.applicationContext
         val am = app.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         var tts: TextToSpeech? = null
@@ -150,23 +156,24 @@ object OfficialAlertAnnouncer {
                     // granted the alert still plays (an official warning must not be silenced for it).
                     val focus = requestFocus(am, attrs)
                     val done = java.util.concurrent.atomic.AtomicBoolean(false)
-                    fun finish() {
+                    fun finish(ok: Boolean, err: String?) {
                         if (done.compareAndSet(false, true)) {
                             abandonFocus(am, focus)
                             try { engine?.shutdown() } catch (_: Exception) { }
+                            try { onComplete?.invoke(ok, err) } catch (_: Exception) { }
                         }
                     }
                     engine?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                         override fun onStart(utteranceId: String?) {}
-                        override fun onDone(utteranceId: String?) { finish() }
+                        override fun onDone(utteranceId: String?) { finish(true, null) }
                         @Deprecated("Deprecated in Java")
-                        override fun onError(utteranceId: String?) { finish() }
+                        override fun onError(utteranceId: String?) { finish(false, "TTS engine error") }
                     })
                     // Watchdog: focus is never held open even if the engine drops the utterance callbacks.
-                    Handler(Looper.getMainLooper()).postDelayed({ finish() }, 60_000L)
+                    Handler(Looper.getMainLooper()).postDelayed({ finish(false, "no engine callback within 60 s") }, 60_000L)
                     val params = Bundle()
                     params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_ALARM)
-                    engine?.speak(text, TextToSpeech.QUEUE_FLUSH, params, "official_alert")
+                    engine?.speak(text, TextToSpeech.QUEUE_FLUSH, params, utteranceId)
                     return@TextToSpeech
                 }
             }
