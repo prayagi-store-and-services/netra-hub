@@ -203,7 +203,7 @@ fun EarthquakeCard() {
 
 /** Saved alert area: set once, update when you move, or clear to go back to a fresh location fix on every check. Stored on this phone only. */
 @Composable
-private fun AlertAreaControls() {
+internal fun AlertAreaControls() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var area by remember { mutableStateOf(com.example.data.engine.AlertArea.read(context)) }
