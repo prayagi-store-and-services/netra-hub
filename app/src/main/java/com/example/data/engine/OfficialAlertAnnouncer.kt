@@ -25,6 +25,8 @@ import java.util.Locale
  * utterance finishes, errors, or the watchdog fires - never held open.
  */
 object OfficialAlertAnnouncer {
+    /** Serializes announcements so a quick ON/OFF pair can never play out of order. */
+    private val speakLock = java.util.concurrent.locks.ReentrantLock()
     const val PREFS = "official_alert_announcer"
     const val KEY_ENABLED = "announce_enabled"
 
@@ -141,16 +143,32 @@ object OfficialAlertAnnouncer {
     private fun speak(context: Context, text: String, utteranceId: String = "official_alert", onComplete: ((Boolean, String?) -> Unit)? = null) {
         val app = context.applicationContext
         val am = app.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        // One announcement at a time: two engines speaking over each other would play ON/OFF out of order.
+        if (!speakLock.tryLock()) {
+            try { onComplete?.invoke(false, "another announcement is still playing") } catch (_: Exception) { }
+            return
+        }
         // Armed BEFORE construction: a hung TTS init also reports failure instead of waiting forever.
         val done = java.util.concurrent.atomic.AtomicBoolean(false)
         val finish: (Boolean, String?) -> Unit = { ok, err ->
             if (done.compareAndSet(false, true)) {
+                speakLock.unlock()
                 try { onComplete?.invoke(ok, err) } catch (_: Exception) { }
             }
         }
-        Handler(Looper.getMainLooper()).postDelayed({ finish(false, "TTS init or engine callback missing within 60 s") }, 60_000L)
         var tts: TextToSpeech? = null
+        Handler(Looper.getMainLooper()).postDelayed({
+            // Timed out: kill whatever init/engine is still hanging so a late callback cannot speak after OFF.
+            try { tts?.shutdown() } catch (_: Exception) { }
+            finish(false, "TTS init or engine callback missing within 60 s")
+        }, 60_000L)
         tts = TextToSpeech(app) { status ->
+            if (done.get()) {
+                // Init arrived after the watchdog fired: the announcement is already reported failed.
+                // Shut the engine down immediately so a stale ON can never speak after the timeout/OFF.
+                try { tts?.shutdown() } catch (_: Exception) { }
+                return@TextToSpeech
+            }
             if (status == TextToSpeech.SUCCESS) {
                 val lang = tts?.setLanguage(Locale.ENGLISH)
                 if (lang != TextToSpeech.LANG_MISSING_DATA && lang != TextToSpeech.LANG_NOT_SUPPORTED) {
