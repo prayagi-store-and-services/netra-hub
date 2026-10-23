@@ -108,9 +108,10 @@ class SpeedGateTest {
         // No readings for 2 minutes, then a single fast reading: the old high run is stale.
         val g = SpeedGate()
         g.update(50f, 0L)
-        assertFalse(g.update(50f, 120_000L))
+        assertFalse(g.update(50f, 120_000L))   // stale run restarted: sample 1
         assertFalse(g.isOpen)
-        assertTrue(g.update(50f, 120_000L + SpeedGate.DEFAULT_OPEN_DELAY_MS))
+        assertFalse(g.update(50f, 130_000L))   // sample 2: 10 s elapsed but only two endpoints
+        assertTrue(g.update(50f, 140_000L))    // sample 3 in the window
     }
     @Test fun sparseButValidStreamOpensWhenSustained() {
         // Valid readings every 5 s (typical update interval): opens once the window fills.
@@ -129,11 +130,34 @@ class SpeedGateTest {
         assertTrue(g.update(20f, 16_000L))
     }
     @Test fun validGapUnderFifteenSecondsKeepsTheWindow() {
+        // Two samples are only two endpoints, never proof of continuous speed: at 12 s the gate has
+        // 2 accepted readings, so it stays closed even though 12 s > the 10 s open delay. The third
+        // accepted reading at 22 s opens it - which also proves the window CONTINUED (a restart at
+        // 12 s would leave the count at 2 and the gate closed).
         val g = SpeedGate()
         g.update(20f, 0L)
-        g.update(20f, 12_000L)  // sparse but still consecutive: window continues
+        g.update(20f, 12_000L)  // sparse but inside the gap limit: window continues, count = 2
         assertFalse(g.isOpen)
         assertTrue(g.update(20f, 12_000L + SpeedGate.DEFAULT_OPEN_DELAY_MS))
+    }
+    @Test fun stationaryPairedSpikeNeverOpens() {
+        // Adversarial: a still phone whose GPS spikes twice, 12 s apart, and then goes quiet.
+        // Two endpoints are not consecutive evidence of movement.
+        val g = SpeedGate()
+        assertFalse(g.update(20f, 0L))
+        assertFalse(g.update(20f, 12_000L))
+        assertFalse(g.isOpen)
+        assertFalse(g.update(0f, 13_000L))   // the phone is in fact standing still
+        assertFalse(g.isOpen)
+    }
+    @Test fun pairedSpikeWithQuietBetweenNeverOpens() {
+        val g = SpeedGate()
+        g.update(20f, 0L)
+        g.update(6f, 6_000L)    // quiet reading breaks the high window
+        g.update(20f, 12_000L)  // window restarts here: sample 1
+        g.update(20f, 24_000L)  // sample 2, 12 s in: still not enough evidence
+        assertFalse(g.isOpen)
+        assertTrue(g.update(20f, 30_000L))   // sample 3 inside the gap limit: genuine sustained run
     }
     @Test fun validGapOverFifteenSecondsRestartsTheWindow() {
         val g = SpeedGate()
@@ -147,9 +171,10 @@ class SpeedGateTest {
     @Test fun twentyFiveSecondGapRestartsTheWindow() {
         val g = SpeedGate()
         g.update(20f, 0L)
-        g.update(20f, 25_000L)
+        g.update(20f, 25_000L)  // gap > 15 s: window restarts here (sample 1)
         assertFalse(g.isOpen)
-        assertTrue(g.update(20f, 25_000L + SpeedGate.DEFAULT_OPEN_DELAY_MS))
+        assertFalse(g.update(20f, 35_000L))  // sample 2 only: two endpoints are not sustained evidence
+        assertTrue(g.update(20f, 45_000L))   // sample 3 in the restarted window
     }
     @Test fun resetClearsEverything() {
         val g = SpeedGate()
