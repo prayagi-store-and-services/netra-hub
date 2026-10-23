@@ -22,6 +22,7 @@ class DrivingEventsIdempotencyTest {
 
     @Before fun setUp() {
         context = ApplicationProvider.getApplicationContext()
+        context.getSharedPreferences("netra_sensor_diagnostics", Context.MODE_PRIVATE).edit().clear().commit()
         DrivingEvents.resetTransitionMemoryForTests()
         DrivingEvents.journalStoreFactory = { store }
         DrivingEvents.setAnnounceEnabled(context, true)
@@ -40,6 +41,19 @@ class DrivingEventsIdempotencyTest {
         DrivingEvents.onGateChange(context, true, 21f, 2000L)
         assertEquals(1, spoken.size); assertEquals(1, store.disk.size)
         assertEquals(DrivingTransition.FINISHED, store.disk.single().audio)
+    }
+    @Test fun repeatedSameStateAttemptsLeaveOnlyBoundedDiagnosticFacts() {
+        DrivingEvents.onGateChange(context, true, 20f, 1000L)
+        val id = store.disk.single().id
+        repeat(60) { DrivingEvents.onGateChange(context, true, 20f, 2000L + it) }
+        val prefs = context.getSharedPreferences("netra_sensor_diagnostics", Context.MODE_PRIVATE)
+        assertEquals(60L, prefs.getLong("duplicate_transition_attempts", 0L))
+        val rows = prefs.getString("recent_duplicate_attempts", "")!!.lines()
+        assertEquals(50, rows.size)
+        assertTrue(rows.first().contains("duplicate_same_state"))
+        assertFalse(rows.any { it.contains("eventId=") || it.contains("latitude") || it.contains("longitude") })
+        assertEquals(id, store.disk.single().id)
+        assertEquals(1, spoken.size)
     }
     @Test fun genuineToggleSequenceEachSpeaksWithUniqueIds() {
         for ((i, state) in listOf(true, false, true).withIndex())
