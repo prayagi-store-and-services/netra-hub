@@ -68,4 +68,31 @@ class QuakeFilterScreenshotTest {
   compose.onNodeWithText("Save my area").assertIsDisplayed()
   compose.onNodeWithText("Saved area cleared", substring = true).assertIsDisplayed()
   compose.onRoot().captureRoboImage(filePath = "build/outputs/quake-area-cleared.png") }
+
+ @Test fun alertAreaChoiceSwitchesBetweenSavedAndCurrent() {
+  val app = org.robolectric.RuntimeEnvironment.getApplication()
+  AlertArea.save(app, naini.copy(savedAtMillis = System.currentTimeMillis()))
+  showArea()
+  compose.onNodeWithText("Automatic official alert checks use: your saved area", substring = true).assertIsDisplayed()
+  org.junit.Assert.assertNotNull(AlertArea.asLocation(app))
+  compose.onNodeWithText("Use current location each check").performClick()
+  compose.onNodeWithText("Automatic official alert checks use: your current location", substring = true).assertIsDisplayed()
+  compose.onNodeWithText("Automatic checks now read your current location", substring = true).assertIsDisplayed()
+  org.junit.Assert.assertFalse(AlertArea.useSaved(app)); org.junit.Assert.assertNull(AlertArea.asLocation(app))
+  org.junit.Assert.assertNotNull(AlertArea.read(app)) // saved area is kept, just not used
+  compose.onRoot().captureRoboImage(filePath = "build/outputs/quake-area-choice-current.png")
+  compose.onNodeWithText("Use saved area").performClick()
+  compose.onNodeWithText("Automatic checks now use your saved area.").assertIsDisplayed()
+  org.junit.Assert.assertTrue(AlertArea.useSaved(app)); org.junit.Assert.assertNotNull(AlertArea.asLocation(app))
+  compose.onRoot().captureRoboImage(filePath = "build/outputs/quake-area-choice-saved.png") }
+ @Test fun alertAreaDefaultIsCurrentLocationAndFailedFixChangesNothing() {
+  val app = org.robolectric.RuntimeEnvironment.getApplication()
+  org.junit.Assert.assertFalse(AlertArea.useSaved(app)); org.junit.Assert.assertNull(AlertArea.asLocation(app))
+  showArea()
+  compose.onNodeWithText("Automatic official alert checks use: your current location", substring = true).assertIsDisplayed()
+  compose.onNodeWithText("Save my area").performClick()
+  compose.waitUntil(5000) { compose.onAllNodesWithText("nothing changed", substring = true).fetchSemanticsNodes().isNotEmpty() }
+  org.junit.Assert.assertFalse(AlertArea.useSaved(app)); org.junit.Assert.assertNull(AlertArea.read(app))
+  compose.onNodeWithText("Automatic official alert checks use: your current location", substring = true).assertIsDisplayed()
+  compose.onRoot().captureRoboImage(filePath = "build/outputs/quake-area-choice-failed-fix.png") }
 }
