@@ -114,7 +114,9 @@ class NetraForegroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceJob.cancel()
-        com.example.driving.DrivingTrip.stop()
+        // The trip belongs to the driving state, not the service lifecycle: the process-wide gate may still be
+        // open (the singleton repository lives on), so only stop recording when we are not driving.
+        if (!com.example.data.sensor.DrivingState.driving.value) com.example.driving.DrivingTrip.stop()
         Log.d("NetraForegroundService", "NetraForegroundService destroyed. Attempting cleanup.")
     }
 
