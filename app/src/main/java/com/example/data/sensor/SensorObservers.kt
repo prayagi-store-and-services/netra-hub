@@ -297,7 +297,9 @@ class SensorObservers(private val context: Context) {
                         if (location != null) {
                             val speedKmH = location.speed * 3.6f
                             // A cached fix older than 30 s says nothing about the speed now: report it as unavailable.
-                            val fresh = location.hasSpeed() && System.currentTimeMillis() - location.time < 30_000L
+                            // A coarse or high-error fix is not a real speed either: still phones get spiky speeds indoors.
+                            val fresh = location.hasSpeed() && System.currentTimeMillis() - location.time < 30_000L &&
+                                com.example.data.sensor.SpeedTrust.trusted(location.accuracy, location.hasSpeedAccuracy(), location.speedAccuracyMetersPerSecond)
                             trySend(
                                 RawSensorReading(
                                     sensorId = "gnss_location",
@@ -387,12 +389,15 @@ class SensorObservers(private val context: Context) {
                 com.example.data.engine.SafetyCheckTrigger.onFreshLocation(context)
                 // Some phones send a position with no speed. Then work the speed out from two fixes instead of staying blind.
                 val prev = prevFix
-                val derived = if (!location.hasSpeed() && prev != null)
+                // Derive only between two accurate fixes; a coarse earlier fix makes a made-up speed too.
+                val derived = if (!location.hasSpeed() && prev != null && prev.accuracy in 1f..50f)
                     com.example.driving.DerivedSpeed.kmh(prev.latitude, prev.longitude, prev.time, location.latitude, location.longitude, location.time, location.accuracy)
                 else null
                 prevFix = location
-                val hasSpeed = location.hasSpeed() || derived != null
-                val speedKmH = if (location.hasSpeed()) location.speed * 3.6f else (derived ?: 0f)
+                val rawTrusted = location.hasSpeed() &&
+                    com.example.data.sensor.SpeedTrust.trusted(location.accuracy, location.hasSpeedAccuracy(), location.speedAccuracyMetersPerSecond)
+                val hasSpeed = rawTrusted || derived != null
+                val speedKmH = if (rawTrusted) location.speed * 3.6f else (derived ?: 0f)
                 trySend(
                     RawSensorReading(
                         sensorId = "gnss_location",
