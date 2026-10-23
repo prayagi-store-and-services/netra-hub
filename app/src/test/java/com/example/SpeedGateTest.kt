@@ -128,21 +128,28 @@ class SpeedGateTest {
         assertFalse(g.isOpen)
         assertTrue(g.update(20f, 16_000L))
     }
-    @Test fun validGapUnderThirtySecondsKeepsTheWindow() {
+    @Test fun validGapUnderFifteenSecondsKeepsTheWindow() {
         val g = SpeedGate()
         g.update(20f, 0L)
-        g.update(20f, 25_000L)  // sparse but still fresh: window continues
+        g.update(20f, 12_000L)  // sparse but still consecutive: window continues
+        assertFalse(g.isOpen)
+        assertTrue(g.update(20f, 12_000L + SpeedGate.DEFAULT_OPEN_DELAY_MS))
+    }
+    @Test fun validGapOverFifteenSecondsRestartsTheWindow() {
+        val g = SpeedGate()
+        g.update(20f, 0L)
+        g.update(20f, 16_000L)  // too sparse: two spikes far apart are not "sustained"
+        assertFalse(g.isOpen)
+        g.update(20f, 20_000L)
+        assertFalse(g.isOpen)
+        assertTrue(g.update(20f, 16_000L + SpeedGate.DEFAULT_OPEN_DELAY_MS))
+    }
+    @Test fun twentyFiveSecondGapRestartsTheWindow() {
+        val g = SpeedGate()
+        g.update(20f, 0L)
+        g.update(20f, 25_000L)
         assertFalse(g.isOpen)
         assertTrue(g.update(20f, 25_000L + SpeedGate.DEFAULT_OPEN_DELAY_MS))
-    }
-    @Test fun validGapOverThirtySecondsRestartsTheWindow() {
-        val g = SpeedGate()
-        g.update(20f, 0L)
-        g.update(20f, 31_000L)  // too sparse: not consecutive evidence
-        assertFalse(g.isOpen)
-        g.update(20f, 36_000L)
-        assertFalse(g.isOpen)
-        assertTrue(g.update(20f, 31_000L + SpeedGate.DEFAULT_OPEN_DELAY_MS))
     }
     @Test fun resetClearsEverything() {
         val g = SpeedGate()
