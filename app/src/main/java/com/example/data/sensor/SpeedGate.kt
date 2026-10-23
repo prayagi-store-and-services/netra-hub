@@ -32,6 +32,11 @@ class SpeedGate(
      * in the window (a stationary phone's paired spikes can never reach that). */
     private var acceptedInWindow = 0
 
+    data class DiagnosticState(val open: Boolean, val confirmationCount: Int, val aboveSinceMs: Long,
+                               val belowSinceMs: Long, val unknownSinceMs: Long, val blindClose: Boolean)
+    @Synchronized fun diagnosticState() = DiagnosticState(isOpen, acceptedInWindow, aboveSinceMs,
+        belowSinceMs, unknownSinceMs, closedByBlindSpell)
+
     /** Feed a speed reading (null = unknown). Returns true when the gate changed state. */
     @Synchronized
     fun update(speedKmH: Float?, nowMs: Long): Boolean {
