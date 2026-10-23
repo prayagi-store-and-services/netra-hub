@@ -113,6 +113,7 @@ fun EarthquakeCard() {
             else "Official alerts, NDMA SACHET (" + fmt.format(Date(sLast)) + "): " + sMsg,
             fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary
         )
+        AlertAreaControls()
         var announceOn by remember { mutableStateOf(com.example.data.engine.OfficialAlertAnnouncer.isEnabled(context)) }
         androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
@@ -198,4 +199,49 @@ fun EarthquakeCard() {
         Text(headline, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (bad) BentoRed else BentoGreenPrimary)
         lines.forEach { Text(it, fontSize = 12.sp, color = BentoTextPrimary) }
     }
+}
+
+/** Saved alert area: set once, update when you move, or clear to go back to a fresh location fix on every check. Stored on this phone only. */
+@Composable
+private fun AlertAreaControls() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var area by remember { mutableStateOf(com.example.data.engine.AlertArea.read(context)) }
+    var busy by remember { mutableStateOf(false) }
+    var note by remember { mutableStateOf<String?>(null) }
+    val fmt = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+    val now = System.currentTimeMillis()
+    Text("Alert area", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary)
+    Text(
+        area?.let { "Official alerts use your saved area: " + com.example.data.engine.AlertArea.placeText(it) + " (saved " + fmt.format(Date(it.savedAtMillis)) + "). It stays on this phone and is not uploaded. The automatic checks use it instead of asking for a new location each time." }
+            ?: "No area saved. Automatic checks ask for a fresh location each time. Save your area once to use it instead. It stays on this phone and is not uploaded.",
+        fontSize = 11.sp, color = BentoTextSecondary
+    )
+    area?.let { a -> com.example.data.engine.AlertArea.staleNote(a, now)?.let { Text(it, fontSize = 11.sp, color = BentoRed) } }
+    androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(enabled = !busy, onClick = {
+            busy = true
+            scope.launch {
+                val loc = withContext(Dispatchers.IO) { OfficialLocationContextManager(context).refreshLocation() }
+                val ok = loc.locationStatus == "LOCATION_AVAILABLE" || loc.locationStatus == "COORDINATES_AVAILABLE" || loc.locationStatus == "GEOCODER_FAILED"
+                if (!ok || !com.example.data.engine.AlertArea.plausible(loc.latitude, loc.longitude)) {
+                    note = "Unavailable: area not saved. " + com.example.data.service.LocationAccess.failureText(loc.locationStatus, true)
+                } else {
+                    val a = com.example.data.engine.SavedAlertArea(loc.latitude, loc.longitude,
+                        loc.locality.takeUnless { it.contains("unavailable", true) } ?: "",
+                        loc.district.takeUnless { it.contains("unavailable", true) } ?: "",
+                        loc.state.takeUnless { it.contains("unavailable", true) } ?: "", System.currentTimeMillis())
+                    com.example.data.engine.AlertArea.save(context, a)
+                    area = a
+                    note = "Area saved: " + com.example.data.engine.AlertArea.placeText(a) + ". The next automatic check will use it."
+                }
+                busy = false
+            }
+        }) { Text(if (busy) "Saving..." else if (area == null) "Save my area" else "Update area", fontSize = 12.sp) }
+        if (area != null) Button(enabled = !busy, onClick = {
+            com.example.data.engine.AlertArea.clear(context); area = null
+            note = "Saved area cleared. Automatic checks ask for a fresh location each time again."
+        }) { Text("Clear area", fontSize = 12.sp) }
+    }
+    note?.let { Text(it, fontSize = 11.sp, color = BentoTextSecondary) }
 }
