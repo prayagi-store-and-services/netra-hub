@@ -46,15 +46,16 @@ object OfficialAlertAnnouncer {
     }
     @Volatile internal var ttsInit: TtsInit = TtsInit { c, cb -> RealTts(c, cb) }
 
-    /** Serialization WITHOUT a thread-owned lock (a ReentrantLock would be unlocked from the TTS callback
-     * thread and throw): an atomic busy flag plus a one-deep queue. A newer announcement supersedes the
-     * queued one, so a quick ON/OFF pair always plays in order and the latest state is what lands. */
+    /** Serialization: a single OWNER (the main loop) holds all speak/finish transitions, so there is no
+     * cross-thread race at all. Every accepted announcement is a genuine event (a committed driving edge,
+     * a quake/SACHET alert) and plays exactly once, in arrival order; nothing is ever superseded or dropped
+     * here. Upstream duplicate suppression keeps the queue bounded. */
     private val speakBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private data class QueuedSpeak(val context: Context, val text: String, val utteranceId: String, val onComplete: ((Boolean, String?) -> Unit)?)
-    private val pendingSpeak = java.util.concurrent.atomic.AtomicReference<QueuedSpeak?>(null)
+    private val speakQueue = java.util.concurrent.LinkedBlockingQueue<QueuedSpeak>()
 
     @androidx.annotation.VisibleForTesting
-    internal fun resetAnnouncerForTests() { speakBusy.set(false); pendingSpeak.set(null) }
+    internal fun resetAnnouncerForTests() { speakBusy.set(false); speakQueue.clear() }
     const val KEY_ENABLED = "announce_enabled"
 
     /** Official categories only. Anything else never announces. */
@@ -170,22 +171,30 @@ object OfficialAlertAnnouncer {
     private fun speak(context: Context, text: String, utteranceId: String = "official_alert", onComplete: ((Boolean, String?) -> Unit)? = null) {
         val app = context.applicationContext
         val am = app.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-        // One announcement at a time: a busy one keeps playing, the newest request queues (depth 1),
-        // and a queued request superseded by an even newer one is told so honestly.
-        if (!speakBusy.compareAndSet(false, true)) {
-            val prev = pendingSpeak.getAndSet(QueuedSpeak(app, text, utteranceId, onComplete))
-            if (prev != null) try { prev.onComplete?.invoke(false, "superseded by a newer announcement") } catch (_: Exception) { }
+        // Single-owner rule: every transition happens on the main loop. Anything else is re-posted.
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            Handler(Looper.getMainLooper()).post { speak(context, text, utteranceId, onComplete) }
             return
         }
+        // One announcement at a time: a busy one keeps playing, later requests queue in FIFO order.
+        if (speakBusy.get()) {
+            speakQueue.offer(QueuedSpeak(app, text, utteranceId, onComplete))
+            return
+        }
+        speakBusy.set(true)
         // Armed BEFORE construction: a hung TTS init also reports failure instead of waiting forever.
         val done = java.util.concurrent.atomic.AtomicBoolean(false)
         val finish: (Boolean, String?) -> Unit = { ok, err ->
+            // Callbacks arrive on the TTS binder thread: marshal completion to the owner (main loop),
+            // so release -> callback -> drain can never interleave with a new arrival.
             if (done.compareAndSet(false, true)) {
-                speakBusy.set(false)
-                try { onComplete?.invoke(ok, err) } catch (_: Exception) { }
-                // The queued announcement plays only after the current one fully finished: order preserved.
-                val next = pendingSpeak.getAndSet(null)
-                if (next != null) Handler(Looper.getMainLooper()).post { speak(next.context, next.text, next.utteranceId, next.onComplete) }
+                Handler(Looper.getMainLooper()).post {
+                    speakBusy.set(false)
+                    try { onComplete?.invoke(ok, err) } catch (_: Exception) { }
+                    // The next queued announcement plays only after the current one fully finished: order preserved.
+                    val next = speakQueue.poll()
+                    if (next != null) speak(next.context, next.text, next.utteranceId, next.onComplete)
+                }
             }
         }
         var engineRef: TtsEngine? = null
