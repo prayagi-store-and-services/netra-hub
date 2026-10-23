@@ -1,9 +1,15 @@
 package com.example.driving
 
-/** Speed from two GPS fixes, for phones whose location provider sends positions without a speed value. */
+/** Speed from two GPS fixes, for phones whose location provider sends positions without a speed value.
+ * The interval between the fixes MUST come from the monotonic clock (elapsedRealtime), never wall-clock
+ * location.time: a wall-clock jump would shrink or stretch the measured interval and invent a speed. */
 object DerivedSpeed {
     const val MAX_PLAUSIBLE_KMH = 200f
 
+    /** An accepted fix eligible for derivation: monotonic timestamp and GPS accuracy. */
+    data class Fix(val lat: Double, val lon: Double, val monoMs: Long, val accuracyM: Float)
+
+    /** t1/t2 are MONOTONIC milliseconds (elapsedRealtime) of the two fixes; callers guarantee t2 > t1. */
     fun kmh(lat1: Double, lon1: Double, t1: Long, lat2: Double, lon2: Double, t2: Long, accuracyM: Float, prevAccuracyM: Float = accuracyM): Float? {
         val dt = (t2 - t1) / 1000.0
         if (dt < 2.0 || dt > 60.0) return null          // too close together or too old to say anything
