@@ -108,6 +108,24 @@ class DrivingJournalTest {
         assertFalse(j.clearHistory()); assertEquals(1, j.snapshot().size)
         assertEquals(1, s.disk.size)
     }
+    @Test fun ambiguousClearCommitReadsDiskAndNeverResurrects() {
+        val backing = MemoryVisibleFailureStore()
+        var ambiguous = false
+        val store = object : DrivingJournalStore {
+            override fun readDurable() = backing.readDurable()
+            override fun writeDurable(snapshot: List<DrivingTransition>): Boolean {
+                backing.writeDurable(snapshot)
+                return !ambiguous
+            }
+        }
+        val j = DrivingJournal(store) { "one" }
+        j.accept(true, 1L, 20f, "on", "")
+        j.prepareAudio(true)
+        ambiguous = true
+        assertTrue(j.clearHistory()) // acknowledgement lost, but disk proves the clear landed
+        j.complete("one", true, "late done"); j.flush()
+        assertTrue(backing.disk.isEmpty()); assertTrue(j.snapshot().isEmpty())
+    }
     @Test fun codecRoundTripsNullSpeedAndMultilineDiagnostics() {
         val e = DrivingTransition("uuid", 123L, false, null, "a|b\nc", "age=5s\nowner=one")
         assertEquals(listOf(e), DrivingJournalCodec.decode(DrivingJournalCodec.encode(listOf(e))))
