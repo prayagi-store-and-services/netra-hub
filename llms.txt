@@ -1,0 +1,7 @@
+# Netra Hub
+
+> Free Android app: phone sensor dashboard, earthquake alerts (USGS data), NDMA public alert feed, SOS SMS to your own chosen contacts, privacy tools. By Prayagi Store and Services.
+
+## Pages
+- [Home](https://prayagi-store-and-services.github.io/netra-hub/): features and download.
+- [Legal & data](https://prayagi-store-and-services.github.io/netra-eco/legal/): privacy policy and data safety.
