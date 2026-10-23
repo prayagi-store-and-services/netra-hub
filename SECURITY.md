@@ -3,7 +3,7 @@
 # Optional saved alert area for Official alerts and earthquakes (v1.5.0)
 
 - New choice on the Earthquake card: "Use current location each check" (default, same as before) or "Use saved area". Saved area stores a chosen place on the phone only. Existing installs keep the current-location mode until the user changes it.
-- The automatic background checks (official weather alerts and earthquake watch) no longer send any coordinates to USGS; the earthquake feed is fetched as a general list and filtered on the phone. Alert memory is scoped to the active area, so changing area does not suppress or repeat alerts wrongly. A coordinator lock stops two checks from running at once.
+- The automatic background checks (official weather alerts and earthquake watch) no longer send any coordinates to USGS; the earthquake feed is fetched as a general list and filtered on the phone. Area changes and final alert dispatch/state updates share a lock; results for an old area are discarded. Changing area starts separate alert tracking; already queued audio/notifications may still arrive, and the same active alert can be announced again after an explicit area change.
 - Limits, stated plainly: the manual "Check now" button still sends the coordinates to USGS. Current-location mode does not guarantee a fresh GPS fix. Validation is automated Android unit tests, Robolectric renders and CI only. Physical-device, real GPS, TTS, WorkManager/Doze behaviour and battery impact have NOT been verified. This is not a vulnerability patch and not the full Human Safety system.
 
 # Stationary-phone driving detection repair (v1.4.32)
