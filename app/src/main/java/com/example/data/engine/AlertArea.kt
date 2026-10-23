@@ -132,6 +132,9 @@ object AlertArea {
 
     fun isStale(a: SavedAlertArea, now: Long) = ageDays(a, now) >= STALE_DAYS
 
-    fun staleNote(a: SavedAlertArea, now: Long): String? =
-        if (isStale(a, now)) "This area was saved " + ageDays(a, now) + " days ago. If you have moved, tap Update area; alerts are still matched to the saved area." else null
+    fun staleNote(a: SavedAlertArea, now: Long, useSaved: Boolean = true): String? = when {
+        !isStale(a, now) -> null
+        useSaved -> "This area was saved " + ageDays(a, now) + " days ago. If you have moved, tap Update area; alerts are matched to this saved area."
+        else -> "The saved area is " + ageDays(a, now) + " days old and is not in use right now: automatic checks read your current location."
+    }
 }
