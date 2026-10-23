@@ -72,6 +72,8 @@ class NetraForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    internal fun monitoringOwnerForTests() = repository?.sensorManager
+
     private val drivingServiceOwner = java.util.UUID.randomUUID().toString()
     /** The actual heartbeat entry point, shared by service execution and deterministic lifecycle tests. */
     internal fun reconcileDrivingMonitoring(sensorMgr: com.example.data.sensor.SensorManager) {
@@ -123,10 +125,9 @@ class NetraForegroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceJob.cancel()
-        // The service is the final owner of the trip: SensorManager.stopMonitoring keeps an open-gate trip
-        // alive across transient restarts, so this teardown must stop it regardless of the driving flag.
-        // A later service start reconciles through SensorManager.startMonitoring (trip resumes if the gate is still open).
-        if (com.example.driving.DrivingTrip.isRecording()) com.example.driving.DrivingTrip.stop()
+        // Repository is process-persistent and owns monitoring/trip lifetime independently. Destroying
+        // this service cancels only its heartbeat; it must not stop a trip while repository streams/gate
+        // remain active. Explicit monitoring/state shutdown belongs to the repository/manager owner.
         Log.d("NetraForegroundService", "NetraForegroundService destroyed. Attempting cleanup.")
     }
 
