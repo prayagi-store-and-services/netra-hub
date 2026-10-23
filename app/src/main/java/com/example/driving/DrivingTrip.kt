@@ -36,6 +36,8 @@ object DrivingTrip : SensorEventListener {
         return Liveness(running, accelCount, if (span > 1000L) accelCount * 1000f / span else 0f, accelLastMs, lastFixMs)
     }
 
+    fun isRecording(): Boolean = running
+
     @Synchronized fun start(c: Context, startKmh: Float?, now: Long) {
         if (running) return // a second start must not wipe the trip in progress
         appContext = c.applicationContext
