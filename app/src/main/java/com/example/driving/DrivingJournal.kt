@@ -98,6 +98,14 @@ internal class DrivingJournal(
 
     @Synchronized fun flush(): Boolean = store.writeDurable(desired)
 
+    /** Clear durable history without resetting detector dedup or creating new audio work. Already submitted
+     * engine requests keep their normal queue lifetime; late callbacks cannot recreate cleared records. */
+    @Synchronized fun clearHistory(): Boolean {
+        if (!store.writeDurable(emptyList())) return false
+        desired = emptyList()
+        return true
+    }
+
     companion object { const val MAX = 500 }
 }
 
