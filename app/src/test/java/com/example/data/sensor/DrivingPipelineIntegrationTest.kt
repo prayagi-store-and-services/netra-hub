@@ -167,6 +167,21 @@ class DrivingPipelineIntegrationTest {
         assertTrue(errors.toString(), errors.isEmpty())
         assertEquals(1, spoken.size); assertEquals(1, store.disk.size)
     }
+    @Test fun upstreamRejectedSpeedMetadataSurvivesBoundedLocalFact() {
+        for (source in listOf("live", "poller")) {
+            val rejected = reading(null, source = source).copy(extraDetails =
+                reading(null, source = source).extraDetails + SpeedTrust.diagnosticFacts(20f, 5f, true, 9f))
+            manager.acceptLocationReading(rejected)
+            val fact = context.getSharedPreferences("netra_sensor_diagnostics", Context.MODE_PRIVATE)
+                .getString("recent_samples", "")!!.lineSequence().first()
+            assertTrue(fact.contains("originalSpeed=20.0"))
+            assertTrue(fact.contains("speedAccuracy=9.0"))
+            assertTrue(fact.contains("upstreamRejection=invalid_speed_accuracy"))
+            assertFalse(fact.contains("latitude")); assertFalse(fact.contains("longitude"))
+        }
+        assertFalse(manager.drivingDiagnosticState().open)
+        assertTrue(store.disk.isEmpty()); assertTrue(spoken.isEmpty())
+    }
     @Test fun perSampleFactsAreBoundedAndContainDecisionOwnershipAndResult() {
         open()
         repeat(55) { feed(20f, 1000L, mono - 20_000L, "poller") }
