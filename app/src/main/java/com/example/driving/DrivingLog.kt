@@ -49,5 +49,9 @@ object DrivingLog {
         return (accepted + legacy).sortedByDescending { it.at }.take(MAX)
     }
 
-    fun clear(context: Context) { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY).apply() }
+    fun clear(context: Context): Boolean {
+        // Coordinate with the event owner; late TTS callbacks never append deleted accepted records.
+        if (!DrivingEvents.clearHistory(context)) return false
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY).commit()
+    }
 }
