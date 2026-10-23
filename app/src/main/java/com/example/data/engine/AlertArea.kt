@@ -73,10 +73,29 @@ object AlertArea {
         return "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/" + bucket + "_day.geojson"
     }
 
+    /** The user's explicit choice: official alert checks use the saved area (true) or a fresh location each check (false, the default). */
+    fun useSaved(ctx: Context): Boolean = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("use_saved", false)
+
+    /** Switch the choice. The basis of matching changes, so alert memory restarts (new version), like a save or clear. */
+    fun setUseSaved(ctx: Context, on: Boolean): Boolean = synchronized(lock) {
+        if (on && read(ctx) == null) return@synchronized false
+        if (useSaved(ctx) == on) return@synchronized true
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putLong("ver", version(ctx) + 1).putBoolean("use_saved", on).apply()
+        true
+    }
+
+    /** One line that names exactly what the automatic checks use. */
+    fun modeText(area: SavedAlertArea?, useSaved: Boolean): String = when {
+        useSaved && area != null -> "Automatic official alert checks use: your saved area (" + placeText(area) + ")."
+        else -> "Automatic official alert checks use: your current location, read fresh at each check."
+    }
+
+    /** Saving a new area from a successful foreground fix also selects it. */
     fun save(ctx: Context, a: SavedAlertArea) = synchronized(lock) {
         val ver = version(ctx) + 1
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putLong("ver", ver)
+            .putLong("ver", ver).putBoolean("use_saved", true)
             .putLong("lat", java.lang.Double.doubleToRawLongBits(a.latitude))
             .putLong("lon", java.lang.Double.doubleToRawLongBits(a.longitude))
             .putString("loc", a.locality).putString("dist", a.district).putString("state", a.state)
@@ -90,6 +109,7 @@ object AlertArea {
 
     /** A saved area as the location info the workers already understand, or null when none is saved. */
     fun asLocation(ctx: Context): LocationContextInfo? {
+        if (!useSaved(ctx)) return null
         val a = read(ctx) ?: return null
         return LocationContextInfo(
             latitude = a.latitude, longitude = a.longitude, timestamp = a.savedAtMillis,
