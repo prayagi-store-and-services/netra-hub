@@ -298,8 +298,11 @@ class SensorObservers(private val context: Context) {
                             val speedKmH = location.speed * 3.6f
                             // A cached fix older than 30 s says nothing about the speed now: report it as unavailable.
                             // A coarse or high-error fix is not a real speed either: still phones get spiky speeds indoors.
+                            // hasSpeedAccuracy/speedAccuracyMetersPerSecond exist only on API 26+ (minSdk is 24): guard, don't crash.
+                            val hasSpdAcc = android.os.Build.VERSION.SDK_INT >= 26 && location.hasSpeedAccuracy()
+                            val spdAcc = if (android.os.Build.VERSION.SDK_INT >= 26) location.speedAccuracyMetersPerSecond else 0f
                             val fresh = location.hasSpeed() && System.currentTimeMillis() - location.time < 30_000L &&
-                                com.example.data.sensor.SpeedTrust.trusted(location.accuracy, location.hasSpeedAccuracy(), location.speedAccuracyMetersPerSecond)
+                                com.example.data.sensor.SpeedTrust.trusted(location.accuracy, hasSpdAcc, spdAcc)
                             trySend(
                                 RawSensorReading(
                                     sensorId = "gnss_location",
@@ -315,7 +318,8 @@ class SensorObservers(private val context: Context) {
                                         "speedKmH" to (if (fresh) "%.1f km/h".format(speedKmH) else "Verified data is currently unavailable."),
                                         "accuracy" to "±%.1f m".format(location.accuracy),
                                         "fixTimeMs" to location.time.toString(),
-                                        "fixElapsedMs" to (location.elapsedRealtimeNanos / 1_000_000L).toString()
+                                        "fixElapsedMs" to (location.elapsedRealtimeNanos / 1_000_000L).toString(),
+                                        "source" to "poller"
                                     )
                                 )
                             )
@@ -391,11 +395,13 @@ class SensorObservers(private val context: Context) {
                 val prev = prevFix
                 // Derive only between two accurate fixes; a coarse earlier fix makes a made-up speed too.
                 val derived = if (!location.hasSpeed() && prev != null && prev.accuracy in 1f..50f)
-                    com.example.driving.DerivedSpeed.kmh(prev.latitude, prev.longitude, prev.time, location.latitude, location.longitude, location.time, location.accuracy)
+                    com.example.driving.DerivedSpeed.kmh(prev.latitude, prev.longitude, prev.time, location.latitude, location.longitude, location.time, location.accuracy, prev.accuracy)
                 else null
                 prevFix = location
+                val hasSpdAcc = android.os.Build.VERSION.SDK_INT >= 26 && location.hasSpeedAccuracy()
+                val spdAcc = if (android.os.Build.VERSION.SDK_INT >= 26) location.speedAccuracyMetersPerSecond else 0f
                 val rawTrusted = location.hasSpeed() &&
-                    com.example.data.sensor.SpeedTrust.trusted(location.accuracy, location.hasSpeedAccuracy(), location.speedAccuracyMetersPerSecond)
+                    com.example.data.sensor.SpeedTrust.trusted(location.accuracy, hasSpdAcc, spdAcc)
                 val hasSpeed = rawTrusted || derived != null
                 val speedKmH = if (rawTrusted) location.speed * 3.6f else (derived ?: 0f)
                 trySend(
@@ -413,7 +419,8 @@ class SensorObservers(private val context: Context) {
                             "speedKmH" to (if (hasSpeed) "%.1f km/h".format(speedKmH) else "Verified data is currently unavailable."),
                             "accuracy" to "±%.1f m".format(location.accuracy),
                             "fixTimeMs" to location.time.toString(),
-                                        "fixElapsedMs" to (location.elapsedRealtimeNanos / 1_000_000L).toString()
+                                        "fixElapsedMs" to (location.elapsedRealtimeNanos / 1_000_000L).toString(),
+                                        "source" to "live"
                         )
                     )
                 )
