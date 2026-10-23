@@ -133,4 +133,10 @@ class AlertAreaTest {
         assertEquals(listOf("dispatch", "status", "update"), log.toList())
         assertEquals(2L, version)
     }
+
+    @Test fun modeTextNamesWhatChecksUse() {
+        assertTrue(AlertArea.modeText(a, true).contains("saved area (Naini, Prayagraj, Uttar Pradesh)"))
+        assertTrue(AlertArea.modeText(a, false).contains("current location, read fresh at each check"))
+        assertTrue(AlertArea.modeText(null, true).contains("current location"))
+    }
 }
