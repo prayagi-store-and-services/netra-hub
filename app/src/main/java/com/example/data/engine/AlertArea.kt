@@ -36,15 +36,12 @@ object AlertArea {
     fun changedSince(started: Long, current: Long) = started != current
 
     /**
-     * Alerts seen or active under the old area say nothing about the new one: forget them, without a
-     * "warning over" for the old area. Alerts matching the new area announce once on the next check.
+     * Seen/active alert memory is scoped to the area version. A save or clear publishes a new version
+     * in one prefs edit, so the new area starts with empty memory and a worker still running for the
+     * old area can only write under the old version's keys, never into the new area's memory.
+     * Version 0 (no area ever saved) keeps the original key names.
      */
-    private fun resetAlertMemory(ctx: Context) {
-        ctx.getSharedPreferences(SachetWatchWorker.PREFS, Context.MODE_PRIVATE).edit()
-            .remove(SachetWatchWorker.KEY_SEEN).remove(SachetWatchWorker.KEY_ACTIVE).apply()
-        ctx.getSharedPreferences(QuakeWatchWorker.PREFS, Context.MODE_PRIVATE).edit()
-            .remove(QuakeWatchWorker.KEY_SEEN).apply()
-    }
+    fun scoped(baseKey: String, version: Long): String = if (version == 0L) baseKey else baseKey + "_a" + version
 
     /** USGS summary feed for the last day at or below the user's minimum magnitude. No coordinates are sent. */
     fun usgsDayFeedUrl(minimumMagnitude: Double): String {
@@ -59,7 +56,6 @@ object AlertArea {
 
     fun save(ctx: Context, a: SavedAlertArea) {
         val ver = version(ctx) + 1
-        resetAlertMemory(ctx)
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putLong("ver", ver)
             .putLong("lat", java.lang.Double.doubleToRawLongBits(a.latitude))
@@ -70,7 +66,6 @@ object AlertArea {
 
     fun clear(ctx: Context) {
         val ver = version(ctx) + 1
-        resetAlertMemory(ctx)
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().putLong("ver", ver).apply()
     }
 
