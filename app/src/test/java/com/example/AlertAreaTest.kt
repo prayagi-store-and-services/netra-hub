@@ -139,4 +139,13 @@ class AlertAreaTest {
         assertTrue(AlertArea.modeText(a, false).contains("current location, read fresh at each check"))
         assertTrue(AlertArea.modeText(null, true).contains("current location"))
     }
+
+    @Test fun staleNoteIsTruthfulPerMode() {
+        val late = a.savedAtMillis + 20 * day
+        assertTrue(AlertArea.staleNote(a, late, true)!!.contains("alerts are matched to this saved area"))
+        val dormant = AlertArea.staleNote(a, late, false)!!
+        assertTrue(dormant.contains("not in use"))
+        assertFalse(dormant.contains("matched to this saved area"))
+        assertNull(AlertArea.staleNote(a, a.savedAtMillis + day, false))
+    }
 }
