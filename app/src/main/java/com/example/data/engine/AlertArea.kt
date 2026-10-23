@@ -16,18 +16,24 @@ data class SavedAlertArea(
 )
 
 object AlertArea {
-    const val PREFS = "netra_alert_area"
-    const val STALE_DAYS = 14L
+    @PublishedApi internal val lock = Any()
 
-    fun read(ctx: Context): SavedAlertArea? {
-        val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val at = p.getLong("at", 0L)
-        if (at == 0L) return null
-        val lat = java.lang.Double.longBitsToDouble(p.getLong("lat", 0L))
-        val lon = java.lang.Double.longBitsToDouble(p.getLong("lon", 0L))
-        if (!plausible(lat, lon)) return null
-        return SavedAlertArea(lat, lon, p.getString("loc", "") ?: "", p.getString("dist", "") ?: "", p.getString("state", "") ?: "", at)
+    /**
+     * Final step of a worker run: under the same lock as save/clear, check the area version is still the one
+     * the run started with, then dispatch, notify and commit state/status. If the area changed the block does
+     * not run at all. Callers must do location and network work BEFORE this, never inside it. A notification
+     * or sound already handed to the OS before an area change can still arrive afterwards.
+     */
+    inline fun commitIfCurrent(ctx: Context, started: Long, block: () -> Unit): Boolean =
+        commitIfCurrent(started, { version(ctx) }, block)
+
+    /** Same coordination with an injectable version source, so the orderings can be tested without Android. */
+    inline fun commitIfCurrent(started: Long, current: () -> Long, block: () -> Unit): Boolean = synchronized(lock) {
+        if (changedSince(started, current())) false else { block(); true }
     }
+
+    /** The one lock every area mutation (save, clear) and every worker commit goes through. */
+    inline fun <T> underLock(block: () -> T): T = synchronized(lock) { block() }
 
     /** Bumped on every save/clear so a worker that started under an older area can tell and stop. */
     fun version(ctx: Context): Long = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong("ver", 0L)
@@ -54,7 +60,7 @@ object AlertArea {
         return "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/" + bucket + "_day.geojson"
     }
 
-    fun save(ctx: Context, a: SavedAlertArea) {
+    fun save(ctx: Context, a: SavedAlertArea) = synchronized(lock) {
         val ver = version(ctx) + 1
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putLong("ver", ver)
@@ -64,7 +70,7 @@ object AlertArea {
             .putLong("at", a.savedAtMillis).apply()
     }
 
-    fun clear(ctx: Context) {
+    fun clear(ctx: Context) = synchronized(lock) {
         val ver = version(ctx) + 1
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().putLong("ver", ver).apply()
     }
