@@ -48,7 +48,9 @@ class SpeedGate(
             // One fast reading is not driving: GPS on a still phone can spike. The gate opens only after
             // the speed has stayed at/above the threshold for openDelayMs. A long blind gap makes an old
             // high run stale, so the window restarts after it.
-            if (aboveSinceMs < 0 || nowMs - lastValidMs > GAP_RESTARTS_MS) aboveSinceMs = nowMs
+            // Opening needs consecutive fresh evidence: a gap over OPEN_GAP_MAX_MS between valid readings is
+            // treated like a blind spell and restarts the window (two spikes far apart are not "sustained").
+            if (aboveSinceMs < 0 || nowMs - lastValidMs > OPEN_GAP_MAX_MS) aboveSinceMs = nowMs
             belowSinceMs = -1L
             if (!isOpen && nowMs - aboveSinceMs >= openDelayMs) isOpen = true
         } else {
@@ -82,6 +84,7 @@ class SpeedGate(
         const val DEFAULT_THRESHOLD_KMH = 15f
         const val DEFAULT_CLOSE_DELAY_MS = 90_000L
         const val DEFAULT_OPEN_DELAY_MS = 10_000L
+        const val OPEN_GAP_MAX_MS = 15_000L
         const val UNKNOWN_CLOSE_MS = 300_000L
         const val GAP_RESTARTS_MS = 30_000L
         private const val PREFS = "netra_speed_gate"
@@ -95,9 +98,12 @@ class SpeedGate(
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_ENABLED, enabled).apply()
         }
 
-        /** How long speed must stay at/above the threshold before driving mode opens (configurable, default 10 s). */
+        /**
+         * How long speed must stay at/above the threshold before driving mode opens (default 10 s, clamped 5..60 s).
+         * Internal configuration read once when the sensor pipeline starts; there is no user-facing control for it.
+         */
         fun openDelayMs(context: Context): Long =
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong(KEY_OPEN_DELAY_MS, DEFAULT_OPEN_DELAY_MS)
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong(KEY_OPEN_DELAY_MS, DEFAULT_OPEN_DELAY_MS).coerceIn(5_000L, 60_000L)
 
         fun setOpenDelayMs(context: Context, ms: Long) {
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putLong(KEY_OPEN_DELAY_MS, ms).apply()
