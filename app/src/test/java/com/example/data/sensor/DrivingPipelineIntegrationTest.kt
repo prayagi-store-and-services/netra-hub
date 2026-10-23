@@ -35,6 +35,7 @@ class DrivingPipelineIntegrationTest {
         DrivingEvents.resetTransitionMemoryForTests()
         DrivingEvents.journalStoreFactory = { store }
         DrivingEvents.setAnnounceEnabled(context, true)
+        DrivingEvents.temporaryAnnouncementHold = false // these tests cover the normal speech path
         DrivingEvents.speaker = { _, _, id, cb -> spoken.add(id); cb?.invoke(true, null); null }
         DrivingTrip.stop()
         manager = SensorManager(context, monotonicNow = { mono }, wallNow = { wall })
@@ -42,6 +43,7 @@ class DrivingPipelineIntegrationTest {
     }
     @After fun tearDown() {
         manager.stopMonitoring(); DrivingTrip.stop()
+        DrivingEvents.temporaryAnnouncementHold = true
         DrivingEvents.resetTransitionMemoryForTests()
         DrivingEvents.journalStoreFactory = factory; DrivingEvents.speaker = speaker
     }

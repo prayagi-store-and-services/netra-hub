@@ -26,11 +26,13 @@ class DrivingEventsIdempotencyTest {
         DrivingEvents.resetTransitionMemoryForTests()
         DrivingEvents.journalStoreFactory = { store }
         DrivingEvents.setAnnounceEnabled(context, true)
+        DrivingEvents.temporaryAnnouncementHold = false // these tests cover the normal speech path
         DrivingEvents.speaker = { _, text, id, cb ->
             spoken.add(text to id); cb?.invoke(true, null); null
         }
     }
     @After fun tearDown() {
+        DrivingEvents.temporaryAnnouncementHold = true
         DrivingEvents.resetTransitionMemoryForTests()
         DrivingEvents.journalStoreFactory = factory
         DrivingEvents.speaker = speaker
