@@ -84,11 +84,13 @@ class NetraForegroundService : Service() {
                     }
                     
                     repository?.sensorManager?.let { sensorMgr ->
-                        // Ensure sensor manager is active
+                        // Always route through startMonitoring: it reconciles the driving trip even when
+                        // monitoring is already active (a service teardown can leave tripOFF under gateON),
+                        // and early-returns internally when everything is running.
                         if (!sensorMgr.isMonitoringActive.value) {
                             Log.w("NetraForegroundService", "Heartbeat detected sensor manager inactive. Restoring monitoring...")
-                            sensorMgr.startMonitoring()
                         }
+                        sensorMgr.startMonitoring()
                     }
 
                     // Adaptive Power Intelligence Engine (NAPIE) context analysis
