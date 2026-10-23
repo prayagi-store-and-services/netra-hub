@@ -177,9 +177,10 @@ object OfficialAlertAnnouncer {
                     return@TextToSpeech
                 }
             }
-            // No usable TTS voice: fall back to the alarm ringtone for a few seconds.
+            // No usable TTS voice: fall back to the alarm ringtone for a few seconds, and say so.
             tts?.shutdown()
             playAlarmFallback(app)
+            try { onComplete?.invoke(false, "no usable TTS voice (init failed or language missing); ringtone fallback played") } catch (_: Exception) { }
         }
     }
 
