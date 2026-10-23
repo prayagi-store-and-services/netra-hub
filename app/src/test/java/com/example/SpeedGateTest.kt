@@ -112,6 +112,38 @@ class SpeedGateTest {
         assertFalse(g.isOpen)
         assertTrue(g.update(50f, 120_000L + SpeedGate.DEFAULT_OPEN_DELAY_MS))
     }
+    @Test fun sparseButValidStreamOpensWhenSustained() {
+        // Valid readings every 5 s (typical update interval): opens once the window fills.
+        val g = SpeedGate()
+        g.update(20f, 0L)
+        g.update(20f, 5_000L)
+        assertFalse(g.isOpen)
+        assertTrue(g.update(20f, 10_000L))
+    }
+    @Test fun verySparseValidStreamOpensLater() {
+        // Valid readings every 8 s: two readings is only 8 s of sustained evidence, so it opens on the third.
+        val g = SpeedGate()
+        g.update(20f, 0L)
+        g.update(20f, 8_000L)
+        assertFalse(g.isOpen)
+        assertTrue(g.update(20f, 16_000L))
+    }
+    @Test fun validGapUnderThirtySecondsKeepsTheWindow() {
+        val g = SpeedGate()
+        g.update(20f, 0L)
+        g.update(20f, 25_000L)  // sparse but still fresh: window continues
+        assertFalse(g.isOpen)
+        assertTrue(g.update(20f, 25_000L + SpeedGate.DEFAULT_OPEN_DELAY_MS))
+    }
+    @Test fun validGapOverThirtySecondsRestartsTheWindow() {
+        val g = SpeedGate()
+        g.update(20f, 0L)
+        g.update(20f, 31_000L)  // too sparse: not consecutive evidence
+        assertFalse(g.isOpen)
+        g.update(20f, 36_000L)
+        assertFalse(g.isOpen)
+        assertTrue(g.update(20f, 31_000L + SpeedGate.DEFAULT_OPEN_DELAY_MS))
+    }
     @Test fun resetClearsEverything() {
         val g = SpeedGate()
         openGate(g, 40f); g.reset()
