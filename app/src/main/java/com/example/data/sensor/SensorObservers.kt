@@ -395,15 +395,19 @@ class SensorObservers(private val context: Context) {
                 com.example.data.engine.SafetyCheckTrigger.onFreshLocation(context)
                 // Some phones send a position with no speed. Then work the speed out from two fixes instead of staying blind.
                 val fixMono = location.elapsedRealtimeNanos / 1_000_000L
+                val monoNow = android.os.SystemClock.elapsedRealtime()
                 val prev = prevFix
                 val inOrder = prev == null || fixMono > prev.monoMs
+                // Same freshness/plausibility bar as the central validator: a future or stale fix must never
+                // become the derivation baseline (it would poison every later derived speed).
+                val freshEnough = fixMono <= monoNow + 1_000L && monoNow - fixMono <= 30_000L
                 val usableAccuracy = location.accuracy in 1f..50f
                 // Derive only between two accurate, in-order fixes on the monotonic clock; wall-clock jumps or a
                 // coarse/rejected earlier fix would make a made-up speed.
-                val derived = if (!location.hasSpeed() && prev != null && inOrder && usableAccuracy)
+                val derived = if (!location.hasSpeed() && prev != null && inOrder && freshEnough && usableAccuracy)
                     com.example.driving.DerivedSpeed.kmh(prev.lat, prev.lon, prev.monoMs, location.latitude, location.longitude, fixMono, location.accuracy, prev.accuracyM)
                 else null
-                if (usableAccuracy && inOrder) prevFix = com.example.driving.DerivedSpeed.Fix(location.latitude, location.longitude, fixMono, location.accuracy)
+                if (usableAccuracy && inOrder && freshEnough) prevFix = com.example.driving.DerivedSpeed.Fix(location.latitude, location.longitude, fixMono, location.accuracy)
                 val hasSpdAcc = android.os.Build.VERSION.SDK_INT >= 26 && location.hasSpeedAccuracy()
                 val spdAcc = if (android.os.Build.VERSION.SDK_INT >= 26) location.speedAccuracyMetersPerSecond else 0f
                 val rawTrusted = location.hasSpeed() &&
