@@ -14,6 +14,11 @@ object DrivingEvents {
     fun announceEnabled(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_ENABLED, true)
     fun setAnnounceEnabled(c: Context, on: Boolean) { c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_ENABLED, on).apply() }
 
+    /** TEMPORARY update hold: driving on/off speech is muted for this version. It never touches the stored user
+     * switch (announceEnabled), the journal, trip, gate, SOS/crash or official alerts. Set to false to restore. */
+    const val TEMPORARY_HOLD_RESULT = "temporarily muted in this app update; restore planned"
+    @Volatile internal var temporaryAnnouncementHold: Boolean = true
+
     fun startedText() = "Netra driving mode is on. Safety sensors are listening."
     fun endedText() = "Netra driving mode is off."
 
@@ -72,7 +77,9 @@ object DrivingEvents {
             if (acceptedId == null) recordDuplicateAttempt(c, started, now)
             // This commits accepted history + SUBMITTED intent together before the engine receives work.
             // Disabled recovery is committed as SKIPPED; superseded unsubmitted history is never erased.
-            for (event in owner.prepareAudio(announceEnabled(c))) {
+            val hold = temporaryAnnouncementHold
+            for (event in owner.prepareAudio(announceEnabled(c) && !hold,
+                if (hold && announceEnabled(c)) TEMPORARY_HOLD_RESULT else "disabled by user; skipped")) {
                 val requestId = "driving_" + event.id
                 try {
                     val limit = speaker(c, if (event.started) startedText() else endedText(), requestId) { ok, error ->
