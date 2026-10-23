@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+# Crash report consent: destination shown before Send (v1.4.31)
+
+- The Crash report card and the preview dialog now name the destination before anything is sent: developer email prayagideepak@gmail.com through the FormSubmit service (formsubmit.co). The exact report text is still shown first, and sending still happens only when you tap Send. Text-only change; no new permission, library or server. Not a vulnerability fix.
+
 ## Crash fix: copying a live queue (v1.4.29)
 
 An automatic crash report (Android 16) showed NoSuchElementException while the app copied a lock-free queue (the engine event buffer, the recovery history or the sensor reading buffer) at the same moment another thread emptied it. Copies now go through a helper that cannot throw for a concurrent change, and the sensor batch is taken by draining the queue so no reading is lost between the copy and the clear. A stability fix with a stress test. No new permission, library or server. Not a vulnerability fix.
