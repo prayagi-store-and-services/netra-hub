@@ -316,8 +316,7 @@ class SensorManager(
             val line = "t=" + (monoNow / 1000) + "s fixAt=" + (fixTimeMs?.toString() ?: "?") +
                 " rej=" + reason + "#" + count + " src=" + source
             val prior = p.getString("recent_rejects", "") ?: ""
-            val next = (listOf(line) + prior.lines().filter { it.isNotBlank() }).take(10).joinToString("
-")
+            val next = (listOf(line) + prior.lines().filter { it.isNotBlank() }).take(10).joinToString("\n")
             p.edit().putString("recent_rejects", next).commit()
         } catch (_: Exception) { }
     }
