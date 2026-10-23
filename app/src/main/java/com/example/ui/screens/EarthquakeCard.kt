@@ -247,7 +247,7 @@ internal fun AlertAreaControls() {
             "A saved area stays on this phone only and checks do not send it anywhere. Naming the place uses Android's location service when you save. The manual Check now button sends your coordinates to USGS whichever choice is on. Changing the choice or the area starts alert tracking fresh.",
         fontSize = 11.sp, color = BentoTextSecondary
     )
-    area?.let { a -> com.example.data.engine.AlertArea.staleNote(a, now)?.let { Text(it, fontSize = 11.sp, color = BentoRed) } }
+    area?.let { a -> com.example.data.engine.AlertArea.staleNote(a, now, useSaved)?.let { Text(it, fontSize = 11.sp, color = BentoRed) } }
     androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Button(enabled = !busy && !(useSaved && area != null), onClick = {
             if (area != null) {
