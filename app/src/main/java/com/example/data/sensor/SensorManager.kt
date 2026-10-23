@@ -77,6 +77,9 @@ class SensorManager(
     private val _liveReadings = MutableStateFlow<Map<String, RawSensorReading>>(emptyMap())
     val liveReadings: StateFlow<Map<String, RawSensorReading>> = _liveReadings.asStateFlow()
 
+    private var monitoringGeneration = 0L
+    // Configuration collectors belong to this process-persistent manager, not a transient monitor run.
+    private val configurationScope = CoroutineScope(Dispatchers.Default + Job())
     private var job = Job()
     private var scope = CoroutineScope(Dispatchers.Default + job)
 
@@ -105,7 +108,7 @@ class SensorManager(
     private val subscribers = MutableStateFlow<Map<Int, Set<String>>>(emptyMap())
     private val sensorJobs = java.util.concurrent.ConcurrentHashMap<Int, Job>()
     
-    fun addSubscriber(sensorType: Int, subscriberId: String) {
+    @Synchronized fun addSubscriber(sensorType: Int, subscriberId: String) {
         val current = subscribers.value.toMutableMap()
         val set = current.getOrDefault(sensorType, emptySet()).toMutableSet()
         set.add(subscriberId)
@@ -114,7 +117,7 @@ class SensorManager(
         evaluateSensorStreams()
     }
     
-    fun removeSubscriber(sensorType: Int, subscriberId: String) {
+    @Synchronized fun removeSubscriber(sensorType: Int, subscriberId: String) {
         val current = subscribers.value.toMutableMap()
         val set = current.getOrDefault(sensorType, emptySet()).toMutableSet()
         set.remove(subscriberId)
@@ -131,19 +134,19 @@ class SensorManager(
         runCapabilityDiscovery()
         
         // Observe power mode changes
-        scope.launch {
+        configurationScope.launch {
             powerManagerEngine.powerMode.collect { mode ->
                 updateThrottlingBasedOnPowerMode(mode)
             }
         }
 
 
-        scope.launch { settingsRepository.monitorMagnetic.collect { updateMonitoringState(Sensor.TYPE_MAGNETIC_FIELD, it) } }
-        scope.launch { settingsRepository.monitorLight.collect { updateMonitoringState(Sensor.TYPE_LIGHT, it) } }
-        scope.launch { settingsRepository.monitorProximity.collect { updateMonitoringState(Sensor.TYPE_PROXIMITY, it) } }
+        configurationScope.launch { settingsRepository.monitorMagnetic.collect { updateMonitoringState(Sensor.TYPE_MAGNETIC_FIELD, it) } }
+        configurationScope.launch { settingsRepository.monitorLight.collect { updateMonitoringState(Sensor.TYPE_LIGHT, it) } }
+        configurationScope.launch { settingsRepository.monitorProximity.collect { updateMonitoringState(Sensor.TYPE_PROXIMITY, it) } }
     }
 
-    private fun updateMonitoringState(type: Int, enabled: Boolean) {
+    @Synchronized private fun updateMonitoringState(type: Int, enabled: Boolean) {
         val current = _monitoringEnabled.value.toMutableMap()
         current[type] = enabled
         _monitoringEnabled.value = current
@@ -176,7 +179,7 @@ class SensorManager(
         }
     }
 
-    fun setSensorThrottle(sensorType: Int, intervalMs: Long) {
+    @Synchronized fun setSensorThrottle(sensorType: Int, intervalMs: Long) {
         val current = _sensorThrottles.value.toMutableMap()
         current[sensorType] = intervalMs
         _sensorThrottles.value = current
@@ -215,6 +218,8 @@ class SensorManager(
         }
         _isMonitoringActive.value = true
         monitoringStarts++
+        monitoringGeneration++
+        val receive = monitoringReceiver()
 
         evaluateSensorStreams()
 
@@ -223,21 +228,21 @@ class SensorManager(
         scope.launch {
             batteryManager.batteryState.collect { _ ->
                 val reading = batteryManager.getAsRawReading()
-                handleIncomingReading(reading)
+                receive(reading)
             }
         }
         
         // 3. Thermal Subsystem Stream
         scope.launch {
             sensorObservers.observeThermalState().collect { reading ->
-                handleIncomingReading(reading)
+                receive(reading)
             }
         }
         
         // 4. GNSS / Location Stream
         scope.launch {
             sensorObservers.observeLocation().collect { reading ->
-                handleIncomingReading(reading)
+                receive(reading)
             }
         }
     }
@@ -245,9 +250,10 @@ class SensorManager(
     @Synchronized
     fun stopMonitoring() {
         _isMonitoringActive.value = false
+        monitoringGeneration++ // invalidate callbacks before canceling jobs; cancel is not a join
         // A monitoring restart (thermal, settings) is transient: if the gate is open the trip keeps recording
         // and startMonitoring reconciles. Only a closed gate means "not driving", so only then stop the trip.
-        // The service's onDestroy owns the final teardown when the whole service goes away.
+        // Service teardown cancels only its heartbeat; the repository owns process-persistent monitoring.
         if (!speedGate.isOpen) com.example.driving.DrivingTrip.stop()
         batteryManager.stopMonitoring()
         sensorJobs.values.forEach { it.cancel() }
@@ -255,7 +261,7 @@ class SensorManager(
         job.cancel()
     }
 
-    private fun evaluateSensorStreams() {
+    @Synchronized private fun evaluateSensorStreams() {
         if (!_isMonitoringActive.value) {
             sensorJobs.values.forEach { it.cancel() }
             sensorJobs.clear()
@@ -297,9 +303,10 @@ class SensorManager(
                     else -> "unknown"
                 }
                 
+                val receive = monitoringReceiver()
                 val j = scope.launch {
                     sensorObservers.observeHardwareSensor(cap.type, cap.name, cap.category, unit, throttle).collect { reading ->
-                        handleIncomingReading(reading)
+                        receive(reading)
                     }
                 }
                 sensorJobs[cap.type] = j
@@ -373,7 +380,7 @@ class SensorManager(
     private fun reconcileTrip() {
         if (speedGate.isOpen && !com.example.driving.DrivingTrip.isRecording()) {
             com.example.driving.DrivingTrip.start(context, null, wallNow())
-            com.example.driving.DrivingEvents.noteTripResumed(context)
+            com.example.driving.DrivingEvents.noteTripResumed(context, wallNow())
         }
     }
 
@@ -471,6 +478,19 @@ class SensorManager(
         if (speedKmH == null && now - DrivingState.speed.value.speedAt > 60_000L) com.example.driving.DrivingEvents.noteBlind(context, "GPS gave no usable speed (no fix, old fix, or the phone sent a position without speed)", now)
         if (changed && !speedGate.isOpen) com.example.sos.ParkingSpot.onDrivingEnded(context, stopTracker, monoNow)
         if (changed) evaluateSensorStreams()
+    }
+
+    /** All monitored streams capture their run identity at registration. A callback queued before cancel
+     * cannot mutate gate, trip, fusion or downstream state after stop/restart. The same monitor lock
+     * serializes validation/application with start/stop; cancellation alone is not a drain guarantee. */
+    @Synchronized internal fun monitoringReceiver(): (RawSensorReading) -> Unit {
+        val generation = monitoringGeneration
+        return { reading -> acceptMonitoredReading(generation, reading) }
+    }
+
+    @Synchronized private fun acceptMonitoredReading(generation: Long, reading: RawSensorReading) {
+        if (!_isMonitoringActive.value || generation != monitoringGeneration) return
+        handleIncomingReading(reading)
     }
 
     private fun handleIncomingReading(reading: RawSensorReading) {
