@@ -320,7 +320,8 @@ class SensorObservers(private val context: Context) {
                                         "fixTimeMs" to location.time.toString(),
                                         "fixElapsedMs" to (location.elapsedRealtimeNanos / 1_000_000L).toString(),
                                         "source" to "poller"
-                                    )
+                                    ) + SpeedTrust.diagnosticFacts(if (location.hasSpeed()) speedKmH else null,
+                                        location.accuracy, hasSpdAcc, spdAcc)
                                 )
                             )
                         } else {
@@ -431,7 +432,8 @@ class SensorObservers(private val context: Context) {
                             "fixTimeMs" to location.time.toString(),
                                         "fixElapsedMs" to (location.elapsedRealtimeNanos / 1_000_000L).toString(),
                                         "source" to "live"
-                        )
+                        ) + SpeedTrust.diagnosticFacts(if (location.hasSpeed()) location.speed * 3.6f else null,
+                            location.accuracy, hasSpdAcc, spdAcc)
                     )
                 )
             }
