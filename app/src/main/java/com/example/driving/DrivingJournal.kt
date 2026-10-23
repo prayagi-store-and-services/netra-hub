@@ -73,13 +73,13 @@ internal class DrivingJournal(
 
     /** Snapshot+submission intent become durable BEFORE returning work for the engine. The caller never
      * submits returned work twice. Failed writes keep the same IDs/envelopes pending for reconciliation. */
-    @Synchronized fun prepareAudio(enabled: Boolean): List<DrivingTransition> {
+    @Synchronized fun prepareAudio(enabled: Boolean, skipResult: String = "disabled by user; skipped"): List<DrivingTransition> {
         val ready = desired.filter { it.audio == DrivingTransition.READY }
         val ids = ready.map { it.id }.toSet()
         val next = desired.map {
             if (it.id in ids) it.copy(
                 audio = if (enabled) DrivingTransition.SUBMITTED else DrivingTransition.SKIPPED,
-                result = if (enabled) "submission intent persisted before engine call" else "disabled by user; skipped")
+                result = if (enabled) "submission intent persisted before engine call" else skipResult)
             else it
         }
         if (!store.writeDurable(next)) return emptyList()
