@@ -2,6 +2,7 @@ package com.example
 
 import androidx.test.core.app.ApplicationProvider
 import com.example.driving.DrivingEvents
+import com.example.driving.DrivingLog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
