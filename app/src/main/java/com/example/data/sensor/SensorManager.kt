@@ -309,9 +309,14 @@ class SensorManager(
         // Validation order matters: reject first, and only a fully validated fix may advance the high-water mark.
         // Rejected readings still reach the gate as UNKNOWN, so the blind timer advances and cached/duplicate
         // fixes can never hold the gate open.
+        val readingSource = reading.extraDetails["source"] ?: ""
+        // The 10 s poller exists for the UI; when it has no speed it must not touch the gate (a live fix could
+        // be confirming right now - a speed-less poll would restart the confirmation window).
+        if (readingSource == "poller" && reading.extraDetails["speedKmH"]?.endsWith("km/h") != true) return
         var rejectReason: String? = null
         if (fixMono == null) rejectReason = "nofixtime"
-        else if (fixMono > monoNow + 5_000L) rejectReason = "futurefix"
+        // Same monotonic clock on both sides; >1 s in the future means a broken/relabeled fix (batching skew is sub-second).
+        else if (fixMono > monoNow + 1_000L) rejectReason = "futurefix"
         else if (fixMono <= lastFedFixMonoMs) rejectReason = if (fixMono == lastFedFixMonoMs) "dupfix" else "outoforder"
         else if (monoNow - fixMono > 30_000L) rejectReason = "stalefix"
         val rawSpeed: Float? = if (reading.extraDetails["speedKmH"]?.endsWith("km/h") == true && reading.values.size > 2) reading.values[2] else null
