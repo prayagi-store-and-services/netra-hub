@@ -35,6 +35,7 @@ class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
         try {
             val filters = QuakeAlertSettings.read(ctx)
             if (!filters.enabled) { save(prefs, now, "Off: earthquake notifications disabled on this phone."); return Result.success() }
+            val areaVer = AlertArea.version(ctx)
             val loc = AlertArea.asLocation(ctx) ?: OfficialLocationContextManager(ctx).refreshLocation()
             val ok = loc.locationStatus == "LOCATION_AVAILABLE" || loc.locationStatus == "COORDINATES_AVAILABLE" || loc.locationStatus == "GEOCODER_FAILED"
             if (!ok || (loc.latitude == 0.0 && loc.longitude == 0.0)) {
@@ -43,8 +44,8 @@ class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
             }
             val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
             val start = fmt.format(Date(now - 2 * 86_400_000L))
-            val url = "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&latitude=" + loc.latitude +
-                "&longitude=" + loc.longitude + "&maxradiuskm=" + filters.distanceKm + "&minmagnitude=" + filters.minimumMagnitude + "&starttime=" + start + "&orderby=time&limit=50"
+            // Global last-day summary feed: no coordinates leave the phone; distance is filtered here.
+            val url = AlertArea.usgsDayFeedUrl(filters.minimumMagnitude)
             val body = try {
                 val c = URL(url).openConnection() as HttpURLConnection
                 c.connectTimeout = 10000; c.readTimeout = 10000
@@ -55,6 +56,7 @@ class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
                 save(prefs, now, "Unavailable: the USGS feed could not be read.")
                 return Result.success()
             }
+            if (AlertArea.changedSince(areaVer, AlertArea.version(ctx))) return Result.retry()
             val seen = prefs.getStringSet(KEY_SEEN, emptySet()) ?: emptySet()
             // Respect an off/filter change made while the request was in flight.
             val currentFilters = QuakeAlertSettings.read(ctx)
