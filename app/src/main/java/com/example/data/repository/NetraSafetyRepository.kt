@@ -27,6 +27,18 @@ import com.example.data.audit.SystemSelfAuditEngine
 
 class NetraSafetyRepository(private val context: Context) {
 
+    companion object {
+        @Volatile private var instance: NetraSafetyRepository? = null
+
+        /**
+         * The one repository for this process. It owns the sensor pipeline: constructing a second repository used to
+         * start a second SensorManager with its own location stream and driving gate, so driving announcements played
+         * twice and gates competed. Every caller must use this accessor.
+         */
+        fun get(context: Context): NetraSafetyRepository =
+            instance ?: synchronized(this) { instance ?: NetraSafetyRepository(context.applicationContext).also { instance = it } }
+    }
+
     private val db = NetraDatabase.getInstance(context)
     val safetyEventDao: SafetyEventDao = db.safetyEventDao()
     val systemAuditDao = db.systemAuditDao()
