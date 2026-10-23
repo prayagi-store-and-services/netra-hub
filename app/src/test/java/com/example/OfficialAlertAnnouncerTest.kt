@@ -155,6 +155,37 @@ class OfficialAlertAnnouncerTest {
         assertEquals(listOf("first", "second", "third"), fake.spoken.map { it.first })
     }
 
+    @Test fun staleWatchdogAfterSuccessDoesNotTouchTheEngine() {
+        // After a successful utterance the old 60 s timers must be inert: a reused engine instance
+        // (next utterance) must never be killed by the previous attempt's watchdog.
+        OfficialAlertAnnouncer.speakNotice(ctx, "one", "w1") { _, _ -> }
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        fake.listener?.onDone("w1")
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(1, fake.shutdowns)
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idleFor(61, TimeUnit.SECONDS)
+        assertEquals(1, fake.shutdowns) // no stale shutdown
+    }
+
+    @Test fun reentrantCallbackCannotOvertakeTheQueue() {
+        // onComplete immediately requests a new announcement while a second one is already queued:
+        // the reentrant request must land BEHIND the queued one.
+        val order = mutableListOf<String>()
+        OfficialAlertAnnouncer.speakNotice(ctx, "first", "r1") { _, _ ->
+            OfficialAlertAnnouncer.speakNotice(ctx, "reentrant", "r3") { _, _ -> }
+        }
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        OfficialAlertAnnouncer.speakNotice(ctx, "second", "r2") { _, _ -> }
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        fake.listener?.onDone("r1")
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        fake.listener?.onDone("r2")
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        fake.listener?.onDone("r3")
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(listOf("first", "second", "reentrant"), fake.spoken.map { it.first })
+    }
+
     @Test fun officialAlertRegressionPathSpeaks() {
         // Shared-alert regression: the sachet/quake announce() path must still reach the engine.
         OfficialAlertAnnouncer.setEnabled(ctx, true)
