@@ -386,18 +386,24 @@ class SensorObservers(private val context: Context) {
         }
 
         // Live speed: lastLocation alone can be old, so also take high-accuracy updates every 5 s (balanced power often has no speed, which kept driving mode off).
-        var prevFix: android.location.Location? = null
+        // Previous fix used for derived speed: monotonic timestamp, and it only ever advances to an ACCEPTED
+        // in-order fix. A rejected, coarse or out-of-order fix is never used for derivation and never replaces it.
+        var prevFix: com.example.driving.DerivedSpeed.Fix? = null
         val liveCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 val location = result.lastLocation ?: return
                 com.example.data.engine.SafetyCheckTrigger.onFreshLocation(context)
                 // Some phones send a position with no speed. Then work the speed out from two fixes instead of staying blind.
+                val fixMono = location.elapsedRealtimeNanos / 1_000_000L
                 val prev = prevFix
-                // Derive only between two accurate fixes; a coarse earlier fix makes a made-up speed too.
-                val derived = if (!location.hasSpeed() && prev != null && prev.accuracy in 1f..50f)
-                    com.example.driving.DerivedSpeed.kmh(prev.latitude, prev.longitude, prev.time, location.latitude, location.longitude, location.time, location.accuracy, prev.accuracy)
+                val inOrder = prev == null || fixMono > prev.monoMs
+                val usableAccuracy = location.accuracy in 1f..50f
+                // Derive only between two accurate, in-order fixes on the monotonic clock; wall-clock jumps or a
+                // coarse/rejected earlier fix would make a made-up speed.
+                val derived = if (!location.hasSpeed() && prev != null && inOrder && usableAccuracy)
+                    com.example.driving.DerivedSpeed.kmh(prev.lat, prev.lon, prev.monoMs, location.latitude, location.longitude, fixMono, location.accuracy, prev.accuracyM)
                 else null
-                prevFix = location
+                if (usableAccuracy && inOrder) prevFix = com.example.driving.DerivedSpeed.Fix(location.latitude, location.longitude, fixMono, location.accuracy)
                 val hasSpdAcc = android.os.Build.VERSION.SDK_INT >= 26 && location.hasSpeedAccuracy()
                 val spdAcc = if (android.os.Build.VERSION.SDK_INT >= 26) location.speedAccuracyMetersPerSecond else 0f
                 val rawTrusted = location.hasSpeed() &&
