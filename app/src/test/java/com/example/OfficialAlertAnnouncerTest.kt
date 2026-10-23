@@ -186,6 +186,38 @@ class OfficialAlertAnnouncerTest {
         assertEquals(listOf("first", "second", "reentrant"), fake.spoken.map { it.first })
     }
 
+    @Test fun successfulInitHungSpeechAbandonsFocusOnTimeout() {
+        val acquire = OfficialAlertAnnouncer.acquireNoticeFocus
+        val release = OfficialAlertAnnouncer.releaseNoticeFocus
+        var acquired = 0
+        var abandoned = 0
+        val token = Any()
+        val outcomes = results()
+        try {
+            OfficialAlertAnnouncer.acquireNoticeFocus = { _, _ -> acquired++; token }
+            OfficialAlertAnnouncer.releaseNoticeFocus = { _, t -> if (t === token) abandoned++ }
+            OfficialAlertAnnouncer.speakNotice(ctx, "hung speech", "focus_timeout") { ok, error -> outcomes.add(ok to error) }
+            org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(1, acquired)
+            assertEquals(0, abandoned)
+            org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idleFor(61, TimeUnit.SECONDS)
+            assertEquals(1, abandoned)
+            assertEquals(1, fake.shutdowns)
+            assertEquals(1, outcomes.size)
+            assertEquals(false, outcomes.single().first)
+            assertTrue(outcomes.single().second!!.contains("no engine callback"))
+            // Late binder callback cannot complete twice or release focus again.
+            val callbackThread = Thread { fake.listener?.onDone("focus_timeout") }
+            callbackThread.start(); callbackThread.join()
+            org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(1, abandoned)
+            assertEquals(1, outcomes.size)
+        } finally {
+            OfficialAlertAnnouncer.acquireNoticeFocus = acquire
+            OfficialAlertAnnouncer.releaseNoticeFocus = release
+        }
+    }
+
     @Test fun officialAlertRegressionPathSpeaks() {
         // Shared-alert regression: the sachet/quake announce() path must still reach the engine.
         OfficialAlertAnnouncer.setEnabled(ctx, true)
