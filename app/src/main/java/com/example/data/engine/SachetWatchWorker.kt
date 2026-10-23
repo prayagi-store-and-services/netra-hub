@@ -188,9 +188,10 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
         val ctx = applicationContext
         val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
-        fun save(msg: String) { prefs.edit().putLong(KEY_LAST, now).putString(KEY_MSG, msg).apply() }
+        val areaVer = AlertArea.version(ctx)
+        // Status is written only while the saved area is still the one this run started with.
+        fun save(msg: String) { AlertArea.commitIfCurrent(ctx, areaVer) { prefs.edit().putLong(KEY_LAST, now).putString(KEY_MSG, msg).apply() } }
         try {
-            val areaVer = AlertArea.version(ctx)
             val loc = AlertArea.asLocation(ctx) ?: OfficialLocationContextManager(ctx).refreshLocation()
             val ok = loc.locationStatus == "LOCATION_AVAILABLE" || loc.locationStatus == "COORDINATES_AVAILABLE" || loc.locationStatus == "GEOCODER_FAILED"
             if (!ok || (!plausibleCoords(loc.latitude, loc.longitude) && loc.state.contains("unavailable", true) && loc.district.contains("unavailable", true))) {
@@ -210,52 +211,54 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
                 checked.add(guid)
                 if (capMatchesPlace(cap, loc.district, loc.locality, loc.state, lat, lon, now)) matched.add(cap)
             }
-            if (matched.isNotEmpty() && !NotificationManagerCompat.from(ctx).areNotificationsEnabled()) {
-                save("Unavailable: notifications are off, " + matched.size + " matching official alert(s) could not be shown.")
-                return Result.success()
+            // Final version check, dispatch, notify and state/status commit under one lock; nothing runs if the area changed.
+            val committed = AlertArea.commitIfCurrent(ctx, areaVer) {
+                if (matched.isNotEmpty() && !NotificationManagerCompat.from(ctx).areNotificationsEnabled()) {
+                    save("Unavailable: notifications are off, " + matched.size + " matching official alert(s) could not be shown.")
+                    return Result.success()
+                }
+                val active = SachetAlertState.decode(prefs.getString(AlertArea.scoped(KEY_ACTIVE, areaVer), "") ?: "").toMutableMap()
+                // Speak/notify once per alert; again only on a severity change. Same severity stays silent.
+                val toAnnounce = mutableListOf<Pair<CapAlert, SachetDecision>>()
+                for (cap in matched) {
+                    val key = SachetAlertState.identityKey(cap.event, cap.areaDesc)
+                    val decision = SachetAlertState.decide(active[key], cap.severity)
+                    active[key] = SachetAlertEntry(cap.severity, cap.expiresMillis)
+                    if (decision != SachetDecision.SAME_SEVERITY_SKIP) toAnnounce.add(cap to decision)
+                }
+                if (toAnnounce.isNotEmpty()) {
+                    val (top, decision) = toAnnounce.first()
+                    val headline = if (decision == SachetDecision.SEVERITY_CHANGED)
+                        "Warning updated. Severity is now " + top.severity + ". " + top.headline else top.headline
+                    OfficialAlertAnnouncer.announce(ctx, "sachet", top.event, headline, top.areaDesc)
+                    NetraNotificationManager(ctx).sendEmergencyAlert(
+                        title = top.event + " (NDMA SACHET, official)" + (if (decision == SachetDecision.SEVERITY_CHANGED) " - updated" else ""),
+                        message = headline + " Area in the alert: " + top.areaDesc + ". Issued by " + top.sender +
+                            (if (toAnnounce.size > 1) " (+" + (toAnnounce.size - 1) + " more)" else "") +
+                            ". Matched by the alert's own area map or your exact district name.",
+                        riskLevel = SafetyRiskLevel.WARNING
+                    )
+                }
+                // Warnings that have passed their expiry are over: say so once, then forget them.
+                val over = SachetAlertState.expiredKeys(active, now)
+                if (over.isNotEmpty()) {
+                    val first = over.first()
+                    OfficialAlertAnnouncer.announce(ctx, "sachet", "Weather warning over",
+                        "The earlier official warning has ended. " + SachetAlertState.readable(first) + ".", "")
+                    NetraNotificationManager(ctx).sendEmergencyAlert(
+                        title = "Warning over (NDMA SACHET, official)",
+                        message = "The earlier official warning has ended: " + SachetAlertState.readable(first) +
+                            (if (over.size > 1) " (+" + (over.size - 1) + " more)" else "") + ".",
+                        riskLevel = SafetyRiskLevel.SAFE
+                    )
+                    over.forEach { active.remove(it) }
+                }
+                prefs.edit().putString(AlertArea.scoped(KEY_ACTIVE, areaVer), SachetAlertState.encode(active)).apply()
+                val updated = (seen + checked).toList().takeLast(400).toSet()
+                prefs.edit().putStringSet(AlertArea.scoped(KEY_SEEN, areaVer), updated).apply()
+                save(noWarningStatus(loc.district, loc.locality, loc.state, checked.size, matched.size))
             }
-            // The saved area changed while the feed was being read: this result belongs to the old area.
-            if (AlertArea.changedSince(areaVer, AlertArea.version(ctx))) return Result.retry()
-            val active = SachetAlertState.decode(prefs.getString(AlertArea.scoped(KEY_ACTIVE, areaVer), "") ?: "").toMutableMap()
-            // Speak/notify once per alert; again only on a severity change. Same severity stays silent.
-            val toAnnounce = mutableListOf<Pair<CapAlert, SachetDecision>>()
-            for (cap in matched) {
-                val key = SachetAlertState.identityKey(cap.event, cap.areaDesc)
-                val decision = SachetAlertState.decide(active[key], cap.severity)
-                active[key] = SachetAlertEntry(cap.severity, cap.expiresMillis)
-                if (decision != SachetDecision.SAME_SEVERITY_SKIP) toAnnounce.add(cap to decision)
-            }
-            if (toAnnounce.isNotEmpty()) {
-                val (top, decision) = toAnnounce.first()
-                val headline = if (decision == SachetDecision.SEVERITY_CHANGED)
-                    "Warning updated. Severity is now " + top.severity + ". " + top.headline else top.headline
-                OfficialAlertAnnouncer.announce(ctx, "sachet", top.event, headline, top.areaDesc)
-                NetraNotificationManager(ctx).sendEmergencyAlert(
-                    title = top.event + " (NDMA SACHET, official)" + (if (decision == SachetDecision.SEVERITY_CHANGED) " - updated" else ""),
-                    message = headline + " Area in the alert: " + top.areaDesc + ". Issued by " + top.sender +
-                        (if (toAnnounce.size > 1) " (+" + (toAnnounce.size - 1) + " more)" else "") +
-                        ". Matched by the alert's own area map or your exact district name.",
-                    riskLevel = SafetyRiskLevel.WARNING
-                )
-            }
-            // Warnings that have passed their expiry are over: say so once, then forget them.
-            val over = SachetAlertState.expiredKeys(active, now)
-            if (over.isNotEmpty()) {
-                val first = over.first()
-                OfficialAlertAnnouncer.announce(ctx, "sachet", "Weather warning over",
-                    "The earlier official warning has ended. " + SachetAlertState.readable(first) + ".", "")
-                NetraNotificationManager(ctx).sendEmergencyAlert(
-                    title = "Warning over (NDMA SACHET, official)",
-                    message = "The earlier official warning has ended: " + SachetAlertState.readable(first) +
-                        (if (over.size > 1) " (+" + (over.size - 1) + " more)" else "") + ".",
-                    riskLevel = SafetyRiskLevel.SAFE
-                )
-                over.forEach { active.remove(it) }
-            }
-            prefs.edit().putString(AlertArea.scoped(KEY_ACTIVE, areaVer), SachetAlertState.encode(active)).apply()
-            val updated = (seen + checked).toList().takeLast(400).toSet()
-            prefs.edit().putStringSet(AlertArea.scoped(KEY_SEEN, areaVer), updated).apply()
-            save(noWarningStatus(loc.district, loc.locality, loc.state, checked.size, matched.size))
+            if (!committed) return Result.retry()
             return Result.success()
         } catch (e: Exception) {
             save("Unavailable: check failed.")
