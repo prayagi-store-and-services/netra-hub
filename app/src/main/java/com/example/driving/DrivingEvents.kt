@@ -68,7 +68,8 @@ object DrivingEvents {
         try {
             val owner = journal(c)
             val diagnostics = recentSamples.joinToString(", ").take(8000)
-            owner.accept(started, now, speedKmH, reasonFor(started, speedKmH, blindClose), diagnostics)
+            val acceptedId = owner.accept(started, now, speedKmH, reasonFor(started, speedKmH, blindClose), diagnostics)
+            if (acceptedId == null) recordDuplicateAttempt(c, started, now)
             // This commits accepted history + SUBMITTED intent together before the engine receives work.
             // Disabled recovery is committed as SKIPPED; superseded unsubmitted history is never erased.
             for (event in owner.prepareAudio(announceEnabled(c))) {
@@ -87,6 +88,19 @@ object DrivingEvents {
             DrivingLog.add(c, DrivingLog.Entry(now, DrivingLog.NOTE, speedKmH,
                 "Driving transition could not be durably recorded; audio held. Storage requires recovery."))
         }
+    }
+
+    /** Duplicate attempts are diagnostics, never accepted transition history or new event IDs. */
+    private fun recordDuplicateAttempt(c: Context, started: Boolean, now: Long) {
+        try {
+            val prefs = c.getSharedPreferences("netra_sensor_diagnostics", Context.MODE_PRIVATE)
+            val count = prefs.getLong("duplicate_transition_attempts", 0L).coerceIn(0L, Long.MAX_VALUE - 1L) + 1L
+            val row = "processedAt=" + now + " state=" + started + " decision=duplicate_same_state count=" + count
+            val rows = (listOf(row) + (prefs.getString("recent_duplicate_attempts", "") ?: "").lines()
+                .filter { it.isNotBlank() }).take(50)
+            prefs.edit().putLong("duplicate_transition_attempts", count)
+                .putString("recent_duplicate_attempts", rows.joinToString("\n")).commit()
+        } catch (_: Exception) { /* diagnostic storage failure cannot create a transition or replay */ }
     }
 
     /** Trip recording resumed without a new driving edge (monitoring restart while the gate stayed open). */
