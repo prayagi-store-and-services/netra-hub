@@ -116,7 +116,10 @@ class NetraForegroundService : Service() {
         serviceJob.cancel()
         // The trip belongs to the driving state, not the service lifecycle: the process-wide gate may still be
         // open (the singleton repository lives on), so only stop recording when we are not driving.
-        if (!com.example.data.sensor.DrivingState.driving.value) com.example.driving.DrivingTrip.stop()
+        // The service is the final owner of the trip: SensorManager.stopMonitoring keeps an open-gate trip
+        // alive across transient restarts, so this teardown must stop it regardless of the driving flag.
+        // A later service start reconciles through SensorManager.startMonitoring (trip resumes if the gate is still open).
+        if (com.example.driving.DrivingTrip.isRecording()) com.example.driving.DrivingTrip.stop()
         Log.d("NetraForegroundService", "NetraForegroundService destroyed. Attempting cleanup.")
     }
 
