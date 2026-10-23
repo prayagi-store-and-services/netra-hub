@@ -50,7 +50,7 @@ class OfficialAlertAnnouncerTest {
         OfficialAlertAnnouncer.resetAnnouncerForTests()
         OfficialAlertAnnouncer.ttsInit = OfficialAlertAnnouncer.TtsInit { _, cb ->
             initCb = cb
-            if (deliverInit) cb(TextToSpeech.SUCCESS)
+            if (deliverInit) android.os.Handler(Looper.getMainLooper()).post { cb(TextToSpeech.SUCCESS) }
             fake
         }
         ctx = ApplicationProvider.getApplicationContext()
