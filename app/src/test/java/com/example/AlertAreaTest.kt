@@ -95,4 +95,42 @@ class AlertAreaTest {
         assertTrue(AlertArea.usgsDayFeedUrl(0.0).endsWith("/all_day.geojson"))
         assertFalse(AlertArea.usgsDayFeedUrl(2.5).contains("latitude"))
     }
+
+    @Test fun updateWinsBeforeFinalCheckOldRunDispatchesNothing() {
+        var version = 1L
+        val dispatched = mutableListOf<String>()
+        var status = "B-status"
+        version = 2L // area update B published first
+        val ran = AlertArea.commitIfCurrent(1L, { version }) { dispatched.add("old A alert"); status = "A-status" }
+        assertFalse(ran)
+        assertTrue(dispatched.isEmpty())
+        assertEquals("B-status", status)
+    }
+
+    @Test fun dispatchWinsLogicallyBeforeUpdateThenUpdateStartsFresh() {
+        var version = 1L
+        val log = mutableListOf<String>()
+        val ran = AlertArea.commitIfCurrent(1L, { version }) { log.add("dispatch A") }
+        assertTrue(ran)
+        AlertArea.underLock { version = 2L; log.add("update to B") }
+        assertEquals(listOf("dispatch A", "update to B"), log)
+        // A run that started under the old version after the update still commits nothing.
+        assertFalse(AlertArea.commitIfCurrent(1L, { version }) { log.add("late A") })
+        assertEquals(2, log.size)
+    }
+
+    @Test fun updateWaitsForAnInFlightCommitUnderTheSameLock() {
+        var version = 1L
+        val log = java.util.Collections.synchronizedList(mutableListOf<String>())
+        var updater: Thread? = null
+        AlertArea.commitIfCurrent(1L, { version }) {
+            updater = Thread { AlertArea.underLock { version = 2L; log.add("update") } }.also { it.start() }
+            Thread.sleep(150) // the update thread is blocked on the lock while we are committing
+            log.add("dispatch")
+            log.add("status")
+        }
+        updater!!.join(2000)
+        assertEquals(listOf("dispatch", "status", "update"), log.toList())
+        assertEquals(2L, version)
+    }
 }
