@@ -1,5 +1,13 @@
 # Security notes - netra-hub
 
+# Stationary-phone driving detection repair candidate (v1.4.32, not released)
+
+- A stationary phone could enter driving mode after an isolated GPS speed spike. Independent repository instances could also create competing sensor pipelines and repeated announcements. This candidate uses one repository owner per process, at least three fresh valid readings across the configured confirmation window (default 10 seconds), original fix timestamps, and accuracy/plausibility checks. The threshold remains 15 km/h, the low-speed close delay remains 90 seconds, and unknown speed uses an explicit 5-minute blind timeout. Unknown is not zero speed.
+- Accepted transitions have stable event IDs and a local SQLite journal. History and audio submission intent are durably recorded before asking the TTS engine. Repeated same-state callbacks do not create another transition or request. Genuine queued ON/OFF edges are preserved. An interrupted submission has an unknown outcome after process restart and is not blindly replayed; exactly-once audible playback cannot be guaranteed. Disabled announcements still retain transition history.
+- Monitoring is repository-owned for the process. Service teardown cancels its heartbeat, not an active trip under a still-open gate. Monitoring runs reject callbacks from older generations after stop/restart. Configuration collectors survive transient monitoring restarts. This does not establish that every raw device callback has already drained at cancellation.
+- Per-sample decision diagnostics are bounded to 50 local rows without coordinates or network transmission; the accepted transition journal retains up to 500 accepted transitions, evicting older entries when that limit is exceeded; explicit clearing is also available. Existing trip and parking data remain separate. No new permission, library or server. This is a behavior/stability repair, not a vulnerability fix.
+- Release remains on hold pending final review and exact-head CI. Automated checks do not substitute for a physical-device stationary-phone/real-driving check, which has not been performed for this candidate. Raw sensor subscription and SOS/crash restoration coverage must not be inferred from the driving lifecycle tests.
+
 # Crash report consent: destination shown before Send (v1.4.31)
 
 - The Crash report card and the preview dialog now name the destination before anything is sent: developer email prayagideepak@gmail.com through the FormSubmit service (formsubmit.co). The exact report text is still shown first, and sending still happens only when you tap Send. Text-only change; no new permission, library or server. Not a vulnerability fix.

@@ -1,19 +1,26 @@
 package com.example.driving
 
-/** Speed from two GPS fixes, for phones whose location provider sends positions without a speed value. */
+/** Speed from two GPS fixes, for phones whose location provider sends positions without a speed value.
+ * The interval between the fixes MUST come from the monotonic clock (elapsedRealtime), never wall-clock
+ * location.time: a wall-clock jump would shrink or stretch the measured interval and invent a speed. */
 object DerivedSpeed {
     const val MAX_PLAUSIBLE_KMH = 200f
 
-    fun kmh(lat1: Double, lon1: Double, t1: Long, lat2: Double, lon2: Double, t2: Long, accuracyM: Float): Float? {
+    /** An accepted fix eligible for derivation: monotonic timestamp and GPS accuracy. */
+    data class Fix(val lat: Double, val lon: Double, val monoMs: Long, val accuracyM: Float)
+
+    /** t1/t2 are MONOTONIC milliseconds (elapsedRealtime) of the two fixes; callers guarantee t2 > t1. */
+    fun kmh(lat1: Double, lon1: Double, t1: Long, lat2: Double, lon2: Double, t2: Long, accuracyM: Float, prevAccuracyM: Float = accuracyM): Float? {
         val dt = (t2 - t1) / 1000.0
         if (dt < 2.0 || dt > 60.0) return null          // too close together or too old to say anything
         if (accuracyM <= 0f || accuracyM > 50f) return null // a coarse fix makes a made-up speed
+        if (prevAccuracyM <= 0f || prevAccuracyM > 50f) return null // the earlier endpoint counts just as much
         val r = 6371000.0
         val p1 = Math.toRadians(lat1); val p2 = Math.toRadians(lat2)
         val dp = p2 - p1; val dl = Math.toRadians(lon2 - lon1)
         val a = Math.sin(dp / 2) * Math.sin(dp / 2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2)
         val dist = 2 * r * Math.asin(Math.min(1.0, Math.sqrt(a)))
-        if (dist < accuracyM) return 0f                   // inside the GPS noise: treat as standing
+        if (dist < accuracyM + prevAccuracyM) return 0f   // inside the combined GPS noise of both fixes: treat as standing
         val kmh = (dist / dt * 3.6).toFloat()
         return if (kmh > MAX_PLAUSIBLE_KMH) null else kmh // a GPS jump, not a real speed
     }

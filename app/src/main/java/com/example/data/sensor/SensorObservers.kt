@@ -297,7 +297,12 @@ class SensorObservers(private val context: Context) {
                         if (location != null) {
                             val speedKmH = location.speed * 3.6f
                             // A cached fix older than 30 s says nothing about the speed now: report it as unavailable.
-                            val fresh = location.hasSpeed() && System.currentTimeMillis() - location.time < 30_000L
+                            // A coarse or high-error fix is not a real speed either: still phones get spiky speeds indoors.
+                            // hasSpeedAccuracy/speedAccuracyMetersPerSecond exist only on API 26+ (minSdk is 24): guard, don't crash.
+                            val hasSpdAcc = android.os.Build.VERSION.SDK_INT >= 26 && location.hasSpeedAccuracy()
+                            val spdAcc = if (android.os.Build.VERSION.SDK_INT >= 26) location.speedAccuracyMetersPerSecond else 0f
+                            val fresh = location.hasSpeed() && System.currentTimeMillis() - location.time < 30_000L &&
+                                com.example.data.sensor.SpeedTrust.trusted(location.accuracy, hasSpdAcc, spdAcc)
                             trySend(
                                 RawSensorReading(
                                     sensorId = "gnss_location",
@@ -313,8 +318,10 @@ class SensorObservers(private val context: Context) {
                                         "speedKmH" to (if (fresh) "%.1f km/h".format(speedKmH) else "Verified data is currently unavailable."),
                                         "accuracy" to "±%.1f m".format(location.accuracy),
                                         "fixTimeMs" to location.time.toString(),
-                                        "fixElapsedMs" to (location.elapsedRealtimeNanos / 1_000_000L).toString()
-                                    )
+                                        "fixElapsedMs" to (location.elapsedRealtimeNanos / 1_000_000L).toString(),
+                                        "source" to "poller"
+                                    ) + SpeedTrust.diagnosticFacts(if (location.hasSpeed()) speedKmH else null,
+                                        location.accuracy, hasSpdAcc, spdAcc)
                                 )
                             )
                         } else {
@@ -380,19 +387,34 @@ class SensorObservers(private val context: Context) {
         }
 
         // Live speed: lastLocation alone can be old, so also take high-accuracy updates every 5 s (balanced power often has no speed, which kept driving mode off).
-        var prevFix: android.location.Location? = null
+        // Previous fix used for derived speed: monotonic timestamp, and it only ever advances to an ACCEPTED
+        // in-order fix. A rejected, coarse or out-of-order fix is never used for derivation and never replaces it.
+        var prevFix: com.example.driving.DerivedSpeed.Fix? = null
         val liveCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 val location = result.lastLocation ?: return
                 com.example.data.engine.SafetyCheckTrigger.onFreshLocation(context)
                 // Some phones send a position with no speed. Then work the speed out from two fixes instead of staying blind.
+                val fixMono = location.elapsedRealtimeNanos / 1_000_000L
+                val monoNow = android.os.SystemClock.elapsedRealtime()
                 val prev = prevFix
-                val derived = if (!location.hasSpeed() && prev != null)
-                    com.example.driving.DerivedSpeed.kmh(prev.latitude, prev.longitude, prev.time, location.latitude, location.longitude, location.time, location.accuracy)
+                val inOrder = prev == null || fixMono > prev.monoMs
+                // Same freshness/plausibility bar as the central validator: a future or stale fix must never
+                // become the derivation baseline (it would poison every later derived speed).
+                val freshEnough = fixMono <= monoNow + 1_000L && monoNow - fixMono <= 30_000L
+                val usableAccuracy = location.accuracy in 1f..50f
+                // Derive only between two accurate, in-order fixes on the monotonic clock; wall-clock jumps or a
+                // coarse/rejected earlier fix would make a made-up speed.
+                val derived = if (!location.hasSpeed() && prev != null && inOrder && freshEnough && usableAccuracy)
+                    com.example.driving.DerivedSpeed.kmh(prev.lat, prev.lon, prev.monoMs, location.latitude, location.longitude, fixMono, location.accuracy, prev.accuracyM)
                 else null
-                prevFix = location
-                val hasSpeed = location.hasSpeed() || derived != null
-                val speedKmH = if (location.hasSpeed()) location.speed * 3.6f else (derived ?: 0f)
+                if (usableAccuracy && inOrder && freshEnough) prevFix = com.example.driving.DerivedSpeed.Fix(location.latitude, location.longitude, fixMono, location.accuracy)
+                val hasSpdAcc = android.os.Build.VERSION.SDK_INT >= 26 && location.hasSpeedAccuracy()
+                val spdAcc = if (android.os.Build.VERSION.SDK_INT >= 26) location.speedAccuracyMetersPerSecond else 0f
+                val rawTrusted = location.hasSpeed() &&
+                    com.example.data.sensor.SpeedTrust.trusted(location.accuracy, hasSpdAcc, spdAcc)
+                val hasSpeed = rawTrusted || derived != null
+                val speedKmH = if (rawTrusted) location.speed * 3.6f else (derived ?: 0f)
                 trySend(
                     RawSensorReading(
                         sensorId = "gnss_location",
@@ -408,8 +430,10 @@ class SensorObservers(private val context: Context) {
                             "speedKmH" to (if (hasSpeed) "%.1f km/h".format(speedKmH) else "Verified data is currently unavailable."),
                             "accuracy" to "±%.1f m".format(location.accuracy),
                             "fixTimeMs" to location.time.toString(),
-                                        "fixElapsedMs" to (location.elapsedRealtimeNanos / 1_000_000L).toString()
-                        )
+                                        "fixElapsedMs" to (location.elapsedRealtimeNanos / 1_000_000L).toString(),
+                                        "source" to "live"
+                        ) + SpeedTrust.diagnosticFacts(if (location.hasSpeed()) location.speed * 3.6f else null,
+                            location.accuracy, hasSpdAcc, spdAcc)
                     )
                 )
             }

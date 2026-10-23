@@ -13,7 +13,7 @@ import com.example.data.repository.NetraSafetyRepository
 class NasreInitializer : ContentProvider() {
     override fun onCreate(): Boolean {
         context?.let { ctx ->
-            val repository = NetraSafetyRepository(ctx)
+            val repository = NetraSafetyRepository.get(ctx)
             val nasre = NasreEngine.getInstance(
                 ctx,
                 repository.batteryManager,

@@ -31,7 +31,7 @@ class NetraForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        repository = NetraSafetyRepository(applicationContext)
+        repository = NetraSafetyRepository.get(applicationContext)
         createNotificationChannel()
     }
 
@@ -72,6 +72,15 @@ class NetraForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    internal fun monitoringOwnerForTests() = repository?.sensorManager
+
+    private val drivingServiceOwner = java.util.UUID.randomUUID().toString()
+    /** The actual heartbeat entry point, shared by service execution and deterministic lifecycle tests. */
+    internal fun reconcileDrivingMonitoring(sensorMgr: com.example.data.sensor.SensorManager) {
+        sensorMgr.noteServiceOwner(drivingServiceOwner)
+        sensorMgr.startMonitoring()
+    }
+
     private fun startHeartbeatLoop() {
         serviceScope.launch {
             while (isActive) {
@@ -80,15 +89,17 @@ class NetraForegroundService : Service() {
                     Log.d("NetraForegroundService", "Heartbeat tick: Background monitoring active, sensors and AI engine running.")
                     
                     if (repository == null) {
-                        repository = NetraSafetyRepository(applicationContext)
+                        repository = NetraSafetyRepository.get(applicationContext)
                     }
                     
                     repository?.sensorManager?.let { sensorMgr ->
-                        // Ensure sensor manager is active
+                        // Always route through startMonitoring: it reconciles the driving trip even when
+                        // monitoring is already active (a service teardown can leave tripOFF under gateON),
+                        // and early-returns internally when everything is running.
                         if (!sensorMgr.isMonitoringActive.value) {
                             Log.w("NetraForegroundService", "Heartbeat detected sensor manager inactive. Restoring monitoring...")
-                            sensorMgr.startMonitoring()
                         }
+                        reconcileDrivingMonitoring(sensorMgr)
                     }
 
                     // Adaptive Power Intelligence Engine (NAPIE) context analysis
@@ -114,7 +125,9 @@ class NetraForegroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceJob.cancel()
-        com.example.driving.DrivingTrip.stop()
+        // Repository is process-persistent and owns monitoring/trip lifetime independently. Destroying
+        // this service cancels only its heartbeat; it must not stop a trip while repository streams/gate
+        // remain active. Explicit monitoring/state shutdown belongs to the repository/manager owner.
         Log.d("NetraForegroundService", "NetraForegroundService destroyed. Attempting cleanup.")
     }
 

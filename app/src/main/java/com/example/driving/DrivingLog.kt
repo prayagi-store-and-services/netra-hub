@@ -34,14 +34,24 @@ object DrivingLog {
     /** Newest first, capped. Pure so it can be tested without a phone. */
     fun append(existing: List<Entry>, e: Entry): List<Entry> = (listOf(e) + existing).take(MAX)
 
+    /** Returns the commit result: a false means the entry is NOT durable and callers must not act as if it were. */
     @Synchronized
-    fun add(context: Context, e: Entry) {
+    fun add(context: Context, e: Entry): Boolean {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        p.edit().putString(KEY, encode(append(decode(p.getString(KEY, "") ?: ""), e))).commit() // commit, not apply: the entry must be on disk before the announcement
+        return p.edit().putString(KEY, encode(append(decode(p.getString(KEY, "") ?: ""), e))).commit() // commit, not apply: the entry must be on disk before the announcement
     }
 
-    fun list(context: Context): List<Entry> =
-        decode(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, "") ?: "")
+    fun list(context: Context): List<Entry> {
+        val legacy = decode(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, "") ?: "")
+        val accepted = try { DrivingEvents.acceptedHistory(context) } catch (_: Exception) {
+            listOf(Entry(System.currentTimeMillis(), NOTE, null, "Accepted driving history unavailable: journal could not be read; it has not been erased."))
+        }
+        return (accepted + legacy).sortedByDescending { it.at }.take(MAX)
+    }
 
-    fun clear(context: Context) { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY).apply() }
+    fun clear(context: Context): Boolean {
+        // Coordinate with the event owner; late TTS callbacks never append deleted accepted records.
+        if (!DrivingEvents.clearHistory(context)) return false
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY).commit()
+    }
 }

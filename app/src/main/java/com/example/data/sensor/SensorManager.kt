@@ -37,9 +37,21 @@ class SensorManager(
     val batteryManager: BatteryManager = BatteryManager(context),
     private val powerManagerEngine: com.example.data.engine.PowerManagerEngine = com.example.data.engine.PowerManagerEngine(),
     private val settingsRepository: SettingsRepository = SettingsRepository(context),
-    val stateManager: SensorStateManager = SensorStateManager()
+    val stateManager: SensorStateManager = SensorStateManager(),
+    private val monotonicNow: () -> Long = { android.os.SystemClock.elapsedRealtime() },
+    private val wallNow: () -> Long = { System.currentTimeMillis() }
 ) : DefaultLifecycleObserver {
 
+    private val monitorOwner = java.util.UUID.randomUUID().toString()
+    private var monitoringStarts = 0
+    private var lastSampleDecision = "not_processed"
+    private var serviceOwner = "none"
+    private var serviceStarts = 0
+    private var sampleCounter = 0L
+    private var processingSampleId = "none"
+    @Synchronized internal fun noteServiceOwner(owner: String) {
+        if (serviceOwner != owner) { serviceOwner = owner; serviceStarts++ }
+    }
     private var thermalState: ThermalState = ThermalState.NORMAL
 
     enum class ThermalState { NORMAL, WARM, HIGH, THERMAL_PROTECTION }
@@ -65,6 +77,9 @@ class SensorManager(
     private val _liveReadings = MutableStateFlow<Map<String, RawSensorReading>>(emptyMap())
     val liveReadings: StateFlow<Map<String, RawSensorReading>> = _liveReadings.asStateFlow()
 
+    private var monitoringGeneration = 0L
+    // Configuration collectors belong to this process-persistent manager, not a transient monitor run.
+    private val configurationScope = CoroutineScope(Dispatchers.Default + Job())
     private var job = Job()
     private var scope = CoroutineScope(Dispatchers.Default + job)
 
@@ -93,7 +108,7 @@ class SensorManager(
     private val subscribers = MutableStateFlow<Map<Int, Set<String>>>(emptyMap())
     private val sensorJobs = java.util.concurrent.ConcurrentHashMap<Int, Job>()
     
-    fun addSubscriber(sensorType: Int, subscriberId: String) {
+    @Synchronized fun addSubscriber(sensorType: Int, subscriberId: String) {
         val current = subscribers.value.toMutableMap()
         val set = current.getOrDefault(sensorType, emptySet()).toMutableSet()
         set.add(subscriberId)
@@ -102,7 +117,7 @@ class SensorManager(
         evaluateSensorStreams()
     }
     
-    fun removeSubscriber(sensorType: Int, subscriberId: String) {
+    @Synchronized fun removeSubscriber(sensorType: Int, subscriberId: String) {
         val current = subscribers.value.toMutableMap()
         val set = current.getOrDefault(sensorType, emptySet()).toMutableSet()
         set.remove(subscriberId)
@@ -119,19 +134,19 @@ class SensorManager(
         runCapabilityDiscovery()
         
         // Observe power mode changes
-        scope.launch {
+        configurationScope.launch {
             powerManagerEngine.powerMode.collect { mode ->
                 updateThrottlingBasedOnPowerMode(mode)
             }
         }
 
 
-        scope.launch { settingsRepository.monitorMagnetic.collect { updateMonitoringState(Sensor.TYPE_MAGNETIC_FIELD, it) } }
-        scope.launch { settingsRepository.monitorLight.collect { updateMonitoringState(Sensor.TYPE_LIGHT, it) } }
-        scope.launch { settingsRepository.monitorProximity.collect { updateMonitoringState(Sensor.TYPE_PROXIMITY, it) } }
+        configurationScope.launch { settingsRepository.monitorMagnetic.collect { updateMonitoringState(Sensor.TYPE_MAGNETIC_FIELD, it) } }
+        configurationScope.launch { settingsRepository.monitorLight.collect { updateMonitoringState(Sensor.TYPE_LIGHT, it) } }
+        configurationScope.launch { settingsRepository.monitorProximity.collect { updateMonitoringState(Sensor.TYPE_PROXIMITY, it) } }
     }
 
-    private fun updateMonitoringState(type: Int, enabled: Boolean) {
+    @Synchronized private fun updateMonitoringState(type: Int, enabled: Boolean) {
         val current = _monitoringEnabled.value.toMutableMap()
         current[type] = enabled
         _monitoringEnabled.value = current
@@ -164,7 +179,7 @@ class SensorManager(
         }
     }
 
-    fun setSensorThrottle(sensorType: Int, intervalMs: Long) {
+    @Synchronized fun setSensorThrottle(sensorType: Int, intervalMs: Long) {
         val current = _sensorThrottles.value.toMutableMap()
         current[sensorType] = intervalMs
         _sensorThrottles.value = current
@@ -191,14 +206,21 @@ class SensorManager(
     /**
      * Starts active lifecycle-aware sensor monitoring streams for all supported hardware capabilities.
      */
+    @Synchronized
     fun startMonitoring() {
+        // Reconcile FIRST, even when already active: a recreated service after teardown must still find a
+        // dead trip under an open gate and resume it. Early-returning before this would keep tripOFF/gateON.
+        reconcileTrip()
         if (_isMonitoringActive.value) return
         if (job.isCancelled || !scope.coroutineContext[Job]!!.isActive) {
             job = Job()
             scope = CoroutineScope(Dispatchers.Default + job)
         }
         _isMonitoringActive.value = true
-        
+        monitoringStarts++
+        monitoringGeneration++
+        val receive = monitoringReceiver()
+
         evaluateSensorStreams()
 
         // 2. Battery & Power Stream
@@ -206,35 +228,40 @@ class SensorManager(
         scope.launch {
             batteryManager.batteryState.collect { _ ->
                 val reading = batteryManager.getAsRawReading()
-                handleIncomingReading(reading)
+                receive(reading)
             }
         }
         
         // 3. Thermal Subsystem Stream
         scope.launch {
             sensorObservers.observeThermalState().collect { reading ->
-                handleIncomingReading(reading)
+                receive(reading)
             }
         }
         
         // 4. GNSS / Location Stream
         scope.launch {
             sensorObservers.observeLocation().collect { reading ->
-                handleIncomingReading(reading)
+                receive(reading)
             }
         }
     }
 
+    @Synchronized
     fun stopMonitoring() {
         _isMonitoringActive.value = false
-        com.example.driving.DrivingTrip.stop()
+        monitoringGeneration++ // invalidate callbacks before canceling jobs; cancel is not a join
+        // A monitoring restart (thermal, settings) is transient: if the gate is open the trip keeps recording
+        // and startMonitoring reconciles. Only a closed gate means "not driving", so only then stop the trip.
+        // Service teardown cancels only its heartbeat; the repository owns process-persistent monitoring.
+        if (!speedGate.isOpen) com.example.driving.DrivingTrip.stop()
         batteryManager.stopMonitoring()
         sensorJobs.values.forEach { it.cancel() }
         sensorJobs.clear()
         job.cancel()
     }
 
-    private fun evaluateSensorStreams() {
+    @Synchronized private fun evaluateSensorStreams() {
         if (!_isMonitoringActive.value) {
             sensorJobs.values.forEach { it.cancel() }
             sensorJobs.clear()
@@ -276,9 +303,10 @@ class SensorManager(
                     else -> "unknown"
                 }
                 
+                val receive = monitoringReceiver()
                 val j = scope.launch {
                     sensorObservers.observeHardwareSensor(cap.type, cap.name, cap.category, unit, throttle).collect { reading ->
-                        handleIncomingReading(reading)
+                        receive(reading)
                     }
                 }
                 sensorJobs[cap.type] = j
@@ -293,23 +321,160 @@ class SensorManager(
     private var lastAggregationTime = 0L
     private val AGGREGATION_INTERVAL = 5000L // 5 seconds
 
-    private val speedGate = SpeedGate()
+    private val speedGate = SpeedGate(openDelayMs = SpeedGate.openDelayMs(context))
     private val stopTracker = com.example.sos.StopTracker()
+    @Volatile private var lastFedFixMonoMs: Long = -1L
+    /** Bounded diagnostics: last few speeds fed to the gate ("?" = unknown). No coordinates, capped at 10. */
+    private val recentGateSamples = java.util.ArrayDeque<String>(10)
+    /** Per-reason reject counters for the process lifetime (in-memory, shown in gate diagnostics). */
+    private val rejectCounts = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
+    /** Every GPS sample leaves a bounded LOCAL decision fact, including original timestamps, result and
+     * runtime ownership. No coordinates and no network. Audio event IDs/results live in the journal. */
+    @Synchronized internal fun acceptLocationReading(reading: RawSensorReading) {
+        if (reading.sensorId != "gnss_location") return
+        val before = speedGate.diagnosticState()
+        val processingAt = wallNow()
+        val processingMono = monotonicNow()
+        processingSampleId = monitorOwner + ":" + (++sampleCounter)
+        lastSampleDecision = "processing"
+        val eventBefore = try { com.example.driving.DrivingEvents.latestTransitionIdentity(context)?.first } catch (_: Exception) { null }
+        try {
+            updateSpeedGate(reading)
+        } finally {
+            val after = speedGate.diagnosticState()
+            val fixMono = reading.extraDetails["fixElapsedMs"]?.toLongOrNull()
+            val age = fixMono?.let { processingMono - it }
+            val rawSpeed = if (reading.extraDetails["speedKmH"]?.endsWith("km/h") == true)
+                reading.values.getOrNull(2)?.toString() ?: "?" else "unknown"
+            val eventAfter = try { com.example.driving.DrivingEvents.latestTransitionIdentity(context) } catch (_: Exception) { null }
+            val eventId = eventAfter?.first?.takeIf { it != eventBefore }
+            val fact = "sampleId=" + processingSampleId + " eventId=" + (eventId ?: "none") +
+                " requestId=" + (eventId?.let { "driving_" + it } ?: "none") +
+                " audio=" + (if (eventId != null) eventAfter?.second else "not_requested_for_this_sample") + " fixAt=" + (reading.extraDetails["fixTimeMs"] ?: "?") +
+                " fixMono=" + (fixMono?.toString() ?: "?") + " processedAt=" + processingAt +
+                " processedMono=" + processingMono + " speed=" + rawSpeed +
+                " originalSpeed=" + (reading.extraDetails["originalSpeedKmH"] ?: "not_supplied") +
+                " speedAccuracy=" + (reading.extraDetails["originalSpeedAccuracyMps"] ?: "not_supplied") +
+                " upstreamRejection=" + (reading.extraDetails["upstreamRejection"] ?: "not_supplied") +
+                " accuracy=" + (reading.values.getOrNull(3)?.toString() ?: "?") + " ageMs=" + (age?.toString() ?: "?") +
+                " decision=" + lastSampleDecision + " previous=" + before.open + " result=" + after.open +
+                " confirmation=" + after.confirmationCount + " aboveSince=" + after.aboveSinceMs +
+                " belowSince=" + after.belowSinceMs + " blindSince=" + after.unknownSinceMs +
+                " monitor=" + monitorOwner + " monitorStarts=" + monitoringStarts + " active=" + _isMonitoringActive.value +
+                " service=" + serviceOwner + " serviceStarts=" + serviceStarts + " source=" + (reading.extraDetails["source"] ?: "unknown")
+            synchronized(recentGateSamples) {
+                if (recentGateSamples.size >= 10) recentGateSamples.removeFirst()
+                recentGateSamples.addLast(fact)
+            }
+            try {
+                val prefs = context.getSharedPreferences("netra_sensor_diagnostics", Context.MODE_PRIVATE)
+                val prior = prefs.getString("recent_samples", "") ?: ""
+                val bounded = (listOf(fact) + prior.lines().filter { it.isNotBlank() }).take(50)
+                prefs.edit().putString("recent_samples", bounded.joinToString("\n")).commit()
+            } catch (_: Exception) { }
+        }
+    }
+
+    @Synchronized internal fun drivingDiagnosticState() = speedGate.diagnosticState()
+
+    /** Resumes a dead trip under an open gate after a transient restart or service recreation - with an
+     * honest log note, never a fake new driving edge. Safe to call any time. */
+    private fun reconcileTrip() {
+        if (speedGate.isOpen && !com.example.driving.DrivingTrip.isRecording()) {
+            com.example.driving.DrivingTrip.start(context, null, wallNow())
+            com.example.driving.DrivingEvents.noteTripResumed(context, wallNow())
+        }
+    }
 
     /** Updates the speed gate from a GNSS reading and re-evaluates the sensor streams when it opens or closes. */
     private fun updateSpeedGate(reading: RawSensorReading) {
         if (reading.sensorId != "gnss_location") return
-        val speedKmH: Float? = if (reading.extraDetails["speedKmH"]?.endsWith("km/h") == true && reading.values.size > 2) reading.values[2] else null
-        val now = System.currentTimeMillis()
-        val changed = speedGate.update(speedKmH, now)
+        val monoNow = monotonicNow()
+        val fixMono = reading.extraDetails["fixElapsedMs"]?.toLongOrNull()
+        val accuracyM = reading.values.getOrElse(3) { 0f }
+        // Validation order matters: reject first, and only a fully validated fix may advance the high-water mark.
+        // Rejected readings still reach the gate as UNKNOWN, so the blind timer advances and cached/duplicate
+        // fixes can never hold the gate open.
+        val readingSource = reading.extraDetails["source"] ?: ""
+        // The 10 s poller exists for the UI; a speed-less poll is not evidence and must not open, confirm or
+        // restart anything. But the blind clock is clock-driven, not callback-driven: even when live updates
+        // stop completely, these ticks keep advancing it so a stuck-ON gate still closes after the blind limit.
+        if (readingSource == "poller" && reading.extraDetails["speedKmH"]?.endsWith("km/h") != true) {
+            lastSampleDecision = "poller_without_speed_blind_tick"
+            val closedByBlind = speedGate.onBlindTick(monoNow)
+            if (closedByBlind) {
+                val nowTick = wallNow()
+                val lastKmh = DrivingState.speed.value.kmh
+                synchronized(recentGateSamples) {
+                    if (recentGateSamples.size >= 10) recentGateSamples.removeFirst()
+                    recentGateSamples.addLast("[t=" + (monoNow / 1000) + "s OPEN->closed] blind-timeout/" + readingSource)
+                }
+                // Log the transition BEFORE publishing the state, same ordering as the main path.
+                com.example.driving.DrivingEvents.onGateChange(context, false, lastKmh, nowTick, blindClose = true,
+                    recentSamples = synchronized(recentGateSamples) { recentGateSamples.toList() + ("triggerSampleId=" + processingSampleId) })
+                DrivingState.set(false)
+                DrivingState.updateSpeed(null, nowTick)
+                com.example.sos.ParkingSpot.onDrivingEnded(context, stopTracker, monoNow)
+                evaluateSensorStreams()
+            }
+            return
+        }
+        var rejectReason: String? = null
+        if (fixMono == null) rejectReason = "nofixtime"
+        // Same monotonic clock on both sides; >1 s in the future means a broken/relabeled fix (batching skew is sub-second).
+        else if (fixMono > monoNow + 1_000L) rejectReason = "futurefix"
+        else if (fixMono <= lastFedFixMonoMs) rejectReason = if (fixMono == lastFedFixMonoMs) "dupfix" else "outoforder"
+        else if (monoNow - fixMono > 30_000L) rejectReason = "stalefix"
+        val rawSpeed: Float? = if (reading.extraDetails["speedKmH"]?.endsWith("km/h") == true && reading.values.size > 2) reading.values[2] else null
+        val cleaned = SpeedTrust.cleanSpeed(rawSpeed)
+        if (rejectReason == null && rawSpeed != null && cleaned == null) rejectReason = "badspeed"
+        if (rejectReason == null && !SpeedTrust.trusted(accuracyM, false, 0f)) rejectReason = "badaccuracy"
+        val speedKmH: Float? = if (rejectReason != null) null else cleaned
+        if (rejectReason == null && fixMono != null) lastFedFixMonoMs = fixMono
+        val ageS = if (fixMono != null) ((monoNow - fixMono).coerceAtLeast(0L) / 1000L).toString() + "s" else "?"
+        val fixAt = reading.extraDetails["fixTimeMs"]?.toLongOrNull()
+        val stateTag = "[t=" + (monoNow / 1000) + "s fixAt=" + (fixAt?.toString() ?: "?") + " " + (if (speedGate.isOpen) "OPEN" else "closed") + "] "
+        if (rejectReason != null) rejectCounts.merge(rejectReason, 1, Int::plus)
+        lastSampleDecision = rejectReason ?: if (speedKmH == null) "unknown_speed" else "accepted_fresh_speed"
+        synchronized(recentGateSamples) {
+            if (recentGateSamples.size >= 10) recentGateSamples.removeFirst()
+            recentGateSamples.addLast(
+                stateTag + when {
+                    rejectReason != null -> "rej:" + rejectReason + "#" + (rejectCounts[rejectReason] ?: 0) + " speed=" + rawSpeed + " accuracy=" + accuracyM + " age=" + ageS + "/" + readingSource
+                    speedKmH != null -> "%.0f".format(speedKmH) + "@" + (if (accuracyM > 0f) "%.0fm".format(accuracyM) else "?m") + " age=" + ageS + "/" + readingSource
+                    else -> "?blind age=" + ageS + "/" + readingSource
+                }
+            )
+        }
+        // Transport rejects (cached/duplicate/out-of-order/stale/future) are NOT evidence of blindness:
+        // feeding them as UNKNOWN would let a cached poll cancel a live confirmation window. They only
+        // advance the blind clock, like a speed-less tick. Evidence rejects (no fix time, unusable speed)
+        // still reach the gate as UNKNOWN, so a genuinely blind stream can never hold the gate open.
+        if (rejectReason != null && rejectReason != "badspeed" && rejectReason != "badaccuracy" && rejectReason != "nofixtime") {
+            val closedByBlind = speedGate.onBlindTick(monoNow)
+            if (closedByBlind) {
+                val nowTick = wallNow()
+                val lastKmh = DrivingState.speed.value.kmh
+                com.example.driving.DrivingEvents.onGateChange(context, false, lastKmh, nowTick, blindClose = true,
+                    recentSamples = synchronized(recentGateSamples) { recentGateSamples.toList() + ("triggerSampleId=" + processingSampleId) })
+                DrivingState.set(false)
+                DrivingState.updateSpeed(null, nowTick)
+                com.example.sos.ParkingSpot.onDrivingEnded(context, stopTracker, monoNow)
+                evaluateSensorStreams()
+            }
+            return
+        }
+        // The gate runs on the monotonic clock, so wall-clock jumps cannot open or close it early.
+        val changed = speedGate.update(speedKmH, monoNow)
+        val now = wallNow()
         val fixTime = reading.extraDetails["fixTimeMs"]?.toLongOrNull()
         if (changed && speedGate.isOpen) stopTracker.reset()
-        val monoNow = android.os.SystemClock.elapsedRealtime()
-        val fixMono = reading.extraDetails["fixElapsedMs"]?.toLongOrNull() ?: monoNow
         stopTracker.onFix(reading.extraDetails["latitude"]?.toDoubleOrNull() ?: 0.0, reading.extraDetails["longitude"]?.toDoubleOrNull() ?: 0.0,
-            reading.values.getOrElse(3) { 0f }, fixMono, now - (monoNow - fixMono), speedKmH)
+            reading.values.getOrElse(3) { 0f }, fixMono ?: monoNow, now - (monoNow - (fixMono ?: monoNow)), speedKmH)
         // Log first, then publish the state, so a crash between the two cannot lose the entry.
-        if (changed) com.example.driving.DrivingEvents.onGateChange(context, speedGate.isOpen, speedKmH ?: DrivingState.speed.value.kmh, now, blindClose = !speedGate.isOpen && speedGate.closedByBlindSpell)
+        if (changed) com.example.driving.DrivingEvents.onGateChange(context, speedGate.isOpen, speedKmH ?: DrivingState.speed.value.kmh, now, blindClose = !speedGate.isOpen && speedGate.closedByBlindSpell,
+            recentSamples = synchronized(recentGateSamples) { recentGateSamples.toList() + ("triggerSampleId=" + processingSampleId) })
         DrivingState.set(speedGate.isOpen)
         DrivingState.updateSpeed(speedKmH, now)
         if (speedGate.isOpen) com.example.driving.DrivingTrip.onSpeed(speedKmH, reading.values.getOrElse(0) { 0f }, reading.values.getOrElse(1) { 0f }, fixTime ?: now)
@@ -318,13 +483,26 @@ class SensorManager(
         if (changed) evaluateSensorStreams()
     }
 
+    /** All monitored streams capture their run identity at registration. A callback queued before cancel
+     * cannot mutate gate, trip, fusion or downstream state after stop/restart. The same monitor lock
+     * serializes validation/application with start/stop; cancellation alone is not a drain guarantee. */
+    @Synchronized internal fun monitoringReceiver(): (RawSensorReading) -> Unit {
+        val generation = monitoringGeneration
+        return { reading -> acceptMonitoredReading(generation, reading) }
+    }
+
+    @Synchronized private fun acceptMonitoredReading(generation: Long, reading: RawSensorReading) {
+        if (!_isMonitoringActive.value || generation != monitoringGeneration) return
+        handleIncomingReading(reading)
+    }
+
     private fun handleIncomingReading(reading: RawSensorReading) {
-        updateSpeedGate(reading)
+        acceptLocationReading(reading)
         val seq = (sequenceNumbers[reading.sensorId] ?: 0) + 1
         sequenceNumbers[reading.sensorId] = seq
 
         val enrichedReading = reading.copy(
-            lastUpdateTimestamp = System.currentTimeMillis(),
+            lastUpdateTimestamp = wallNow(),
             sequenceNumber = seq
         )
 
@@ -339,7 +517,7 @@ class SensorManager(
         val finalFusion = updatedFusion.copy(
             isAnyModuleRefreshing = refreshing.isNotEmpty(),
             refreshingModules = refreshing,
-            lastUpdateTimestamp = System.currentTimeMillis()
+            lastUpdateTimestamp = wallNow()
         )
         _fusionState.value = finalFusion
         
@@ -352,14 +530,14 @@ class SensorManager(
                 magneticFieldUT = finalFusion.magneticMagnitudeuT,
                 ambientLightLux = finalFusion.ambientLightLux,
                 isCharging = finalFusion.isCharging,
-                timestamp = System.currentTimeMillis()
+                timestamp = wallNow()
             )
         }
         updateThermalState(finalFusion.batteryTempC)
 
         // Buffering for health center update
         readingBuffer.add(enrichedReading)
-        val now = System.currentTimeMillis()
+        val now = wallNow()
         if (now - lastAggregationTime > AGGREGATION_INTERVAL) {
             val batch = com.example.util.drainAll(readingBuffer)
             lastAggregationTime = now
