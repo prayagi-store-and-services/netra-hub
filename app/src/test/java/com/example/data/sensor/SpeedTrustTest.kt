@@ -46,4 +46,15 @@ class SpeedTrustTest {
         assertEquals(0f, SpeedTrust.cleanSpeed(0f))
         assertEquals(null, SpeedTrust.cleanSpeed(null))
     }
+    @Test fun rejectionFactsKeepOriginalInvalidSpeedAndSuppliedError() {
+        val error = SpeedTrust.diagnosticFacts(20f, 5f, true, 9f)
+        assertEquals("20.0", error["originalSpeedKmH"])
+        assertEquals("9.0", error["originalSpeedAccuracyMps"])
+        assertEquals("invalid_speed_accuracy", error["upstreamRejection"])
+        val invalid = SpeedTrust.diagnosticFacts(Float.NaN, 5f, true, Float.POSITIVE_INFINITY)
+        assertEquals("NaN", invalid["originalSpeedKmH"])
+        assertEquals("Infinity", invalid["originalSpeedAccuracyMps"])
+        assertEquals("invalid_or_implausible_speed", invalid["upstreamRejection"])
+        assertFalse(invalid.keys.any { it.contains("latitude") || it.contains("longitude") })
+    }
 }
