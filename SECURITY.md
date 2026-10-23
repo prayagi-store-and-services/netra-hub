@@ -1,5 +1,14 @@
 # Security notes - netra-hub
 
+# Mandatory safety onboarding, crash-alert consent, intro SMS, 80 km/h reminder (v1.4.32)
+
+- Mandatory onboarding now blocks the main app until the required safety profile exists: name, age and at least 3 emergency contacts. This applies to fresh installs and to users upgrading from older versions; previously saved details are kept and prefilled, never wiped. OS permissions are requested with reasons and may be declined; declining never counts as consent.
+- Contacts are typed manually or picked one at a time through the system contact picker (temporary access to the picked contact only). The address book is never read in bulk, synced or uploaded.
+- The crash alert can no longer switch on silently: a one-time consent step (in onboarding, and a one-time dialog on the SOS screen for upgrades) shows the exact SMS payload and recipients before ON. Every path records the choice once and never re-asks; an existing explicit OFF stays OFF, and an existing ON is kept as the past choice. Turning crash alert ON never turns the SOS shake service on.
+- New optional introduction SMS step: the user can tell each saved contact, with one explicit tap per contact, that they were added. The message states it is not an emergency; a send attempt is recorded but delivery is never claimed. No automatic or bulk SMS.
+- New fixed spoken speed reminder (default ON): while driving, when GPS speed reaches 80 km/h the phone speaks a short reminder, at most once per minute. This is a fixed app safety reminder, not the legal road speed limit, which the phone has no on-device source for.
+- The SOS SMS age line now also works when the profile has an age but no date of birth (onboarding collects age as a number; date of birth stays optional). No new permission, library or server. Not a vulnerability fix.
+
 # Crash report consent: destination shown before Send (v1.4.31)
 
 - The Crash report card and the preview dialog now name the destination before anything is sent: developer email prayagideepak@gmail.com through the FormSubmit service (formsubmit.co). The exact report text is still shown first, and sending still happens only when you tap Send. Text-only change; no new permission, library or server. Not a vulnerability fix.
