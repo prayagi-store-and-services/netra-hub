@@ -191,6 +191,7 @@ class SensorManager(
     /**
      * Starts active lifecycle-aware sensor monitoring streams for all supported hardware capabilities.
      */
+    @Synchronized
     fun startMonitoring() {
         if (_isMonitoringActive.value) return
         if (job.isCancelled || !scope.coroutineContext[Job]!!.isActive) {
@@ -304,19 +305,29 @@ class SensorManager(
         if (reading.sensorId != "gnss_location") return
         val monoNow = android.os.SystemClock.elapsedRealtime()
         val fixMono = reading.extraDetails["fixElapsedMs"]?.toLongOrNull()
-        // Reject cached, duplicate or out-of-order fixes: an old fix must never look fresh at processing time.
-        if (fixMono != null) {
-            if (fixMono <= lastFedFixMonoMs) return
-            lastFedFixMonoMs = fixMono
-        }
-        // A fix older than 30 s at processing time says nothing about the speed now: speed is unknown.
-        val stale = fixMono != null && monoNow - fixMono > 30_000L
-        // NaN, infinite or implausible readings are UNKNOWN, never low or high speed.
+        val accuracyM = reading.values.getOrElse(3) { 0f }
+        // Validation order matters: reject first, and only a fully validated fix may advance the high-water mark.
+        // Rejected readings still reach the gate as UNKNOWN, so the blind timer advances and cached/duplicate
+        // fixes can never hold the gate open.
+        var rejectReason: String? = null
+        if (fixMono == null) rejectReason = "nofixtime"
+        else if (fixMono > monoNow + 5_000L) rejectReason = "futurefix"
+        else if (fixMono <= lastFedFixMonoMs) rejectReason = if (fixMono == lastFedFixMonoMs) "dupfix" else "outoforder"
+        else if (monoNow - fixMono > 30_000L) rejectReason = "stalefix"
         val rawSpeed: Float? = if (reading.extraDetails["speedKmH"]?.endsWith("km/h") == true && reading.values.size > 2) reading.values[2] else null
-        val speedKmH: Float? = if (stale) null else SpeedTrust.cleanSpeed(rawSpeed)
+        val cleaned = SpeedTrust.cleanSpeed(rawSpeed)
+        if (rejectReason == null && rawSpeed != null && cleaned == null) rejectReason = "badspeed"
+        val speedKmH: Float? = if (rejectReason != null) null else cleaned
+        if (rejectReason == null && fixMono != null) lastFedFixMonoMs = fixMono
         synchronized(recentGateSamples) {
             if (recentGateSamples.size >= 10) recentGateSamples.removeFirst()
-            recentGateSamples.addLast(speedKmH?.let { "%.0f".format(it) } ?: "?")
+            recentGateSamples.addLast(
+                when {
+                    rejectReason != null -> "rej:" + rejectReason
+                    speedKmH != null -> "%.0f".format(speedKmH) + "@" + (if (accuracyM > 0f) "%.0fm".format(accuracyM) else "?m")
+                    else -> "?blind"
+                }
+            )
         }
         // The gate runs on the monotonic clock, so wall-clock jumps cannot open or close it early.
         val changed = speedGate.update(speedKmH, monoNow)
