@@ -25,6 +25,23 @@ object SpeedTrust {
         return true
     }
 
+    /** Scalar-only provenance for bounded local decision facts. Never carries coordinates. Shared by
+     * cached/live Android Location paths so filtering does not erase the original rejected measurement. */
+    fun diagnosticFacts(rawSpeedKmH: Float?, accuracyM: Float, hasSpeedAccuracy: Boolean,
+                        speedAccuracyMps: Float): Map<String, String> {
+        val rejection = when {
+            rawSpeedKmH == null -> "missing_speed"
+            cleanSpeed(rawSpeedKmH) == null -> "invalid_or_implausible_speed"
+            !trusted(accuracyM, false, 0f) -> "invalid_position_accuracy"
+            !trusted(accuracyM, hasSpeedAccuracy, speedAccuracyMps) -> "invalid_speed_accuracy"
+            else -> "none"
+        }
+        return mapOf("originalSpeedKmH" to (rawSpeedKmH?.toString() ?: "missing"),
+            "hasSpeedAccuracy" to hasSpeedAccuracy.toString(),
+            "originalSpeedAccuracyMps" to if (hasSpeedAccuracy) speedAccuracyMps.toString() else "missing",
+            "upstreamRejection" to rejection)
+    }
+
     /** A NaN, infinite, negative or implausibly high reading is UNKNOWN, never a real (low or high) speed. */
     fun cleanSpeed(speedKmH: Float?): Float? = speedKmH?.takeIf { it.isFinite() && it in 0f..MAX_PLAUSIBLE_KMH }
 }
