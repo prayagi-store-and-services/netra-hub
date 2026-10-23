@@ -24,35 +24,41 @@ object DrivingEvents {
     else "Speed stayed under " + "%.0f".format(com.example.data.sensor.SpeedGate.DEFAULT_THRESHOLD_KMH) + " km/h for " + (com.example.data.sensor.SpeedGate.DEFAULT_CLOSE_DELAY_MS / 1000) + " seconds"
 
     private const val KEY_TRANSITION_SEQ = "transition_seq"
-    private const val KEY_LAST_STATE = "transition_last_state"
 
-    /** Next transition number, persisted so ids survive process death. Committed BEFORE any speech. */
-    @Synchronized
-    private fun nextTransition(c: Context, started: Boolean): Pair<Long, Boolean> {
-        val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val last = if (p.contains(KEY_LAST_STATE)) p.getBoolean(KEY_LAST_STATE, false) else null
-        val seq = p.getLong(KEY_TRANSITION_SEQ, 0L) + 1L
-        p.edit().putLong(KEY_TRANSITION_SEQ, seq).putBoolean(KEY_LAST_STATE, started).commit()
-        return seq to (last == started) // duplicate: same state with no intervening opposite transition
-    }
+    /** Same-process memory of the last announced state: a repeated same-state edge (double owner, replay) is
+     * suppressed. Process death resets this - and the gate restarts CLOSED, so the next ON edge after death is
+     * genuine and announces. Persisted state across death would suppress a genuine re-open. */
+    @Volatile private var lastAnnouncedState: Boolean? = null
+
+    /** Test seam: how a notice is actually spoken. Production = OfficialAlertAnnouncer. */
+    @Volatile internal var speaker: (Context, String, String, ((Boolean, String?) -> Unit)?) -> String? =
+        { c, text, id, cb -> OfficialAlertAnnouncer.speakNotice(c, text, id, cb) }
+
+    @androidx.annotation.VisibleForTesting
+    internal fun resetTransitionMemoryForTests() { lastAnnouncedState = null }
 
     @Synchronized
     fun onGateChange(c: Context, started: Boolean, speedKmH: Float?, now: Long = System.currentTimeMillis(), blindClose: Boolean = false, recentSamples: List<String> = emptyList()) {
-        val (seq, duplicate) = nextTransition(c, started)
-        // Persist the transition BEFORE any speech, with bounded sample diagnostics (no coordinates).
-        val diag = if (recentSamples.isEmpty()) "" else " Recent gate samples: " + recentSamples.joinToString(", ") + "."
-        DrivingLog.add(c, DrivingLog.Entry(now, if (started) DrivingLog.STARTED else DrivingLog.ENDED, speedKmH,
-            "T#" + seq + " " + reasonFor(started, speedKmH, blindClose) + diag))
-        if (duplicate) {
-            // A repeated same-state edge (double owner, replay, restart race): recorded above, never re-announced or re-tripped.
+        // Duplicate same-state edge: no transition id consumed, no accepted-transition log, no speech, no trip.
+        if (lastAnnouncedState == started) {
             DrivingLog.add(c, DrivingLog.Entry(now, DrivingLog.NOTE, speedKmH,
-                "T#" + seq + " duplicate " + (if (started) "ON" else "OFF") + " transition suppressed (no intervening opposite change)"))
+                "Duplicate driving " + (if (started) "ON" else "OFF") + " transition suppressed (no intervening opposite change)"))
             return
         }
+        val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val seq = p.getLong(KEY_TRANSITION_SEQ, 0L) + 1L
+        // Persist the id BEFORE the log/speech; if persistence fails, announce anyway and say so (fail-open).
+        val persisted = p.edit().putLong(KEY_TRANSITION_SEQ, seq).commit()
+        lastAnnouncedState = started
+        val diag = if (recentSamples.isEmpty()) "" else " Recent gate samples: " + recentSamples.joinToString(", ") + "."
+        val persistNote = if (persisted) "" else " (transition id could not be persisted)"
+        // Persist the transition and the announcement request BEFORE any speech. Bounded diagnostics, no coordinates.
+        DrivingLog.add(c, DrivingLog.Entry(now, if (started) DrivingLog.STARTED else DrivingLog.ENDED, speedKmH,
+            "T#" + seq + " " + reasonFor(started, speedKmH, blindClose) + diag + " Announcement driving_T" + seq + " requested." + persistNote))
         if (started) DrivingTrip.start(c, speedKmH, now) else DrivingTrip.stop()
         if (announceEnabled(c)) {
             val reqId = "driving_T" + seq
-            val limit = OfficialAlertAnnouncer.speakNotice(c, if (started) startedText() else endedText(), reqId) { ok, err ->
+            val limit = speaker(c, if (started) startedText() else endedText(), reqId) { ok, err ->
                 // TTS result/failure is recorded per request, so a silent phone is never invisible.
                 DrivingLog.add(c, DrivingLog.Entry(System.currentTimeMillis(), DrivingLog.NOTE, speedKmH,
                     "Announcement " + reqId + (if (ok) " finished" else " failed" + (err?.let { ": " + it } ?: ""))))
