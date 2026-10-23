@@ -29,15 +29,50 @@ object AlertArea {
         return SavedAlertArea(lat, lon, p.getString("loc", "") ?: "", p.getString("dist", "") ?: "", p.getString("state", "") ?: "", at)
     }
 
+    /** Bumped on every save/clear so a worker that started under an older area can tell and stop. */
+    fun version(ctx: Context): Long = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong("ver", 0L)
+
+    /** True when the area changed after a worker run started: that run must not announce or write state. */
+    fun changedSince(started: Long, current: Long) = started != current
+
+    /**
+     * Alerts seen or active under the old area say nothing about the new one: forget them, without a
+     * "warning over" for the old area. Alerts matching the new area announce once on the next check.
+     */
+    private fun resetAlertMemory(ctx: Context) {
+        ctx.getSharedPreferences(SachetWatchWorker.PREFS, Context.MODE_PRIVATE).edit()
+            .remove(SachetWatchWorker.KEY_SEEN).remove(SachetWatchWorker.KEY_ACTIVE).apply()
+        ctx.getSharedPreferences(QuakeWatchWorker.PREFS, Context.MODE_PRIVATE).edit()
+            .remove(QuakeWatchWorker.KEY_SEEN).apply()
+    }
+
+    /** USGS summary feed for the last day at or below the user's minimum magnitude. No coordinates are sent. */
+    fun usgsDayFeedUrl(minimumMagnitude: Double): String {
+        val bucket = when {
+            minimumMagnitude >= 4.5 -> "4.5"
+            minimumMagnitude >= 2.5 -> "2.5"
+            minimumMagnitude >= 1.0 -> "1.0"
+            else -> "all"
+        }
+        return "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/" + bucket + "_day.geojson"
+    }
+
     fun save(ctx: Context, a: SavedAlertArea) {
+        val ver = version(ctx) + 1
+        resetAlertMemory(ctx)
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putLong("ver", ver)
             .putLong("lat", java.lang.Double.doubleToRawLongBits(a.latitude))
             .putLong("lon", java.lang.Double.doubleToRawLongBits(a.longitude))
             .putString("loc", a.locality).putString("dist", a.district).putString("state", a.state)
             .putLong("at", a.savedAtMillis).apply()
     }
 
-    fun clear(ctx: Context) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply() }
+    fun clear(ctx: Context) {
+        val ver = version(ctx) + 1
+        resetAlertMemory(ctx)
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().putLong("ver", ver).apply()
+    }
 
     /** A saved area as the location info the workers already understand, or null when none is saved. */
     fun asLocation(ctx: Context): LocationContextInfo? {
