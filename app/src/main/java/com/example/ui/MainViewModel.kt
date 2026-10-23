@@ -69,7 +69,7 @@ import com.example.data.engine.IntelligentDiagnosticsEngine
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    val repository = NetraSafetyRepository(application.applicationContext)
+    val repository = NetraSafetyRepository.get(application.applicationContext)
     val settingsRepository = SettingsRepository(application.applicationContext)
     val securityEngine = SecurityEngine(application.applicationContext, settingsRepository)
     private val diagnosticsEngine = SensorDiagnosticsEngine()
