@@ -91,6 +91,23 @@ class DrivingJournalTest {
         assertEquals(1, s.disk.size); assertEquals(DrivingTransition.FINISHED, s.disk.single().audio)
         assertEquals("done", s.disk.single().result)
     }
+    @Test fun clearHistoryDoesNotReplayOrResurrectSubmittedWork() {
+        val s = MemoryVisibleFailureStore(); val j = journal(s)
+        val id = j.accept(true, 1L, 20f, "on", "")!!
+        j.prepareAudio(true)
+        assertTrue(j.clearHistory())
+        j.complete(id, true, "late done")
+        assertTrue(s.disk.isEmpty())
+        assertTrue(j.prepareAudio(true).isEmpty())
+        assertNull(j.accept(true, 2L, 20f, "duplicate", ""))
+    }
+    @Test fun failedClearPreservesTheAcceptedHistory() {
+        val s = MemoryVisibleFailureStore(); val j = journal(s)
+        j.accept(true, 1L, 20f, "on", "")
+        s.fail = true
+        assertFalse(j.clearHistory()); assertEquals(1, j.snapshot().size)
+        assertEquals(1, s.disk.size)
+    }
     @Test fun codecRoundTripsNullSpeedAndMultilineDiagnostics() {
         val e = DrivingTransition("uuid", 123L, false, null, "a|b\nc", "age=5s\nowner=one")
         assertEquals(listOf(e), DrivingJournalCodec.decode(DrivingJournalCodec.encode(listOf(e))))
