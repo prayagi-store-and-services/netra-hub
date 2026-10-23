@@ -57,7 +57,7 @@ class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
                 return Result.success()
             }
             if (AlertArea.changedSince(areaVer, AlertArea.version(ctx))) return Result.retry()
-            val seen = prefs.getStringSet(KEY_SEEN, emptySet()) ?: emptySet()
+            val seen = prefs.getStringSet(AlertArea.scoped(KEY_SEEN, areaVer), emptySet()) ?: emptySet()
             // Respect an off/filter change made while the request was in flight.
             val currentFilters = QuakeAlertSettings.read(ctx)
             if (!currentFilters.enabled) { save(prefs, now, "Off: earthquake notifications disabled on this phone."); return Result.success() }
@@ -83,7 +83,7 @@ class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
                     riskLevel = SafetyRiskLevel.ATTENTION
                 )
                 val updated = (seen + fresh.map { it.id }).toList().takeLast(200).toSet()
-                prefs.edit().putStringSet(KEY_SEEN, updated).apply()
+                prefs.edit().putStringSet(AlertArea.scoped(KEY_SEEN, areaVer), updated).apply()
                 save(prefs, now, "Notified: " + fresh.size + " new earthquake(s), strongest M" + top.magnitude + ".")
             }
             return Result.success()
