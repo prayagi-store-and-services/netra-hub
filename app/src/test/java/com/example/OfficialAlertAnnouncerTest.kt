@@ -218,6 +218,36 @@ class OfficialAlertAnnouncerTest {
         }
     }
 
+    @Test fun fallbackHoldsQueueUntilStoppedAndReleasesFocus() {
+        val original = OfficialAlertAnnouncer.startFallback
+        val acquire = OfficialAlertAnnouncer.acquireNoticeFocus
+        val release = OfficialAlertAnnouncer.releaseNoticeFocus
+        var stopped = 0
+        var abandoned = 0
+        val token = Any()
+        try {
+            OfficialAlertAnnouncer.acquireNoticeFocus = { _, _ -> token }
+            OfficialAlertAnnouncer.releaseNoticeFocus = { _, t -> if (t === token) abandoned++ }
+            OfficialAlertAnnouncer.startFallback = { _, _ -> { stopped++ } }
+            deliverInit = false
+            OfficialAlertAnnouncer.speakNotice(ctx, "first", "fallback") { _, _ -> }
+            org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+            initCb?.invoke(TextToSpeech.ERROR)
+            org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+            OfficialAlertAnnouncer.speakNotice(ctx, "next", "next") { _, _ -> }
+            org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idleFor(7, TimeUnit.SECONDS)
+            assertTrue(fake.spoken.isEmpty()); assertEquals(0, stopped)
+            deliverInit = true
+            org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idleFor(2, TimeUnit.SECONDS)
+            assertEquals(1, stopped); assertEquals(1, abandoned)
+            assertEquals(listOf("next"), fake.spoken.map { it.first })
+        } finally {
+            OfficialAlertAnnouncer.startFallback = original
+            OfficialAlertAnnouncer.acquireNoticeFocus = acquire
+            OfficialAlertAnnouncer.releaseNoticeFocus = release
+        }
+    }
+
     @Test fun officialAlertRegressionPathSpeaks() {
         // Shared-alert regression: the sachet/quake announce() path must still reach the engine.
         OfficialAlertAnnouncer.setEnabled(ctx, true)
