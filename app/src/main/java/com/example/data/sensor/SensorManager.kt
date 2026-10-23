@@ -354,6 +354,9 @@ class SensorManager(
                 " audio=" + (if (eventId != null) eventAfter?.second else "not_requested_for_this_sample") + " fixAt=" + (reading.extraDetails["fixTimeMs"] ?: "?") +
                 " fixMono=" + (fixMono?.toString() ?: "?") + " processedAt=" + processingAt +
                 " processedMono=" + processingMono + " speed=" + rawSpeed +
+                " originalSpeed=" + (reading.extraDetails["originalSpeedKmH"] ?: "not_supplied") +
+                " speedAccuracy=" + (reading.extraDetails["originalSpeedAccuracyMps"] ?: "not_supplied") +
+                " upstreamRejection=" + (reading.extraDetails["upstreamRejection"] ?: "not_supplied") +
                 " accuracy=" + (reading.values.getOrNull(3)?.toString() ?: "?") + " ageMs=" + (age?.toString() ?: "?") +
                 " decision=" + lastSampleDecision + " previous=" + before.open + " result=" + after.open +
                 " confirmation=" + after.confirmationCount + " aboveSince=" + after.aboveSinceMs +
