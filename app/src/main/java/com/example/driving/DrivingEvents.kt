@@ -45,6 +45,8 @@ object DrivingEvents {
     @androidx.annotation.VisibleForTesting
     @Synchronized internal fun resetTransitionMemoryForTests() { journal = null; journalStore = null }
 
+    @Synchronized internal fun clearHistory(c: Context): Boolean = journal(c).clearHistory()
+
     /** UI history comes from durable snapshots, not a failed SharedPreferences memory write. */
     @Synchronized internal fun acceptedHistory(c: Context): List<DrivingLog.Entry> {
         journal(c) // applies the explicit no-replay restart policy once
