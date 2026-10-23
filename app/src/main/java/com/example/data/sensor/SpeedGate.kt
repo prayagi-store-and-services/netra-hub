@@ -27,6 +27,10 @@ class SpeedGate(
     private var aboveSinceMs: Long = -1L
     private var lastValidMs: Long = 0L
     private var blindSinceLastValid = false
+    /** Accepted above-threshold readings inside the current high window. Two spikes are only two endpoints,
+     * not evidence of continuous speed: the gate opens only with at least MIN_OPEN_SAMPLES accepted readings
+     * in the window (a stationary phone's paired spikes can never reach that). */
+    private var acceptedInWindow = 0
 
     /** Feed a speed reading (null = unknown). Returns true when the gate changed state. */
     @Synchronized
@@ -37,6 +41,7 @@ class SpeedGate(
             // Only a long blind spell (GPS lost) closes the gate, so a stuck ON state cannot last.
             blindSinceLastValid = true
             aboveSinceMs = -1L // a blind gap is not consecutive fresh evidence: the high window restarts
+            acceptedInWindow = 0
             if (isOpen) {
                 if (unknownSinceMs < 0) unknownSinceMs = nowMs
                 if (nowMs - unknownSinceMs >= UNKNOWN_CLOSE_MS) { isOpen = false; closedByBlindSpell = true; belowSinceMs = -1L; unknownSinceMs = -1L }
@@ -50,11 +55,13 @@ class SpeedGate(
             // high run stale, so the window restarts after it.
             // Opening needs consecutive fresh evidence: a gap over OPEN_GAP_MAX_MS between valid readings is
             // treated like a blind spell and restarts the window (two spikes far apart are not "sustained").
-            if (aboveSinceMs < 0 || nowMs - lastValidMs > OPEN_GAP_MAX_MS) aboveSinceMs = nowMs
+            if (aboveSinceMs < 0 || nowMs - lastValidMs > OPEN_GAP_MAX_MS) { aboveSinceMs = nowMs; acceptedInWindow = 0 }
+            acceptedInWindow++
             belowSinceMs = -1L
-            if (!isOpen && nowMs - aboveSinceMs >= openDelayMs) isOpen = true
+            if (!isOpen && acceptedInWindow >= MIN_OPEN_SAMPLES && nowMs - aboveSinceMs >= openDelayMs) isOpen = true
         } else {
             aboveSinceMs = -1L
+            acceptedInWindow = 0
             if (isOpen) {
             // A blind gap breaks the run of low readings: the timer restarts after it.
             if (belowSinceMs < 0 || (blindSinceLastValid && nowMs - lastValidMs > GAP_RESTARTS_MS)) belowSinceMs = nowMs
@@ -78,6 +85,22 @@ class SpeedGate(
         aboveSinceMs = -1L
         lastValidMs = 0L
         blindSinceLastValid = false
+        acceptedInWindow = 0
+    }
+
+    /** Clock-driven blind advance for tick sources that have no speed at all (the 10 s UI poller): it moves only
+     * the blind-close timer, so a stuck-ON gate still closes when live updates stop. It never opens the gate,
+     * never confirms a pending window and never restarts the high window. Returns true when the gate closed. */
+    @Synchronized
+    fun onBlindTick(nowMs: Long): Boolean {
+        if (!isOpen) return false
+        blindSinceLastValid = true
+        if (unknownSinceMs < 0) unknownSinceMs = nowMs
+        if (nowMs - unknownSinceMs >= UNKNOWN_CLOSE_MS) {
+            isOpen = false; closedByBlindSpell = true; belowSinceMs = -1L; unknownSinceMs = -1L
+            return true
+        }
+        return false
     }
 
     companion object {
@@ -85,6 +108,7 @@ class SpeedGate(
         const val DEFAULT_CLOSE_DELAY_MS = 90_000L
         const val DEFAULT_OPEN_DELAY_MS = 10_000L
         const val OPEN_GAP_MAX_MS = 15_000L
+        const val MIN_OPEN_SAMPLES = 3
         const val UNKNOWN_CLOSE_MS = 300_000L
         const val GAP_RESTARTS_MS = 30_000L
         private const val PREFS = "netra_speed_gate"
