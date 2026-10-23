@@ -13,8 +13,17 @@ object SpeedTrust {
 
     const val MAX_PLAUSIBLE_KMH = 200f
 
-    fun trusted(accuracyM: Float, hasSpeedAccuracy: Boolean, speedAccuracyMps: Float): Boolean =
-        accuracyM > 0f && accuracyM <= MAX_ACCURACY_M && (!hasSpeedAccuracy || speedAccuracyMps <= MAX_SPEED_ACCURACY_MPS)
+    /**
+     * Position-accuracy and (when the device supplies one, API 26+) speed-error checks. A device that cannot
+     * report a speed error estimate at all (missing, not negative) stays usable: the sustained-speed gate window,
+     * accuracy bound and plausibility cap still apply. A supplied but invalid estimate (negative or non-finite)
+     * is a broken reading and rejects.
+     */
+    fun trusted(accuracyM: Float, hasSpeedAccuracy: Boolean, speedAccuracyMps: Float): Boolean {
+        if (!(accuracyM > 0f) || accuracyM > MAX_ACCURACY_M || !accuracyM.isFinite()) return false
+        if (hasSpeedAccuracy && (!(speedAccuracyMps >= 0f) || !speedAccuracyMps.isFinite() || speedAccuracyMps > MAX_SPEED_ACCURACY_MPS)) return false
+        return true
+    }
 
     /** A NaN, infinite, negative or implausibly high reading is UNKNOWN, never a real (low or high) speed. */
     fun cleanSpeed(speedKmH: Float?): Float? = speedKmH?.takeIf { it.isFinite() && it in 0f..MAX_PLAUSIBLE_KMH }
