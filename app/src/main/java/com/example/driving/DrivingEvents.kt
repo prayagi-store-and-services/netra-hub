@@ -23,103 +23,65 @@ object DrivingEvents {
         "GPS speed reached " + (speedKmH?.let { "%.0f km/h".format(it) } ?: "the limit") + " (limit " + "%.0f".format(com.example.data.sensor.SpeedGate.DEFAULT_THRESHOLD_KMH) + " km/h)"
     else "Speed stayed under " + "%.0f".format(com.example.data.sensor.SpeedGate.DEFAULT_THRESHOLD_KMH) + " km/h for " + (com.example.data.sensor.SpeedGate.DEFAULT_CLOSE_DELAY_MS / 1000) + " seconds"
 
-    private const val KEY_TRANSITION_SEQ = "transition_seq"
+    /** One journal instance owns accepted transitions for this process. Persistence is independent of the
+     * announcement preferences; a commit-failed preference cache never supplies accepted history. */
+    private var journal: DrivingJournal? = null
+    private var journalStore: DrivingJournalStore? = null
+    @Volatile internal var journalStoreFactory: (Context) -> DrivingJournalStore = { AndroidDrivingJournalStore(it) }
 
-    /** Same-process memory of the last announced state: a repeated same-state edge (double owner, replay) is
-     * suppressed. Process death resets this - and the gate restarts CLOSED, so the next ON edge after death is
-     * genuine and announces. Persisted state across death would suppress a genuine re-open. */
-    @Volatile private var lastAnnouncedState: Boolean? = null
-
-    /** Test seam: how a notice is actually spoken. Production = OfficialAlertAnnouncer. */
+    /** Test seam: production routes through the same announcer as official safety alerts. */
     @Volatile internal var speaker: (Context, String, String, ((Boolean, String?) -> Unit)?) -> String? =
         { c, text, id, cb -> OfficialAlertAnnouncer.speakNotice(c, text, id, cb) }
 
-    /** An accepted transition whose id or request log could not be persisted: speech is held (fail-closed)
-     * until persistence recovers. Crash semantics, defined: the pending intent is process-memory only, so a
-     * process death drops it; the next genuine edge after death announces fresh, and the HELD transition entry
-     * remains in the log wherever log persistence itself worked. A pending intent is NEVER replayed once the
-     * world has moved to the opposite state - recovery reconciles with the authoritative current state. */
-    private data class PendingAnnouncement(val started: Boolean, val speedKmH: Float?, val blindClose: Boolean, val diag: String, val at: Long, val attempt: Int, val seq: Long?)
-    @Volatile private var pendingAnnouncement: PendingAnnouncement? = null
-    private var heldAttempt = 0
-
-    @androidx.annotation.VisibleForTesting
-    internal fun resetTransitionMemoryForTests() { lastAnnouncedState = null; pendingAnnouncement = null }
-
-    private fun speakAccepted(c: Context, started: Boolean, seq: Long, speedKmH: Float?, now: Long) {
-        if (!announceEnabled(c)) return // the transition entry already records "disabled; skipped"
-        val reqId = "driving_T" + seq
-        val limit = speaker(c, if (started) startedText() else endedText(), reqId) { ok, err ->
-            // TTS result/failure is recorded per request, so a silent phone is never invisible.
-            DrivingLog.add(c, DrivingLog.Entry(System.currentTimeMillis(), DrivingLog.NOTE, speedKmH,
-                "Announcement " + reqId + (if (ok) " finished" else " failed" + (err?.let { ": " + it } ?: ""))))
-        }
-        // The state change is real even when sound cannot play; say so in the log instead of pretending.
-        if (limit != null) DrivingLog.add(c, DrivingLog.Entry(now, DrivingLog.NOTE, speedKmH,
-            "Driving mode " + (if (started) "ON" else "OFF") + " announcement could not play: " + limit))
+    @Synchronized private fun journal(c: Context): DrivingJournal {
+        journal?.let { return it }
+        val store = journalStoreFactory(c)
+        val loaded = DrivingJournal(store)
+        journalStore = store
+        journal = loaded
+        return loaded
     }
 
-    /** Retries a held announcement with the FULL envelope: a fresh id is issued only now (a held attempt
-     * never carries an accepted id), the original STARTED/ENDED transition + request entry is persisted,
-     * and only when id AND log are both durable does speech go out. */
-    private fun retryPending(c: Context, now: Long) {
-        val pa = pendingAnnouncement ?: return
-        val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        // The ONE accepted record for this transition: the id the first attempt already persisted when it
-        // exists, otherwise a fresh id minted now. Held attempts never carry a T#, so no id is ever reused.
-        val seq = pa.seq ?: (p.getLong(KEY_TRANSITION_SEQ, 0L) + 1L)
-        if (!p.edit().putLong(KEY_TRANSITION_SEQ, seq).commit()) return
-        if (!DrivingLog.add(c, DrivingLog.Entry(now, if (pa.started) DrivingLog.STARTED else DrivingLog.ENDED, pa.speedKmH,
-                "T#" + seq + " " + reasonFor(pa.started, pa.speedKmH, pa.blindClose) + pa.diag +
-                    " (held attempt #" + pa.attempt + " since " + pa.at + ", recovered now) Announcement driving_T" + seq + " requested."))) return
-        pendingAnnouncement = null
-        speakAccepted(c, pa.started, seq, pa.speedKmH, now)
+    @androidx.annotation.VisibleForTesting
+    @Synchronized internal fun resetTransitionMemoryForTests() { journal = null; journalStore = null }
+
+    /** UI history comes from durable snapshots, not a failed SharedPreferences memory write. */
+    @Synchronized internal fun acceptedHistory(c: Context): List<DrivingLog.Entry> {
+        journal(c) // applies the explicit no-replay restart policy once
+        return journalStore!!.readDurable().asReversed().map { e ->
+            DrivingLog.Entry(e.at, if (e.started) DrivingLog.STARTED else DrivingLog.ENDED, e.speedKmH,
+                "Event " + e.id + " " + e.reason + " " + e.diagnostics +
+                    " Announcement " + e.audio + ": " + e.result)
+        }
     }
 
     @Synchronized
     fun onGateChange(c: Context, started: Boolean, speedKmH: Float?, now: Long = System.currentTimeMillis(), blindClose: Boolean = false, recentSamples: List<String> = emptyList()) {
-        // Reconcile a held announcement against the authoritative CURRENT state before anything else:
-        // same direction -> retry it; opposite edge -> the held one is stale history, never replay it.
-        pendingAnnouncement?.let { pa ->
-            if (pa.started == started) {
-                retryPending(c, now)
-            } else {
-                pendingAnnouncement = null
-                DrivingLog.add(c, DrivingLog.Entry(now, DrivingLog.NOTE, speedKmH,
-                    "Held announcement (attempt #" + pa.attempt + ", no id was issued) superseded by driving " + (if (started) "ON" else "OFF") + " before persistence recovered; not played."))
-            }
-        }
-        // Duplicate same-state edge: no transition id consumed, no accepted-transition log, no speech, no trip.
-        if (lastAnnouncedState == started) {
-            DrivingLog.add(c, DrivingLog.Entry(now, DrivingLog.NOTE, speedKmH,
-                "Duplicate driving " + (if (started) "ON" else "OFF") + " transition suppressed (no intervening opposite change)"))
-            return
-        }
-        val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val seq = p.getLong(KEY_TRANSITION_SEQ, 0L) + 1L
-        // Persist-before-TTS is the contract: id AND request entry must BOTH be durable before any speech.
-        // A committed id alone proves nothing about the log; either failure HOLDS the announcement
-        // (fail-closed), retried on the next edge. A held attempt is issued NO id - accepted ids are only
-        // ever minted on durable accept, so a held T# can never be reused by a later transition.
-        val idPersisted = p.edit().putLong(KEY_TRANSITION_SEQ, seq).commit()
-        lastAnnouncedState = started
-        val diag = if (recentSamples.isEmpty()) "" else " Recent gate samples: " + recentSamples.joinToString(", ") + "."
-        // Persist the transition and the announcement request BEFORE any speech. Bounded diagnostics, no coordinates.
-        val enabled = announceEnabled(c)
-        val attempt = ++heldAttempt
-        // A HELD attempt is a diagnostic NOTE with NO T# id: the STARTED/ENDED record with its unique id is
-        // written exactly once, on durable accept (here or in retryPending) - never twice, never reused.
-        val logPersisted =
-            if (!idPersisted) DrivingLog.add(c, DrivingLog.Entry(now, DrivingLog.NOTE, speedKmH,
-                "Driving " + (if (started) "ON" else "OFF") + " transition accepted but not durable (held attempt #" + attempt + ", no id issued): " +
-                    reasonFor(started, speedKmH, blindClose) + diag + " Fail-closed: the announcement is retried on the next edge."))
-            else DrivingLog.add(c, DrivingLog.Entry(now, if (started) DrivingLog.STARTED else DrivingLog.ENDED, speedKmH,
-                "T#" + seq + " " + reasonFor(started, speedKmH, blindClose) + diag +
-                    if (!enabled) " Announcement driving_T" + seq + " disabled by the user; skipped."
-                    else " Announcement driving_T" + seq + " requested."))
+        // Trip lifecycle reflects the real detector edge even when storage is unavailable; audio does not.
+        // start() is idempotent and also reconciles a same-state monitoring restart.
         if (started) DrivingTrip.start(c, speedKmH, now) else DrivingTrip.stop()
-        if (idPersisted && logPersisted) speakAccepted(c, started, seq, speedKmH, now)
-        else pendingAnnouncement = PendingAnnouncement(started, speedKmH, blindClose, diag, now, attempt, if (idPersisted) seq else null)
+        try {
+            val owner = journal(c)
+            val diagnostics = recentSamples.joinToString(", ").take(8000)
+            owner.accept(started, now, speedKmH, reasonFor(started, speedKmH, blindClose), diagnostics)
+            // This commits accepted history + SUBMITTED intent together before the engine receives work.
+            // Disabled recovery is committed as SKIPPED; superseded unsubmitted history is never erased.
+            for (event in owner.prepareAudio(announceEnabled(c))) {
+                val requestId = "driving_" + event.id
+                try {
+                    val limit = speaker(c, if (event.started) startedText() else endedText(), requestId) { ok, error ->
+                        owner.complete(event.id, ok, error ?: if (ok) "engine reported done" else "engine reported failure")
+                    }
+                    if (limit != null) owner.complete(event.id, false, limit)
+                } catch (_: Exception) {
+                    owner.complete(event.id, false, "engine submission threw an exception")
+                }
+            }
+        } catch (_: Exception) {
+            // No durable store means no announcement. Never erase an unreadable journal or call this fixed.
+            DrivingLog.add(c, DrivingLog.Entry(now, DrivingLog.NOTE, speedKmH,
+                "Driving transition could not be durably recorded; audio held. Storage requires recovery."))
+        }
     }
 
     /** Trip recording resumed without a new driving edge (monitoring restart while the gate stayed open). */
