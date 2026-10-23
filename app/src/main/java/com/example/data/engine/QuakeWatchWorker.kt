@@ -32,19 +32,21 @@ class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
         val ctx = applicationContext
         val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
+        val areaVer = AlertArea.version(ctx)
+        fun gsave(msg: String) { AlertArea.commitIfCurrent(ctx, areaVer) { save(prefs, now, msg) } }
         try {
             val filters = QuakeAlertSettings.read(ctx)
-            if (!filters.enabled) { save(prefs, now, "Off: earthquake notifications disabled on this phone."); return Result.success() }
-            val loc = OfficialLocationContextManager(ctx).refreshLocation()
+            if (!filters.enabled) { gsave("Off: earthquake notifications disabled on this phone."); return Result.success() }
+            val loc = AlertArea.asLocation(ctx) ?: OfficialLocationContextManager(ctx).refreshLocation()
             val ok = loc.locationStatus == "LOCATION_AVAILABLE" || loc.locationStatus == "COORDINATES_AVAILABLE" || loc.locationStatus == "GEOCODER_FAILED"
             if (!ok || (loc.latitude == 0.0 && loc.longitude == 0.0)) {
-                save(prefs, now, "Unavailable: " + com.example.data.service.LocationAccess.failureText(loc.locationStatus, com.example.data.service.LocationAccess.backgroundGranted(ctx)))
+                gsave("Unavailable: " + com.example.data.service.LocationAccess.failureText(loc.locationStatus, com.example.data.service.LocationAccess.backgroundGranted(ctx)))
                 return Result.success()
             }
             val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
             val start = fmt.format(Date(now - 2 * 86_400_000L))
-            val url = "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&latitude=" + loc.latitude +
-                "&longitude=" + loc.longitude + "&maxradiuskm=" + filters.distanceKm + "&minmagnitude=" + filters.minimumMagnitude + "&starttime=" + start + "&orderby=time&limit=50"
+            // Global last-day summary feed: no coordinates leave the phone; distance is filtered here.
+            val url = AlertArea.usgsDayFeedUrl(filters.minimumMagnitude)
             val body = try {
                 val c = URL(url).openConnection() as HttpURLConnection
                 c.connectTimeout = 10000; c.readTimeout = 10000
@@ -52,41 +54,44 @@ class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
             } catch (e: Exception) { null }
             val quakes = body?.let { parseUsgsQuakes(it, loc.latitude, loc.longitude, filters.distanceKm.toDouble()) }
             if (quakes == null) {
-                save(prefs, now, "Unavailable: the USGS feed could not be read.")
+                gsave("Unavailable: the USGS feed could not be read.")
                 return Result.success()
             }
-            val seen = prefs.getStringSet(KEY_SEEN, emptySet()) ?: emptySet()
-            // Respect an off/filter change made while the request was in flight.
-            val currentFilters = QuakeAlertSettings.read(ctx)
-            if (!currentFilters.enabled) { save(prefs, now, "Off: earthquake notifications disabled on this phone."); return Result.success() }
-            if (currentFilters != filters) {
-                save(prefs, now, "Filters changed during this check. A new check is needed; no result was used.")
-                return Result.retry()
+            val committed = AlertArea.commitIfCurrent(ctx, areaVer) {
+                val seen = prefs.getStringSet(AlertArea.scoped(KEY_SEEN, areaVer), emptySet()) ?: emptySet()
+                // Respect an off/filter change made while the request was in flight.
+                val currentFilters = QuakeAlertSettings.read(ctx)
+                if (!currentFilters.enabled) { gsave("Off: earthquake notifications disabled on this phone."); return Result.success() }
+                if (currentFilters != filters) {
+                    gsave("Filters changed during this check. A new check is needed; no result was used.")
+                    return Result.retry()
+                }
+                val fresh = selectNewQuakes(quakes, seen, now, 24 * 3_600_000L)
+                    .filter { currentFilters.accepts(it.distanceKm, it.magnitude) }
+                if (fresh.isEmpty()) {
+                    gsave("OK: no new earthquake matching M${currentFilters.minimumMagnitude}+ within ${currentFilters.distanceKm} km in the last 24 hours.")
+                } else if (!NotificationManagerCompat.from(ctx).areNotificationsEnabled()) {
+                    // Do not mark as seen: notify once notifications are allowed.
+                    gsave("Unavailable: notifications are off, " + fresh.size + " new earthquake(s) could not be shown.")
+                } else {
+                    val top = fresh.maxByOrNull { it.magnitude }!!
+                    val tf = SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault())
+                    OfficialAlertAnnouncer.announce(ctx, "quake", "Earthquake magnitude " + top.magnitude, top.place, top.distanceKm.toInt().toString() + " km from your area")
+                    NetraNotificationManager(ctx).sendEmergencyAlert(
+                        title = "Earthquake M" + top.magnitude + " near you (USGS)",
+                        message = top.distanceKm.toInt().toString() + " km away, " + tf.format(Date(top.timeMillis)) + ", " + top.place +
+                            (if (fresh.size > 1) " (+" + (fresh.size - 1) + " more)" else "") + ". USGS data, not an official warning.",
+                        riskLevel = SafetyRiskLevel.ATTENTION
+                    )
+                    val updated = (seen + fresh.map { it.id }).toList().takeLast(200).toSet()
+                    prefs.edit().putStringSet(AlertArea.scoped(KEY_SEEN, areaVer), updated).apply()
+                    gsave("Notified: " + fresh.size + " new earthquake(s), strongest M" + top.magnitude + ".")
+                }
             }
-            val fresh = selectNewQuakes(quakes, seen, now, 24 * 3_600_000L)
-                .filter { currentFilters.accepts(it.distanceKm, it.magnitude) }
-            if (fresh.isEmpty()) {
-                save(prefs, now, "OK: no new earthquake matching M${currentFilters.minimumMagnitude}+ within ${currentFilters.distanceKm} km in the last 24 hours.")
-            } else if (!NotificationManagerCompat.from(ctx).areNotificationsEnabled()) {
-                // Do not mark as seen: notify once notifications are allowed.
-                save(prefs, now, "Unavailable: notifications are off, " + fresh.size + " new earthquake(s) could not be shown.")
-            } else {
-                val top = fresh.maxByOrNull { it.magnitude }!!
-                val tf = SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault())
-                OfficialAlertAnnouncer.announce(ctx, "quake", "Earthquake magnitude " + top.magnitude, top.place, top.distanceKm.toInt().toString() + " km from your area")
-                NetraNotificationManager(ctx).sendEmergencyAlert(
-                    title = "Earthquake M" + top.magnitude + " near you (USGS)",
-                    message = top.distanceKm.toInt().toString() + " km away, " + tf.format(Date(top.timeMillis)) + ", " + top.place +
-                        (if (fresh.size > 1) " (+" + (fresh.size - 1) + " more)" else "") + ". USGS data, not an official warning.",
-                    riskLevel = SafetyRiskLevel.ATTENTION
-                )
-                val updated = (seen + fresh.map { it.id }).toList().takeLast(200).toSet()
-                prefs.edit().putStringSet(KEY_SEEN, updated).apply()
-                save(prefs, now, "Notified: " + fresh.size + " new earthquake(s), strongest M" + top.magnitude + ".")
-            }
+            if (!committed) return Result.retry()
             return Result.success()
         } catch (e: Exception) {
-            save(prefs, now, "Unavailable: check failed.")
+            gsave("Unavailable: check failed.")
             return Result.retry()
         }
     }

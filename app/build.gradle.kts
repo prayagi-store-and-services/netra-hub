@@ -30,8 +30,8 @@ android {
     applicationId = "com.aistudio.netrasensorhub.kxmpzq"
     minSdk = 24
     targetSdk = 36
-    versionCode = 75
-    versionName = "1.4.32"
+    versionCode = 76
+    versionName = "1.5.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
