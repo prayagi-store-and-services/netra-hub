@@ -6,7 +6,7 @@ import com.example.data.service.LocationContextInfo
 
 /**
  * The area the user chose for official alerts (NDMA SACHET, USGS), saved on this phone only.
- * It is never uploaded. When no area is saved the workers keep their earlier behaviour (a fresh
+ * It is kept on this phone only. When no area is saved the workers keep their earlier behaviour (a fresh
  * location fix on every run). The user can update or clear it at any time.
  */
 data class SavedAlertArea(
@@ -16,7 +16,20 @@ data class SavedAlertArea(
 )
 
 object AlertArea {
+    const val PREFS = "netra_alert_area"
+    const val STALE_DAYS = 14L
+
     @PublishedApi internal val lock = Any()
+
+    fun read(ctx: Context): SavedAlertArea? {
+        val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val at = p.getLong("at", 0L)
+        if (at == 0L) return null
+        val lat = java.lang.Double.longBitsToDouble(p.getLong("lat", 0L))
+        val lon = java.lang.Double.longBitsToDouble(p.getLong("lon", 0L))
+        if (!plausible(lat, lon)) return null
+        return SavedAlertArea(lat, lon, p.getString("loc", "") ?: "", p.getString("dist", "") ?: "", p.getString("state", "") ?: "", at)
+    }
 
     /**
      * Final step of a worker run: under the same lock as save/clear, check the area version is still the one
