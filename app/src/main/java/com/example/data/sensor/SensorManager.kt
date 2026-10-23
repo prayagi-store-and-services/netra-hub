@@ -199,7 +199,14 @@ class SensorManager(
             scope = CoroutineScope(Dispatchers.Default + job)
         }
         _isMonitoringActive.value = true
-        
+
+        // Reconcile after a transient restart: the gate never closed, so driving continued, but the trip may
+        // have been stopped by the old teardown path. Resume it with an honest log note - no fake new edge.
+        if (speedGate.isOpen && !com.example.driving.DrivingTrip.isRecording()) {
+            com.example.driving.DrivingTrip.start(context, null, System.currentTimeMillis())
+            com.example.driving.DrivingEvents.noteTripResumed(context)
+        }
+
         evaluateSensorStreams()
 
         // 2. Battery & Power Stream
@@ -228,7 +235,10 @@ class SensorManager(
 
     fun stopMonitoring() {
         _isMonitoringActive.value = false
-        com.example.driving.DrivingTrip.stop()
+        // A monitoring restart (thermal, settings) is transient: if the gate is open the trip keeps recording
+        // and startMonitoring reconciles. Only a closed gate means "not driving", so only then stop the trip.
+        // The service's onDestroy owns the final teardown when the whole service goes away.
+        if (!speedGate.isOpen) com.example.driving.DrivingTrip.stop()
         batteryManager.stopMonitoring()
         sensorJobs.values.forEach { it.cancel() }
         sensorJobs.clear()
@@ -299,6 +309,8 @@ class SensorManager(
     @Volatile private var lastFedFixMonoMs: Long = -1L
     /** Bounded diagnostics: last few speeds fed to the gate ("?" = unknown). No coordinates, capped at 10. */
     private val recentGateSamples = java.util.ArrayDeque<String>(10)
+    /** Per-reason reject counters, so a rejected fix leaves a durable fact, not only a transient string. */
+    private val rejectCounts = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
     /** Updates the speed gate from a GNSS reading and re-evaluates the sensor streams when it opens or closes. */
     private fun updateSpeedGate(reading: RawSensorReading) {
@@ -310,9 +322,27 @@ class SensorManager(
         // Rejected readings still reach the gate as UNKNOWN, so the blind timer advances and cached/duplicate
         // fixes can never hold the gate open.
         val readingSource = reading.extraDetails["source"] ?: ""
-        // The 10 s poller exists for the UI; when it has no speed it must not touch the gate (a live fix could
-        // be confirming right now - a speed-less poll would restart the confirmation window).
-        if (readingSource == "poller" && reading.extraDetails["speedKmH"]?.endsWith("km/h") != true) return
+        // The 10 s poller exists for the UI; a speed-less poll is not evidence and must not open, confirm or
+        // restart anything. But the blind clock is clock-driven, not callback-driven: even when live updates
+        // stop completely, these ticks keep advancing it so a stuck-ON gate still closes after the blind limit.
+        if (readingSource == "poller" && reading.extraDetails["speedKmH"]?.endsWith("km/h") != true) {
+            val closedByBlind = speedGate.onBlindTick(monoNow)
+            if (closedByBlind) {
+                val nowTick = System.currentTimeMillis()
+                val lastKmh = DrivingState.speed.value.kmh
+                DrivingState.set(false)
+                DrivingState.updateSpeed(null, nowTick)
+                synchronized(recentGateSamples) {
+                    if (recentGateSamples.size >= 10) recentGateSamples.removeFirst()
+                    recentGateSamples.addLast("[${monoNow / 1000}s OPEN->closed] poll:blind-timeout")
+                }
+                com.example.driving.DrivingEvents.onGateChange(context, false, lastKmh, nowTick, blindClose = true,
+                    recentSamples = synchronized(recentGateSamples) { recentGateSamples.toList() })
+                com.example.sos.ParkingSpot.onDrivingEnded(context, stopTracker, monoNow)
+                evaluateSensorStreams()
+            }
+            return
+        }
         var rejectReason: String? = null
         if (fixMono == null) rejectReason = "nofixtime"
         // Same monotonic clock on both sides; >1 s in the future means a broken/relabeled fix (batching skew is sub-second).
@@ -324,13 +354,15 @@ class SensorManager(
         if (rejectReason == null && rawSpeed != null && cleaned == null) rejectReason = "badspeed"
         val speedKmH: Float? = if (rejectReason != null) null else cleaned
         if (rejectReason == null && fixMono != null) lastFedFixMonoMs = fixMono
+        val stateTag = "[" + (monoNow / 1000) + "s " + (if (speedGate.isOpen) "OPEN" else "closed") + "] "
+        if (rejectReason != null) rejectCounts.merge(rejectReason, 1, Int::plus)
         synchronized(recentGateSamples) {
             if (recentGateSamples.size >= 10) recentGateSamples.removeFirst()
             recentGateSamples.addLast(
-                when {
-                    rejectReason != null -> "rej:" + rejectReason
-                    speedKmH != null -> "%.0f".format(speedKmH) + "@" + (if (accuracyM > 0f) "%.0fm".format(accuracyM) else "?m")
-                    else -> "?blind"
+                stateTag + when {
+                    rejectReason != null -> "rej:" + rejectReason + "#" + (rejectCounts[rejectReason] ?: 0)
+                    speedKmH != null -> "%.0f".format(speedKmH) + "@" + (if (accuracyM > 0f) "%.0fm".format(accuracyM) else "?m") + "/" + readingSource
+                    else -> "?blind/" + readingSource
                 }
             )
         }
