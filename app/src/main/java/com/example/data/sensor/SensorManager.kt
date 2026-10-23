@@ -308,6 +308,20 @@ class SensorManager(
     /** Per-reason reject counters for the process lifetime (in-memory, shown in gate diagnostics). */
     private val rejectCounts = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
+    /** Last few rejected-fix facts, PERSISTED (bounded at 10): a reject leaves a durable record with the
+     * original fix time, the reject reason + running count and the feeding source. No coordinates. */
+    private fun recordRejectFact(reason: String, count: Int, fixTimeMs: Long?, monoNow: Long, source: String) {
+        try {
+            val p = context.getSharedPreferences("netra_sensor_diagnostics", Context.MODE_PRIVATE)
+            val line = "t=" + (monoNow / 1000) + "s fixAt=" + (fixTimeMs?.toString() ?: "?") +
+                " rej=" + reason + "#" + count + " src=" + source
+            val prior = p.getString("recent_rejects", "") ?: ""
+            val next = (listOf(line) + prior.lines().filter { it.isNotBlank() }).take(10).joinToString("
+")
+            p.edit().putString("recent_rejects", next).commit()
+        } catch (_: Exception) { }
+    }
+
     /** Resumes a dead trip under an open gate after a transient restart or service recreation - with an
      * honest log note, never a fake new driving edge. Safe to call any time. */
     private fun reconcileTrip() {
@@ -361,8 +375,12 @@ class SensorManager(
         val speedKmH: Float? = if (rejectReason != null) null else cleaned
         if (rejectReason == null && fixMono != null) lastFedFixMonoMs = fixMono
         val ageS = if (fixMono != null) ((monoNow - fixMono).coerceAtLeast(0L) / 1000L).toString() + "s" else "?"
-        val stateTag = "[t=" + (monoNow / 1000) + "s " + (if (speedGate.isOpen) "OPEN" else "closed") + "] "
-        if (rejectReason != null) rejectCounts.merge(rejectReason, 1, Int::plus)
+        val fixAt = reading.extraDetails["fixTimeMs"]?.toLongOrNull()
+        val stateTag = "[t=" + (monoNow / 1000) + "s fixAt=" + (fixAt?.toString() ?: "?") + " " + (if (speedGate.isOpen) "OPEN" else "closed") + "] "
+        if (rejectReason != null) {
+            rejectCounts.merge(rejectReason, 1, Int::plus)
+            recordRejectFact(rejectReason, rejectCounts[rejectReason] ?: 1, fixAt, monoNow, readingSource)
+        }
         synchronized(recentGateSamples) {
             if (recentGateSamples.size >= 10) recentGateSamples.removeFirst()
             recentGateSamples.addLast(
