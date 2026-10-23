@@ -169,6 +169,7 @@ object OfficialAlertAnnouncer {
     }
 
     private fun speak(context: Context, text: String, utteranceId: String = "official_alert", onComplete: ((Boolean, String?) -> Unit)? = null) {
+        val app = context.applicationContext
         // Single-owner rule: every transition happens on the main loop. Anything else is re-posted.
         if (Looper.myLooper() != Looper.getMainLooper()) {
             Handler(Looper.getMainLooper()).post { speak(context, text, utteranceId, onComplete) }
