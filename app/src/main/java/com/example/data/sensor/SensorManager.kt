@@ -193,19 +193,15 @@ class SensorManager(
      */
     @Synchronized
     fun startMonitoring() {
+        // Reconcile FIRST, even when already active: a recreated service after teardown must still find a
+        // dead trip under an open gate and resume it. Early-returning before this would keep tripOFF/gateON.
+        reconcileTrip()
         if (_isMonitoringActive.value) return
         if (job.isCancelled || !scope.coroutineContext[Job]!!.isActive) {
             job = Job()
             scope = CoroutineScope(Dispatchers.Default + job)
         }
         _isMonitoringActive.value = true
-
-        // Reconcile after a transient restart: the gate never closed, so driving continued, but the trip may
-        // have been stopped by the old teardown path. Resume it with an honest log note - no fake new edge.
-        if (speedGate.isOpen && !com.example.driving.DrivingTrip.isRecording()) {
-            com.example.driving.DrivingTrip.start(context, null, System.currentTimeMillis())
-            com.example.driving.DrivingEvents.noteTripResumed(context)
-        }
 
         evaluateSensorStreams()
 
@@ -309,8 +305,17 @@ class SensorManager(
     @Volatile private var lastFedFixMonoMs: Long = -1L
     /** Bounded diagnostics: last few speeds fed to the gate ("?" = unknown). No coordinates, capped at 10. */
     private val recentGateSamples = java.util.ArrayDeque<String>(10)
-    /** Per-reason reject counters, so a rejected fix leaves a durable fact, not only a transient string. */
+    /** Per-reason reject counters for the process lifetime (in-memory, shown in gate diagnostics). */
     private val rejectCounts = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
+    /** Resumes a dead trip under an open gate after a transient restart or service recreation - with an
+     * honest log note, never a fake new driving edge. Safe to call any time. */
+    private fun reconcileTrip() {
+        if (speedGate.isOpen && !com.example.driving.DrivingTrip.isRecording()) {
+            com.example.driving.DrivingTrip.start(context, null, System.currentTimeMillis())
+            com.example.driving.DrivingEvents.noteTripResumed(context)
+        }
+    }
 
     /** Updates the speed gate from a GNSS reading and re-evaluates the sensor streams when it opens or closes. */
     private fun updateSpeedGate(reading: RawSensorReading) {
@@ -330,14 +335,15 @@ class SensorManager(
             if (closedByBlind) {
                 val nowTick = System.currentTimeMillis()
                 val lastKmh = DrivingState.speed.value.kmh
-                DrivingState.set(false)
-                DrivingState.updateSpeed(null, nowTick)
                 synchronized(recentGateSamples) {
                     if (recentGateSamples.size >= 10) recentGateSamples.removeFirst()
-                    recentGateSamples.addLast("[${monoNow / 1000}s OPEN->closed] poll:blind-timeout")
+                    recentGateSamples.addLast("[t=" + (monoNow / 1000) + "s OPEN->closed] blind-timeout/" + readingSource)
                 }
+                // Log the transition BEFORE publishing the state, same ordering as the main path.
                 com.example.driving.DrivingEvents.onGateChange(context, false, lastKmh, nowTick, blindClose = true,
                     recentSamples = synchronized(recentGateSamples) { recentGateSamples.toList() })
+                DrivingState.set(false)
+                DrivingState.updateSpeed(null, nowTick)
                 com.example.sos.ParkingSpot.onDrivingEnded(context, stopTracker, monoNow)
                 evaluateSensorStreams()
             }
@@ -354,17 +360,36 @@ class SensorManager(
         if (rejectReason == null && rawSpeed != null && cleaned == null) rejectReason = "badspeed"
         val speedKmH: Float? = if (rejectReason != null) null else cleaned
         if (rejectReason == null && fixMono != null) lastFedFixMonoMs = fixMono
-        val stateTag = "[" + (monoNow / 1000) + "s " + (if (speedGate.isOpen) "OPEN" else "closed") + "] "
+        val ageS = if (fixMono != null) ((monoNow - fixMono).coerceAtLeast(0L) / 1000L).toString() + "s" else "?"
+        val stateTag = "[t=" + (monoNow / 1000) + "s " + (if (speedGate.isOpen) "OPEN" else "closed") + "] "
         if (rejectReason != null) rejectCounts.merge(rejectReason, 1, Int::plus)
         synchronized(recentGateSamples) {
             if (recentGateSamples.size >= 10) recentGateSamples.removeFirst()
             recentGateSamples.addLast(
                 stateTag + when {
-                    rejectReason != null -> "rej:" + rejectReason + "#" + (rejectCounts[rejectReason] ?: 0)
-                    speedKmH != null -> "%.0f".format(speedKmH) + "@" + (if (accuracyM > 0f) "%.0fm".format(accuracyM) else "?m") + "/" + readingSource
-                    else -> "?blind/" + readingSource
+                    rejectReason != null -> "rej:" + rejectReason + "#" + (rejectCounts[rejectReason] ?: 0) + " age=" + ageS + "/" + readingSource
+                    speedKmH != null -> "%.0f".format(speedKmH) + "@" + (if (accuracyM > 0f) "%.0fm".format(accuracyM) else "?m") + " age=" + ageS + "/" + readingSource
+                    else -> "?blind age=" + ageS + "/" + readingSource
                 }
             )
+        }
+        // Transport rejects (cached/duplicate/out-of-order/stale/future) are NOT evidence of blindness:
+        // feeding them as UNKNOWN would let a cached poll cancel a live confirmation window. They only
+        // advance the blind clock, like a speed-less tick. Evidence rejects (no fix time, unusable speed)
+        // still reach the gate as UNKNOWN, so a genuinely blind stream can never hold the gate open.
+        if (rejectReason != null && rejectReason != "badspeed" && rejectReason != "nofixtime") {
+            val closedByBlind = speedGate.onBlindTick(monoNow)
+            if (closedByBlind) {
+                val nowTick = System.currentTimeMillis()
+                val lastKmh = DrivingState.speed.value.kmh
+                com.example.driving.DrivingEvents.onGateChange(context, false, lastKmh, nowTick, blindClose = true,
+                    recentSamples = synchronized(recentGateSamples) { recentGateSamples.toList() })
+                DrivingState.set(false)
+                DrivingState.updateSpeed(null, nowTick)
+                com.example.sos.ParkingSpot.onDrivingEnded(context, stopTracker, monoNow)
+                evaluateSensorStreams()
+            }
+            return
         }
         // The gate runs on the monotonic clock, so wall-clock jumps cannot open or close it early.
         val changed = speedGate.update(speedKmH, monoNow)
