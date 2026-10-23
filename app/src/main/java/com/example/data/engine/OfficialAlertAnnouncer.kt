@@ -49,7 +49,7 @@ object OfficialAlertAnnouncer {
     /** Serialization: a single OWNER (the main loop) holds all speak/finish transitions, so there is no
      * cross-thread race at all. Every accepted announcement is a genuine event (a committed driving edge,
      * a quake/SACHET alert) and plays exactly once, in arrival order; nothing is ever superseded or dropped
-     * here. Upstream duplicate suppression keeps the queue bounded. */
+     * here. The queue is unbounded by design: dropping a safety announcement is worse than queueing it. */
     private val speakBusy = java.util.concurrent.atomic.AtomicBoolean(false)
     private data class QueuedSpeak(val context: Context, val text: String, val utteranceId: String, val onComplete: ((Boolean, String?) -> Unit)?)
     private val speakQueue = java.util.concurrent.LinkedBlockingQueue<QueuedSpeak>()
@@ -169,8 +169,6 @@ object OfficialAlertAnnouncer {
     }
 
     private fun speak(context: Context, text: String, utteranceId: String = "official_alert", onComplete: ((Boolean, String?) -> Unit)? = null) {
-        val app = context.applicationContext
-        val am = app.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         // Single-owner rule: every transition happens on the main loop. Anything else is re-posted.
         if (Looper.myLooper() != Looper.getMainLooper()) {
             Handler(Looper.getMainLooper()).post { speak(context, text, utteranceId, onComplete) }
@@ -181,7 +179,18 @@ object OfficialAlertAnnouncer {
             speakQueue.offer(QueuedSpeak(app, text, utteranceId, onComplete))
             return
         }
+        startSpeakOnMain(app, text, utteranceId, onComplete)
+        return
+    }
+
+    private fun amOf(app: Context) = app.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+
+    /** Runs on the main loop only; keeps the busy flag held through the whole utterance lifetime and hands
+     * it directly to the next queued request on completion, so a reentrant speak from inside onComplete
+     * always lands BEHIND the already-queued work. */
+    private fun startSpeakOnMain(app: Context, text: String, utteranceId: String, onComplete: ((Boolean, String?) -> Unit)?) {
         speakBusy.set(true)
+        val am = amOf(app)
         // Armed BEFORE construction: a hung TTS init also reports failure instead of waiting forever.
         val done = java.util.concurrent.atomic.AtomicBoolean(false)
         val finish: (Boolean, String?) -> Unit = { ok, err ->
@@ -189,19 +198,24 @@ object OfficialAlertAnnouncer {
             // so release -> callback -> drain can never interleave with a new arrival.
             if (done.compareAndSet(false, true)) {
                 Handler(Looper.getMainLooper()).post {
-                    speakBusy.set(false)
-                    try { onComplete?.invoke(ok, err) } catch (_: Exception) { }
-                    // The next queued announcement plays only after the current one fully finished: order preserved.
+                    // Drain BEFORE the callback: busy stays held through the handoff, so a reentrant speak
+                    // from inside onComplete queues behind, never overtakes. The queue is only released
+                    // (busy=false) when there is genuinely nothing left to play.
                     val next = speakQueue.poll()
-                    if (next != null) speak(next.context, next.text, next.utteranceId, next.onComplete)
+                    if (next == null) speakBusy.set(false)
+                    try { onComplete?.invoke(ok, err) } catch (_: Exception) { }
+                    if (next != null) startSpeakOnMain(next.context, next.text, next.utteranceId, next.onComplete)
                 }
             }
         }
         var engineRef: TtsEngine? = null
         Handler(Looper.getMainLooper()).postDelayed({
-            // Timed out: kill whatever init/engine is still hanging so a late callback cannot speak after OFF.
-            try { engineRef?.shutdown() } catch (_: Exception) { }
-            finish(false, "TTS init or engine callback missing within 60 s")
+            // Stale-timer guard: if this utterance already finished, this old watchdog must NOT touch the
+            // (possibly reused) engine instance - only a genuinely still-running attempt is killed.
+            if (!done.get()) {
+                try { engineRef?.shutdown() } catch (_: Exception) { }
+                finish(false, "TTS init or engine callback missing within 60 s")
+            }
         }, 60_000L)
         engineRef = ttsInit.create(app) { status ->
             if (done.get()) {
@@ -237,7 +251,8 @@ object OfficialAlertAnnouncer {
                         override fun onError(utteranceId: String?) { finishSpeak(false, "TTS engine error") }
                     })
                     // Watchdog: focus is never held open even if the engine drops the utterance callbacks.
-                    Handler(Looper.getMainLooper()).postDelayed({ finishSpeak(false, "no engine callback within 60 s") }, 60_000L)
+                    // Stale-timer guard: an already-finished utterance ignores it (see doneSpeak in finishSpeak).
+                    Handler(Looper.getMainLooper()).postDelayed({ if (!done.get()) finishSpeak(false, "no engine callback within 60 s") }, 60_000L)
                     val params = Bundle()
                     params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_ALARM)
                     val accepted = engine.speak(text, TextToSpeech.QUEUE_FLUSH, params, utteranceId)
