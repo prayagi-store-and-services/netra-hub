@@ -34,10 +34,11 @@ object DrivingLog {
     /** Newest first, capped. Pure so it can be tested without a phone. */
     fun append(existing: List<Entry>, e: Entry): List<Entry> = (listOf(e) + existing).take(MAX)
 
+    /** Returns the commit result: a false means the entry is NOT durable and callers must not act as if it were. */
     @Synchronized
-    fun add(context: Context, e: Entry) {
+    fun add(context: Context, e: Entry): Boolean {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        p.edit().putString(KEY, encode(append(decode(p.getString(KEY, "") ?: ""), e))).commit() // commit, not apply: the entry must be on disk before the announcement
+        return p.edit().putString(KEY, encode(append(decode(p.getString(KEY, "") ?: ""), e))).commit() // commit, not apply: the entry must be on disk before the announcement
     }
 
     fun list(context: Context): List<Entry> =
