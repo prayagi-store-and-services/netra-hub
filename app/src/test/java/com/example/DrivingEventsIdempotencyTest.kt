@@ -108,6 +108,11 @@ class DrivingEventsPersistenceTest {
         announce.commitOk = true // storage recovers; next same-state edge retries
         DrivingEvents.onGateChange(c, true, 21f, 2_000L)
         org.junit.Assert.assertEquals(1, spoken.size)
+        // The accepted transition is recorded exactly ONCE with a unique id; the held attempt was a NOTE without one.
+        val entries = DrivingLog.list(base)
+        org.junit.Assert.assertEquals(1, entries.count { it.kind == DrivingLog.STARTED })
+        org.junit.Assert.assertTrue(entries.any { it.kind == DrivingLog.NOTE && it.reason.contains("no id issued") })
+        org.junit.Assert.assertFalse(entries.any { it.kind == DrivingLog.NOTE && it.reason.contains("T#") })
     }
 
     @Test fun oppositeEdgeSupersedesHeldAnnouncement() {
