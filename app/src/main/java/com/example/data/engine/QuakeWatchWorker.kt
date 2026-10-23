@@ -35,7 +35,7 @@ class QuakeWatchWorker(context: Context, params: WorkerParameters) : CoroutineWo
         try {
             val filters = QuakeAlertSettings.read(ctx)
             if (!filters.enabled) { save(prefs, now, "Off: earthquake notifications disabled on this phone."); return Result.success() }
-            val loc = OfficialLocationContextManager(ctx).refreshLocation()
+            val loc = AlertArea.asLocation(ctx) ?: OfficialLocationContextManager(ctx).refreshLocation()
             val ok = loc.locationStatus == "LOCATION_AVAILABLE" || loc.locationStatus == "COORDINATES_AVAILABLE" || loc.locationStatus == "GEOCODER_FAILED"
             if (!ok || (loc.latitude == 0.0 && loc.longitude == 0.0)) {
                 save(prefs, now, "Unavailable: " + com.example.data.service.LocationAccess.failureText(loc.locationStatus, com.example.data.service.LocationAccess.backgroundGranted(ctx)))
