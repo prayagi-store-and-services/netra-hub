@@ -101,7 +101,12 @@ internal class DrivingJournal(
     /** Clear durable history without resetting detector dedup or creating new audio work. Already submitted
      * engine requests keep their normal queue lifetime; late callbacks cannot recreate cleared records. */
     @Synchronized fun clearHistory(): Boolean {
-        if (!store.writeDurable(emptyList())) return false
+        if (!store.writeDurable(emptyList())) {
+            // A commit may have reached disk even when acknowledgement failed. Reconcile against the
+            // actual durable snapshot before retaining old desired state that could resurrect history.
+            val durable = try { store.readDurable() } catch (_: Exception) { return false }
+            if (durable.isNotEmpty()) return false
+        }
         desired = emptyList()
         return true
     }
