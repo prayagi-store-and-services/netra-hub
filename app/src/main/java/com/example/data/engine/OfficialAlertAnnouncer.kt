@@ -185,87 +185,86 @@ object OfficialAlertAnnouncer {
     }
 
     private fun amOf(app: Context) = app.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+    internal var acquireNoticeFocus: (AudioManager?, AudioAttributes) -> Any? = { am, attrs -> requestFocus(am, attrs) }
+    internal var releaseNoticeFocus: (AudioManager?, Any?) -> Unit = { am, token -> abandonFocus(am, token) }
 
     /** Runs on the main loop only; keeps the busy flag held through the whole utterance lifetime and hands
      * it directly to the next queued request on completion, so a reentrant speak from inside onComplete
      * always lands BEHIND the already-queued work. */
     private fun startSpeakOnMain(app: Context, text: String, utteranceId: String, onComplete: ((Boolean, String?) -> Unit)?) {
         speakBusy.set(true)
+        val handler = Handler(Looper.getMainLooper())
         val am = amOf(app)
-        // Armed BEFORE construction: a hung TTS init also reports failure instead of waiting forever.
-        val done = java.util.concurrent.atomic.AtomicBoolean(false)
-        val finish: (Boolean, String?) -> Unit = { ok, err ->
-            // Callbacks arrive on the TTS binder thread: marshal completion to the owner (main loop),
-            // so release -> callback -> drain can never interleave with a new arrival.
-            if (done.compareAndSet(false, true)) {
-                Handler(Looper.getMainLooper()).post {
-                    // Drain BEFORE the callback: busy stays held through the handoff, so a reentrant speak
-                    // from inside onComplete queues behind, never overtakes. The queue is only released
-                    // (busy=false) when there is genuinely nothing left to play.
-                    val next = speakQueue.poll()
-                    if (next == null) speakBusy.set(false)
-                    try { onComplete?.invoke(ok, err) } catch (_: Exception) { }
-                    if (next != null) startSpeakOnMain(next.context, next.text, next.utteranceId, next.onComplete)
-                }
-            }
-        }
+        var done = false
+        var initialized = false
         var engineRef: TtsEngine? = null
-        Handler(Looper.getMainLooper()).postDelayed({
-            // Stale-timer guard: if this utterance already finished, this old watchdog must NOT touch the
-            // (possibly reused) engine instance - only a genuinely still-running attempt is killed.
-            if (!done.get()) {
-                try { engineRef?.shutdown() } catch (_: Exception) { }
-                finish(false, "TTS init or engine callback missing within 60 s")
-            }
-        }, 60_000L)
-        engineRef = ttsInit.create(app) { status ->
-            if (done.get()) {
-                // Init arrived after the watchdog fired: the announcement is already reported failed.
-                // Shut the engine down immediately so a stale ON can never speak after the timeout/OFF.
-                try { engineRef?.shutdown() } catch (_: Exception) { }
-                return@create
-            }
-            if (status == TextToSpeech.SUCCESS) {
-                val engine = engineRef
-                val lang = engine?.setLanguage(Locale.ENGLISH) ?: TextToSpeech.LANG_MISSING_DATA
-                if (lang != TextToSpeech.LANG_MISSING_DATA && lang != TextToSpeech.LANG_NOT_SUPPORTED && engine != null) {
-                    val attrs = AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                        .build()
-                    engine.setAudioAttributes(attrs)
-                    // Pause other media for the announcement; resume them when it ends. If focus is not
-                    // granted the alert still plays (an official warning must not be silenced for it).
-                    val focus = requestFocus(am, attrs)
-                    val doneSpeak = java.util.concurrent.atomic.AtomicBoolean(false)
-                    fun finishSpeak(ok: Boolean, err: String?) {
-                        if (doneSpeak.compareAndSet(false, true)) {
-                            abandonFocus(am, focus)
-                            try { engine.shutdown() } catch (_: Exception) { }
-                            finish(ok, err)
-                        }
+        var focus: Any? = null
+        var watchdog: Runnable? = null
+
+        // ALL exits use the same main-loop-owned cleanup, including init failure, dropped callbacks,
+        // immediate speak rejection and construction/engine exceptions. Cleanup precedes queue handoff.
+        fun finishOnMain(ok: Boolean, error: String?) {
+            if (done) return
+            done = true
+            watchdog?.let { handler.removeCallbacks(it) }
+            try { releaseNoticeFocus(am, focus) } catch (_: Exception) { }
+            focus = null
+            try { engineRef?.shutdown() } catch (_: Exception) { }
+            val next = speakQueue.poll()
+            if (next == null) speakBusy.set(false)
+            try { onComplete?.invoke(ok, error) } catch (_: Exception) { }
+            if (next != null) startSpeakOnMain(next.context, next.text, next.utteranceId, next.onComplete)
+        }
+        fun armWatchdog(message: String) {
+            watchdog?.let { handler.removeCallbacks(it) }
+            val timer = Runnable { finishOnMain(false, message) }
+            watchdog = timer
+            handler.postDelayed(timer, 60_000L)
+        }
+        armWatchdog("TTS init callback missing within 60 s")
+        try {
+            engineRef = ttsInit.create(app) { status ->
+                // Always post, even a synchronous factory callback: create() must return the engine
+                // before any initialization actions use it. Binder callbacks share this same owner.
+                handler.post init@{
+                    if (done) {
+                        try { engineRef?.shutdown() } catch (_: Exception) { }
+                        return@init
                     }
-                    engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                        override fun onStart(utteranceId: String?) {}
-                        override fun onDone(utteranceId: String?) { finishSpeak(true, null) }
-                        @Deprecated("Deprecated in Java")
-                        override fun onError(utteranceId: String?) { finishSpeak(false, "TTS engine error") }
-                    })
-                    // Watchdog: focus is never held open even if the engine drops the utterance callbacks.
-                    // Stale-timer guard: an already-finished utterance ignores it (see doneSpeak in finishSpeak).
-                    Handler(Looper.getMainLooper()).postDelayed({ if (!done.get()) finishSpeak(false, "no engine callback within 60 s") }, 60_000L)
-                    val params = Bundle()
-                    params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_ALARM)
-                    val accepted = engine.speak(text, TextToSpeech.QUEUE_FLUSH, params, utteranceId)
-                    if (accepted != TextToSpeech.SUCCESS) finishSpeak(false, "TTS engine rejected the utterance")
-                    return@create
+                    if (initialized) return@init
+                    initialized = true
+                    watchdog?.let { handler.removeCallbacks(it) }
+                    try {
+                        val engine = engineRef
+                        val lang = if (status == TextToSpeech.SUCCESS) engine?.setLanguage(Locale.ENGLISH) else null
+                        if (engine == null || lang == null || lang == TextToSpeech.LANG_MISSING_DATA || lang == TextToSpeech.LANG_NOT_SUPPORTED) {
+                            val played = playAlarmFallback(app)
+                            finishOnMain(false, if (played) "no usable TTS voice; ringtone fallback started"
+                                else "no usable TTS voice and ringtone fallback failed")
+                            return@init
+                        }
+                        val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()
+                        engine.setAudioAttributes(attrs)
+                        focus = acquireNoticeFocus(am, attrs)
+                        engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                            override fun onStart(utteranceId: String?) { }
+                            override fun onDone(utteranceId: String?) { handler.post { finishOnMain(true, null) } }
+                            @Deprecated("Deprecated in Java")
+                            override fun onError(utteranceId: String?) { handler.post { finishOnMain(false, "TTS engine error") } }
+                        })
+                        armWatchdog("no engine callback within 60 s")
+                        val params = Bundle()
+                        params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_ALARM)
+                        if (engine.speak(text, TextToSpeech.QUEUE_FLUSH, params, utteranceId) != TextToSpeech.SUCCESS)
+                            finishOnMain(false, "TTS engine rejected the utterance")
+                    } catch (_: Exception) {
+                        finishOnMain(false, "TTS engine operation failed")
+                    }
                 }
             }
-            // No usable TTS voice: fall back to the alarm ringtone for a few seconds, and say so truthfully.
-            try { engineRef?.shutdown() } catch (_: Exception) { }
-            val played = playAlarmFallback(app)
-            finish(false, if (played) "no usable TTS voice (init failed or language missing); ringtone fallback played"
-                else "no usable TTS voice and the ringtone fallback also failed")
+        } catch (_: Exception) {
+            finishOnMain(false, "TTS construction failed")
         }
     }
 
