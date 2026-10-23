@@ -123,18 +123,36 @@ class OfficialAlertAnnouncerTest {
         assertEquals(listOf(true to null), res2)
     }
 
-    @Test fun newerAnnouncementSupersedesQueuedOne() {
-        val res2 = results()
-        OfficialAlertAnnouncer.speakNotice(ctx, "mode on", "on1") { _, _ -> }
+    @Test fun everyGenuineEdgePlaysInArrivalOrder() {
+        // ON active + OFF queued + ON2 arriving later: OFF is a genuine committed edge and must NOT be
+        // dropped or superseded - all three play, strictly in arrival order.
+        val res = results()
+        OfficialAlertAnnouncer.speakNotice(ctx, "mode on", "on1") { ok, err -> res.add(ok to err) }
         org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
-        OfficialAlertAnnouncer.speakNotice(ctx, "mode off", "off1") { ok, err -> res2.add(ok to err) }
-        OfficialAlertAnnouncer.speakNotice(ctx, "mode on again", "on2") { _, _ -> }
+        OfficialAlertAnnouncer.speakNotice(ctx, "mode off", "off1") { ok, err -> res.add(ok to err) }
+        OfficialAlertAnnouncer.speakNotice(ctx, "mode on again", "on2") { ok, err -> res.add(ok to err) }
         org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
-        fake.listener?.onDone("on1")
+        assertEquals(listOf("mode on"), fake.spoken.map { it.first })
+        fake.listener?.onDone("on1"); org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        fake.listener?.onDone("off1"); org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(listOf("mode on", "mode off", "mode on again"), fake.spoken.map { it.first })
+        fake.listener?.onDone("on2"); org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(3, res.size)
+        assertTrue(res.all { it.first })
+    }
+
+    @Test fun arrivalDuringCompletionKeepsOrder() {
+        // A new request landing while the previous completion drains must queue behind, never overtake.
+        OfficialAlertAnnouncer.speakNotice(ctx, "first", "f1") { _, _ -> }
         org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
-        assertEquals(listOf("mode on", "mode on again"), fake.spoken.map { it.first })
-        assertEquals(false, res2[0].first)
-        assertTrue(res2[0].second!!.contains("superseded"))
+        OfficialAlertAnnouncer.speakNotice(ctx, "second", "f2") { _, _ -> }
+        OfficialAlertAnnouncer.speakNotice(ctx, "third", "f3") { _, _ -> }
+        fake.listener?.onDone("f1")
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(listOf("first", "second"), fake.spoken.map { it.first })
+        fake.listener?.onDone("f2")
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(listOf("first", "second", "third"), fake.spoken.map { it.first })
     }
 
     @Test fun officialAlertRegressionPathSpeaks() {
