@@ -199,7 +199,7 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
             }
             val rss = get(SACHET_RSS)?.let { parseSachetRss(it) }
             if (rss == null) { save("Unavailable: the NDMA SACHET feed could not be read."); return Result.success() }
-            val seen = prefs.getStringSet(KEY_SEEN, emptySet()) ?: emptySet()
+            val seen = prefs.getStringSet(AlertArea.scoped(KEY_SEEN, areaVer), emptySet()) ?: emptySet()
             val fresh = rss.filter { it.first !in seen }.take(40)
             val lat = if (plausibleCoords(loc.latitude, loc.longitude)) loc.latitude else null
             val lon = if (plausibleCoords(loc.latitude, loc.longitude)) loc.longitude else null
@@ -216,7 +216,7 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
             }
             // The saved area changed while the feed was being read: this result belongs to the old area.
             if (AlertArea.changedSince(areaVer, AlertArea.version(ctx))) return Result.retry()
-            val active = SachetAlertState.decode(prefs.getString(KEY_ACTIVE, "") ?: "").toMutableMap()
+            val active = SachetAlertState.decode(prefs.getString(AlertArea.scoped(KEY_ACTIVE, areaVer), "") ?: "").toMutableMap()
             // Speak/notify once per alert; again only on a severity change. Same severity stays silent.
             val toAnnounce = mutableListOf<Pair<CapAlert, SachetDecision>>()
             for (cap in matched) {
@@ -252,9 +252,9 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
                 )
                 over.forEach { active.remove(it) }
             }
-            prefs.edit().putString(KEY_ACTIVE, SachetAlertState.encode(active)).apply()
+            prefs.edit().putString(AlertArea.scoped(KEY_ACTIVE, areaVer), SachetAlertState.encode(active)).apply()
             val updated = (seen + checked).toList().takeLast(400).toSet()
-            prefs.edit().putStringSet(KEY_SEEN, updated).apply()
+            prefs.edit().putStringSet(AlertArea.scoped(KEY_SEEN, areaVer), updated).apply()
             save(noWarningStatus(loc.district, loc.locality, loc.state, checked.size, matched.size))
             return Result.success()
         } catch (e: Exception) {
