@@ -201,51 +201,70 @@ fun EarthquakeCard() {
     }
 }
 
-/** Saved alert area: set once, update when you move, or clear to go back to a fresh location fix on every check. Stored on this phone only. */
+/**
+ * Area for official alerts. Two named choices: use a saved area, or use the current location at each check
+ * (the default, how it always worked). Saving an area needs a successful foreground location fix; if the fix
+ * fails nothing changes. Stored on this phone only.
+ */
 @Composable
 internal fun AlertAreaControls() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var area by remember { mutableStateOf(com.example.data.engine.AlertArea.read(context)) }
+    var useSaved by remember { mutableStateOf(com.example.data.engine.AlertArea.useSaved(context)) }
     var busy by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf<String?>(null) }
     val fmt = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val now = System.currentTimeMillis()
-    Text("Alert area", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary)
-    Text(
-        area?.let { "Official alerts use your saved area: " + com.example.data.engine.AlertArea.placeText(it) + " (saved " + fmt.format(Date(it.savedAtMillis)) + "). It is saved on this phone only. Automatic alert checks use it instead of asking for a new location each time, and do not send it anywhere (the manual Check now button still sends your coordinates to USGS). Changing it starts alert tracking fresh for the new area." }
-            ?: "No area saved. Automatic checks ask for a fresh location each time. Save your area once to use it instead. It is saved on this phone only. Naming the place uses Android's location service when you save. The manual Check now button sends your coordinates to USGS whether or not an area is saved.",
-        fontSize = 11.sp, color = BentoTextSecondary
-    )
-    area?.let { a -> com.example.data.engine.AlertArea.staleNote(a, now)?.let { Text(it, fontSize = 11.sp, color = BentoRed) } }
-    androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(enabled = !busy, onClick = {
-            busy = true
-            scope.launch {
-              try {
+    fun fixAndSave() {
+        busy = true
+        scope.launch {
+            try {
                 val loc = withContext(Dispatchers.IO) { OfficialLocationContextManager(context).refreshLocation() }
                 val ok = loc.locationStatus == "LOCATION_AVAILABLE" || loc.locationStatus == "COORDINATES_AVAILABLE" || loc.locationStatus == "GEOCODER_FAILED"
                 if (!ok || !com.example.data.engine.AlertArea.plausible(loc.latitude, loc.longitude)) {
-                    note = "Unavailable: area not saved. " + com.example.data.service.LocationAccess.failureText(loc.locationStatus, true)
+                    note = "Unavailable: area not saved, nothing changed. " + com.example.data.service.LocationAccess.failureText(loc.locationStatus, true)
                 } else {
                     val a = com.example.data.engine.SavedAlertArea(loc.latitude, loc.longitude,
                         loc.locality.takeUnless { it.contains("unavailable", true) } ?: "",
                         loc.district.takeUnless { it.contains("unavailable", true) } ?: "",
                         loc.state.takeUnless { it.contains("unavailable", true) } ?: "", System.currentTimeMillis())
                     com.example.data.engine.AlertArea.save(context, a)
-                    area = a
-                    note = "Area saved: " + com.example.data.engine.AlertArea.placeText(a) + ". The next automatic check will use it."
+                    area = a; useSaved = true
+                    note = "Area saved: " + com.example.data.engine.AlertArea.placeText(a) + ". Automatic checks now use it."
                 }
-              } catch (e: Exception) {
-                note = "Unavailable: area not saved (" + (e.message ?: "error") + ")."
-              } finally {
+            } catch (e: Exception) {
+                note = "Unavailable: area not saved, nothing changed (" + (e.message ?: "error") + ")."
+            } finally {
                 busy = false
-              }
             }
-        }) { Text(if (busy) "Saving..." else if (area == null) "Save my area" else "Update area", fontSize = 12.sp) }
+        }
+    }
+    Text("Alert area", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary)
+    Text(com.example.data.engine.AlertArea.modeText(area, useSaved), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary)
+    Text(
+        area?.let { "Saved area: " + com.example.data.engine.AlertArea.placeText(it) + " (saved " + fmt.format(Date(it.savedAtMillis)) + "). " }.orEmpty() +
+            "A saved area stays on this phone only and checks do not send it anywhere. Naming the place uses Android's location service when you save. The manual Check now button sends your coordinates to USGS whichever choice is on. Changing the choice or the area starts alert tracking fresh.",
+        fontSize = 11.sp, color = BentoTextSecondary
+    )
+    area?.let { a -> com.example.data.engine.AlertArea.staleNote(a, now)?.let { Text(it, fontSize = 11.sp, color = BentoRed) } }
+    androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(enabled = !busy && !(useSaved && area != null), onClick = {
+            if (area != null) {
+                com.example.data.engine.AlertArea.setUseSaved(context, true); useSaved = true
+                note = "Automatic checks now use your saved area."
+            } else fixAndSave()
+        }) { Text(if (busy) "Saving..." else if (area == null) "Save my area" else "Use saved area", fontSize = 12.sp) }
+        Button(enabled = !busy && useSaved, onClick = {
+            com.example.data.engine.AlertArea.setUseSaved(context, false); useSaved = false
+            note = "Automatic checks now read your current location at each check. Your saved area is kept but not used."
+        }) { Text("Use current location each check", fontSize = 12.sp) }
+    }
+    androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (area != null) Button(enabled = !busy, onClick = { fixAndSave() }) { Text("Update area", fontSize = 12.sp) }
         if (area != null) Button(enabled = !busy, onClick = {
-            com.example.data.engine.AlertArea.clear(context); area = null
-            note = "Saved area cleared. Automatic checks ask for a fresh location each time again."
+            com.example.data.engine.AlertArea.clear(context); area = null; useSaved = false
+            note = "Saved area cleared. Automatic checks read your current location at each check."
         }) { Text("Clear area", fontSize = 12.sp) }
     }
     note?.let { Text(it, fontSize = 11.sp, color = BentoTextSecondary) }
