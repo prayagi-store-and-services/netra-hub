@@ -98,12 +98,19 @@ class SpeedGateTest {
     @Test fun blindGapRestartsTheHighSpeedWindow() {
         val g = SpeedGate()
         g.update(50f, 0L)          // high run starts
-        g.update(null, 5_000L)     // blind
-        g.update(50f, 40_000L)     // gap over 30 s: old high run is stale, window restarts here
+        g.update(null, 5_000L)     // even a short blind gap: not consecutive fresh evidence
+        g.update(50f, 6_000L)      // window restarts here
+        g.update(50f, 11_000L)
         assertFalse(g.isOpen)
-        g.update(50f, 45_000L)
+        assertTrue(g.update(50f, 6_000L + SpeedGate.DEFAULT_OPEN_DELAY_MS))
+    }
+    @Test fun longSilenceThenOneSpikeDoesNotOpen() {
+        // No readings for 2 minutes, then a single fast reading: the old high run is stale.
+        val g = SpeedGate()
+        g.update(50f, 0L)
+        assertFalse(g.update(50f, 120_000L))
         assertFalse(g.isOpen)
-        assertTrue(g.update(50f, 40_000L + SpeedGate.DEFAULT_OPEN_DELAY_MS))
+        assertTrue(g.update(50f, 120_000L + SpeedGate.DEFAULT_OPEN_DELAY_MS))
     }
     @Test fun resetClearsEverything() {
         val g = SpeedGate()
