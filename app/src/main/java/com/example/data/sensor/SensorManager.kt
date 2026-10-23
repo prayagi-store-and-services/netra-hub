@@ -37,9 +37,19 @@ class SensorManager(
     val batteryManager: BatteryManager = BatteryManager(context),
     private val powerManagerEngine: com.example.data.engine.PowerManagerEngine = com.example.data.engine.PowerManagerEngine(),
     private val settingsRepository: SettingsRepository = SettingsRepository(context),
-    val stateManager: SensorStateManager = SensorStateManager()
+    val stateManager: SensorStateManager = SensorStateManager(),
+    private val monotonicNow: () -> Long = { android.os.SystemClock.elapsedRealtime() },
+    private val wallNow: () -> Long = { System.currentTimeMillis() }
 ) : DefaultLifecycleObserver {
 
+    private val monitorOwner = java.util.UUID.randomUUID().toString()
+    private var monitoringStarts = 0
+    private var lastSampleDecision = "not_processed"
+    private var serviceOwner = "none"
+    private var serviceStarts = 0
+    @Synchronized internal fun noteServiceOwner(owner: String) {
+        if (serviceOwner != owner) { serviceOwner = owner; serviceStarts++ }
+    }
     private var thermalState: ThermalState = ThermalState.NORMAL
 
     enum class ThermalState { NORMAL, WARM, HIGH, THERMAL_PROTECTION }
@@ -202,6 +212,7 @@ class SensorManager(
             scope = CoroutineScope(Dispatchers.Default + job)
         }
         _isMonitoringActive.value = true
+        monitoringStarts++
 
         evaluateSensorStreams()
 
@@ -308,21 +319,45 @@ class SensorManager(
     /** Per-reason reject counters for the process lifetime (in-memory, shown in gate diagnostics). */
     private val rejectCounts = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
-    /** Last few rejected-fix facts, PERSISTED (bounded at 10): a reject leaves a durable record with the
-     * original fix time, the reject reason + running count and the feeding source. No coordinates. */
-    private fun recordRejectFact(reason: String, count: Int, fixTimeMs: Long?, monoNow: Long, source: String,
-                                 rawSpeedKmH: Float?, accuracyM: Float, ageS: String) {
+    /** Every GPS sample leaves a bounded LOCAL decision fact, including original timestamps, result and
+     * runtime ownership. No coordinates and no network. Audio event IDs/results live in the journal. */
+    @Synchronized internal fun acceptLocationReading(reading: RawSensorReading) {
+        if (reading.sensorId != "gnss_location") return
+        val before = speedGate.diagnosticState()
+        val processingAt = wallNow()
+        val processingMono = monotonicNow()
+        lastSampleDecision = "processing"
         try {
-            val p = context.getSharedPreferences("netra_sensor_diagnostics", Context.MODE_PRIVATE)
-            val line = "t=" + (monoNow / 1000) + "s fixAt=" + (fixTimeMs?.toString() ?: "?") +
-                " rej=" + reason + "#" + count + " spd=" + (rawSpeedKmH?.let { "%.1f".format(it) } ?: "?") +
-                " acc=" + (if (accuracyM > 0f) "%.0fm".format(accuracyM) else "?m") +
-                " age=" + ageS + " src=" + source
-            val prior = p.getString("recent_rejects", "") ?: ""
-            val next = (listOf(line) + prior.lines().filter { it.isNotBlank() }).take(10).joinToString("\n")
-            p.edit().putString("recent_rejects", next).commit()
-        } catch (_: Exception) { }
+            updateSpeedGate(reading)
+        } finally {
+            val after = speedGate.diagnosticState()
+            val fixMono = reading.extraDetails["fixElapsedMs"]?.toLongOrNull()
+            val age = fixMono?.let { processingMono - it }
+            val rawSpeed = if (reading.extraDetails["speedKmH"]?.endsWith("km/h") == true)
+                reading.values.getOrNull(2)?.toString() ?: "?" else "unknown"
+            val fact = "fixAt=" + (reading.extraDetails["fixTimeMs"] ?: "?") +
+                " fixMono=" + (fixMono?.toString() ?: "?") + " processedAt=" + processingAt +
+                " processedMono=" + processingMono + " speed=" + rawSpeed +
+                " accuracy=" + (reading.values.getOrNull(3)?.toString() ?: "?") + " ageMs=" + (age?.toString() ?: "?") +
+                " decision=" + lastSampleDecision + " previous=" + before.open + " result=" + after.open +
+                " confirmation=" + after.confirmationCount + " aboveSince=" + after.aboveSinceMs +
+                " belowSince=" + after.belowSinceMs + " blindSince=" + after.unknownSinceMs +
+                " monitor=" + monitorOwner + " monitorStarts=" + monitoringStarts + " active=" + _isMonitoringActive.value +
+                " service=" + serviceOwner + " serviceStarts=" + serviceStarts + " source=" + (reading.extraDetails["source"] ?: "unknown")
+            synchronized(recentGateSamples) {
+                if (recentGateSamples.size >= 10) recentGateSamples.removeFirst()
+                recentGateSamples.addLast(fact)
+            }
+            try {
+                val prefs = context.getSharedPreferences("netra_sensor_diagnostics", Context.MODE_PRIVATE)
+                val prior = prefs.getString("recent_samples", "") ?: ""
+                val bounded = (listOf(fact) + prior.lines().filter { it.isNotBlank() }).take(50)
+                prefs.edit().putString("recent_samples", bounded.joinToString("\n")).commit()
+            } catch (_: Exception) { }
+        }
     }
+
+    @Synchronized internal fun drivingDiagnosticState() = speedGate.diagnosticState()
 
     /** Resumes a dead trip under an open gate after a transient restart or service recreation - with an
      * honest log note, never a fake new driving edge. Safe to call any time. */
@@ -336,7 +371,7 @@ class SensorManager(
     /** Updates the speed gate from a GNSS reading and re-evaluates the sensor streams when it opens or closes. */
     private fun updateSpeedGate(reading: RawSensorReading) {
         if (reading.sensorId != "gnss_location") return
-        val monoNow = android.os.SystemClock.elapsedRealtime()
+        val monoNow = monotonicNow()
         val fixMono = reading.extraDetails["fixElapsedMs"]?.toLongOrNull()
         val accuracyM = reading.values.getOrElse(3) { 0f }
         // Validation order matters: reject first, and only a fully validated fix may advance the high-water mark.
@@ -347,6 +382,7 @@ class SensorManager(
         // restart anything. But the blind clock is clock-driven, not callback-driven: even when live updates
         // stop completely, these ticks keep advancing it so a stuck-ON gate still closes after the blind limit.
         if (readingSource == "poller" && reading.extraDetails["speedKmH"]?.endsWith("km/h") != true) {
+            lastSampleDecision = "poller_without_speed_blind_tick"
             val closedByBlind = speedGate.onBlindTick(monoNow)
             if (closedByBlind) {
                 val nowTick = System.currentTimeMillis()
@@ -374,20 +410,19 @@ class SensorManager(
         val rawSpeed: Float? = if (reading.extraDetails["speedKmH"]?.endsWith("km/h") == true && reading.values.size > 2) reading.values[2] else null
         val cleaned = SpeedTrust.cleanSpeed(rawSpeed)
         if (rejectReason == null && rawSpeed != null && cleaned == null) rejectReason = "badspeed"
+        if (rejectReason == null && !SpeedTrust.trusted(accuracyM, false, 0f)) rejectReason = "badaccuracy"
         val speedKmH: Float? = if (rejectReason != null) null else cleaned
         if (rejectReason == null && fixMono != null) lastFedFixMonoMs = fixMono
         val ageS = if (fixMono != null) ((monoNow - fixMono).coerceAtLeast(0L) / 1000L).toString() + "s" else "?"
         val fixAt = reading.extraDetails["fixTimeMs"]?.toLongOrNull()
         val stateTag = "[t=" + (monoNow / 1000) + "s fixAt=" + (fixAt?.toString() ?: "?") + " " + (if (speedGate.isOpen) "OPEN" else "closed") + "] "
-        if (rejectReason != null) {
-            rejectCounts.merge(rejectReason, 1, Int::plus)
-            recordRejectFact(rejectReason, rejectCounts[rejectReason] ?: 1, fixAt, monoNow, readingSource, rawSpeed, accuracyM, ageS)
-        }
+        if (rejectReason != null) rejectCounts.merge(rejectReason, 1, Int::plus)
+        lastSampleDecision = rejectReason ?: if (speedKmH == null) "unknown_speed" else "accepted_fresh_speed"
         synchronized(recentGateSamples) {
             if (recentGateSamples.size >= 10) recentGateSamples.removeFirst()
             recentGateSamples.addLast(
                 stateTag + when {
-                    rejectReason != null -> "rej:" + rejectReason + "#" + (rejectCounts[rejectReason] ?: 0) + " age=" + ageS + "/" + readingSource
+                    rejectReason != null -> "rej:" + rejectReason + "#" + (rejectCounts[rejectReason] ?: 0) + " speed=" + rawSpeed + " accuracy=" + accuracyM + " age=" + ageS + "/" + readingSource
                     speedKmH != null -> "%.0f".format(speedKmH) + "@" + (if (accuracyM > 0f) "%.0fm".format(accuracyM) else "?m") + " age=" + ageS + "/" + readingSource
                     else -> "?blind age=" + ageS + "/" + readingSource
                 }
@@ -397,7 +432,7 @@ class SensorManager(
         // feeding them as UNKNOWN would let a cached poll cancel a live confirmation window. They only
         // advance the blind clock, like a speed-less tick. Evidence rejects (no fix time, unusable speed)
         // still reach the gate as UNKNOWN, so a genuinely blind stream can never hold the gate open.
-        if (rejectReason != null && rejectReason != "badspeed" && rejectReason != "nofixtime") {
+        if (rejectReason != null && rejectReason != "badspeed" && rejectReason != "badaccuracy" && rejectReason != "nofixtime") {
             val closedByBlind = speedGate.onBlindTick(monoNow)
             if (closedByBlind) {
                 val nowTick = System.currentTimeMillis()
@@ -430,7 +465,7 @@ class SensorManager(
     }
 
     private fun handleIncomingReading(reading: RawSensorReading) {
-        updateSpeedGate(reading)
+        acceptLocationReading(reading)
         val seq = (sequenceNumbers[reading.sensorId] ?: 0) + 1
         sequenceNumbers[reading.sensorId] = seq
 
