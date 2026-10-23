@@ -190,9 +190,10 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
         val now = System.currentTimeMillis()
         fun save(msg: String) { prefs.edit().putLong(KEY_LAST, now).putString(KEY_MSG, msg).apply() }
         try {
+            val areaVer = AlertArea.version(ctx)
             val loc = AlertArea.asLocation(ctx) ?: OfficialLocationContextManager(ctx).refreshLocation()
             val ok = loc.locationStatus == "LOCATION_AVAILABLE" || loc.locationStatus == "COORDINATES_AVAILABLE" || loc.locationStatus == "GEOCODER_FAILED"
-            if (!ok || (loc.state.contains("unavailable", true) && loc.district.contains("unavailable", true))) {
+            if (!ok || (!plausibleCoords(loc.latitude, loc.longitude) && loc.state.contains("unavailable", true) && loc.district.contains("unavailable", true))) {
                 save("Unavailable: " + com.example.data.service.LocationAccess.failureText(loc.locationStatus, com.example.data.service.LocationAccess.backgroundGranted(ctx)).let { if (loc.locationStatus == "LOCATION_TIMEOUT" || loc.locationStatus == "PERMISSION_NOT_GRANTED" || loc.locationStatus == "PROVIDER_DISABLED") it else "No state or district name for your location, so area alerts cannot be matched." })
                 return Result.success()
             }
@@ -213,6 +214,8 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
                 save("Unavailable: notifications are off, " + matched.size + " matching official alert(s) could not be shown.")
                 return Result.success()
             }
+            // The saved area changed while the feed was being read: this result belongs to the old area.
+            if (AlertArea.changedSince(areaVer, AlertArea.version(ctx))) return Result.retry()
             val active = SachetAlertState.decode(prefs.getString(KEY_ACTIVE, "") ?: "").toMutableMap()
             // Speak/notify once per alert; again only on a severity change. Same severity stays silent.
             val toAnnounce = mutableListOf<Pair<CapAlert, SachetDecision>>()
