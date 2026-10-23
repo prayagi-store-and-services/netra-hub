@@ -310,11 +310,14 @@ class SensorManager(
 
     /** Last few rejected-fix facts, PERSISTED (bounded at 10): a reject leaves a durable record with the
      * original fix time, the reject reason + running count and the feeding source. No coordinates. */
-    private fun recordRejectFact(reason: String, count: Int, fixTimeMs: Long?, monoNow: Long, source: String) {
+    private fun recordRejectFact(reason: String, count: Int, fixTimeMs: Long?, monoNow: Long, source: String,
+                                 rawSpeedKmH: Float?, accuracyM: Float, ageS: String) {
         try {
             val p = context.getSharedPreferences("netra_sensor_diagnostics", Context.MODE_PRIVATE)
             val line = "t=" + (monoNow / 1000) + "s fixAt=" + (fixTimeMs?.toString() ?: "?") +
-                " rej=" + reason + "#" + count + " src=" + source
+                " rej=" + reason + "#" + count + " spd=" + (rawSpeedKmH?.let { "%.1f".format(it) } ?: "?") +
+                " acc=" + (if (accuracyM > 0f) "%.0fm".format(accuracyM) else "?m") +
+                " age=" + ageS + " src=" + source
             val prior = p.getString("recent_rejects", "") ?: ""
             val next = (listOf(line) + prior.lines().filter { it.isNotBlank() }).take(10).joinToString("\n")
             p.edit().putString("recent_rejects", next).commit()
@@ -378,7 +381,7 @@ class SensorManager(
         val stateTag = "[t=" + (monoNow / 1000) + "s fixAt=" + (fixAt?.toString() ?: "?") + " " + (if (speedGate.isOpen) "OPEN" else "closed") + "] "
         if (rejectReason != null) {
             rejectCounts.merge(rejectReason, 1, Int::plus)
-            recordRejectFact(rejectReason, rejectCounts[rejectReason] ?: 1, fixAt, monoNow, readingSource)
+            recordRejectFact(rejectReason, rejectCounts[rejectReason] ?: 1, fixAt, monoNow, readingSource, rawSpeed, accuracyM, ageS)
         }
         synchronized(recentGateSamples) {
             if (recentGateSamples.size >= 10) recentGateSamples.removeFirst()
