@@ -23,10 +23,24 @@ object DrivingEvents {
         "GPS speed reached " + (speedKmH?.let { "%.0f km/h".format(it) } ?: "the limit") + " (limit " + "%.0f".format(com.example.data.sensor.SpeedGate.DEFAULT_THRESHOLD_KMH) + " km/h)"
     else "Speed stayed under " + "%.0f".format(com.example.data.sensor.SpeedGate.DEFAULT_THRESHOLD_KMH) + " km/h for " + (com.example.data.sensor.SpeedGate.DEFAULT_CLOSE_DELAY_MS / 1000) + " seconds"
 
-    fun onGateChange(c: Context, started: Boolean, speedKmH: Float?, now: Long = System.currentTimeMillis(), blindClose: Boolean = false) {
-        DrivingLog.add(c, DrivingLog.Entry(now, if (started) DrivingLog.STARTED else DrivingLog.ENDED, speedKmH, reasonFor(started, speedKmH, blindClose)))
+    private val announceSeq = java.util.concurrent.atomic.AtomicLong(0L)
+
+    fun onGateChange(c: Context, started: Boolean, speedKmH: Float?, now: Long = System.currentTimeMillis(), blindClose: Boolean = false, recentSamples: List<String> = emptyList()) {
+        // Persist the transition BEFORE any speech, with bounded sample diagnostics (no coordinates).
+        val diag = if (recentSamples.isEmpty()) "" else " Recent speeds fed to the gate: " + recentSamples.joinToString(", ") + " km/h."
+        DrivingLog.add(c, DrivingLog.Entry(now, if (started) DrivingLog.STARTED else DrivingLog.ENDED, speedKmH, reasonFor(started, speedKmH, blindClose) + diag))
         if (started) DrivingTrip.start(c, speedKmH, now) else DrivingTrip.stop()
-        if (announceEnabled(c)) OfficialAlertAnnouncer.speakNotice(c, if (started) startedText() else endedText())
+        if (announceEnabled(c)) {
+            val reqId = "driving_" + announceSeq.incrementAndGet()
+            val limit = OfficialAlertAnnouncer.speakNotice(c, if (started) startedText() else endedText(), reqId) { ok, err ->
+                // TTS result/failure is recorded per request, so a silent phone is never invisible.
+                DrivingLog.add(c, DrivingLog.Entry(System.currentTimeMillis(), DrivingLog.NOTE, speedKmH,
+                    "Announcement " + reqId + (if (ok) " finished" else " failed" + (err?.let { ": " + it } ?: ""))))
+            }
+            // The state change is real even when sound cannot play; say so in the log instead of pretending.
+            if (limit != null) DrivingLog.add(c, DrivingLog.Entry(now, DrivingLog.NOTE, speedKmH,
+                "Driving mode " + (if (started) "ON" else "OFF") + " announcement could not play: " + limit))
+        }
     }
 
     /** Records (at most once per 10 minutes) that detection is blind, so a missing detection is explained in the log. */
