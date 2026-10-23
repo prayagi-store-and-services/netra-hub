@@ -184,6 +184,19 @@ object OfficialAlertAnnouncer {
         return
     }
 
+    /** Starts fallback only; the queue owner owns its stop timer, focus and completion. */
+    internal var startFallback: (Context, AudioAttributes) -> (() -> Unit)? = { c, attrs ->
+        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val ringtone = uri?.let { RingtoneManager.getRingtone(c, it) }
+        if (ringtone == null) null else {
+            ringtone.audioAttributes = attrs
+            ringtone.play()
+            val stop: () -> Unit = { ringtone.stop() }
+            stop
+        }
+    }
+
     private fun amOf(app: Context) = app.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
     internal var acquireNoticeFocus: (AudioManager?, AudioAttributes) -> Any? = { am, attrs -> requestFocus(am, attrs) }
     internal var releaseNoticeFocus: (AudioManager?, Any?) -> Unit = { am, token -> abandonFocus(am, token) }
@@ -199,6 +212,7 @@ object OfficialAlertAnnouncer {
         var initialized = false
         var engineRef: TtsEngine? = null
         var focus: Any? = null
+        var stopFallback: (() -> Unit)? = null
         var watchdog: Runnable? = null
 
         // ALL exits use the same main-loop-owned cleanup, including init failure, dropped callbacks,
@@ -209,6 +223,8 @@ object OfficialAlertAnnouncer {
             watchdog?.let { handler.removeCallbacks(it) }
             try { releaseNoticeFocus(am, focus) } catch (_: Exception) { }
             focus = null
+            try { stopFallback?.invoke() } catch (_: Exception) { }
+            stopFallback = null
             try { engineRef?.shutdown() } catch (_: Exception) { }
             val next = speakQueue.poll()
             if (next == null) speakBusy.set(false)
@@ -238,9 +254,18 @@ object OfficialAlertAnnouncer {
                         val engine = engineRef
                         val lang = if (status == TextToSpeech.SUCCESS) engine?.setLanguage(Locale.ENGLISH) else null
                         if (engine == null || lang == null || lang == TextToSpeech.LANG_MISSING_DATA || lang == TextToSpeech.LANG_NOT_SUPPORTED) {
-                            val played = playAlarmFallback(app)
-                            finishOnMain(false, if (played) "no usable TTS voice; ringtone fallback started"
-                                else "no usable TTS voice and ringtone fallback failed")
+                            val fallbackAttrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
+                            focus = acquireNoticeFocus(am, fallbackAttrs)
+                            stopFallback = startFallback(app, fallbackAttrs)
+                            if (stopFallback == null) {
+                                finishOnMain(false, "no usable TTS voice and ringtone fallback failed")
+                            } else {
+                                // Hold the queue until the alarm actually stops; no TTS/fallback overlap.
+                                val timer = Runnable { finishOnMain(false, "no usable TTS voice; ringtone fallback completed") }
+                                watchdog = timer
+                                handler.postDelayed(timer, 8_000L)
+                            }
                             return@init
                         }
                         val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
@@ -268,26 +293,4 @@ object OfficialAlertAnnouncer {
         }
     }
 
-    private fun playAlarmFallback(context: Context): Boolean {
-        return try {
-            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION) ?: return false
-            val ringtone = RingtoneManager.getRingtone(context, uri) ?: return false
-            val attrs = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-            ringtone.audioAttributes = attrs
-            val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-            val focus = requestFocus(am, attrs)
-            ringtone.play()
-            Handler(Looper.getMainLooper()).postDelayed({
-                try { ringtone.stop() } catch (_: Exception) {}
-                abandonFocus(am, focus)
-            }, 8000L)
-            true
-        } catch (_: Exception) {
-            false
-        }
-    }
 }
