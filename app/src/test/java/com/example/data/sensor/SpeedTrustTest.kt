@@ -22,6 +22,16 @@ class SpeedTrustTest {
     @Test fun highSpeedErrorEstimateIsNotTrusted() {
         assertFalse(SpeedTrust.trusted(10f, true, 9f))
     }
+    @Test fun negativeOrNonFiniteSpeedErrorRejects() {
+        // A supplied but broken estimate is not "missing": it is a bad reading.
+        assertFalse(SpeedTrust.trusted(10f, true, -1f))
+        assertFalse(SpeedTrust.trusted(10f, true, Float.NaN))
+        assertFalse(SpeedTrust.trusted(10f, true, Float.POSITIVE_INFINITY))
+    }
+    @Test fun nonFiniteAccuracyRejects() {
+        assertFalse(SpeedTrust.trusted(Float.NaN, false, 0f))
+        assertFalse(SpeedTrust.trusted(Float.POSITIVE_INFINITY, false, 0f))
+    }
     @Test fun boundaryValues() {
         assertTrue(SpeedTrust.trusted(SpeedTrust.MAX_ACCURACY_M, true, SpeedTrust.MAX_SPEED_ACCURACY_MPS))
         assertFalse(SpeedTrust.trusted(SpeedTrust.MAX_ACCURACY_M + 0.1f, true, 1f))
