@@ -95,4 +95,13 @@ class QuakeFilterScreenshotTest {
   org.junit.Assert.assertFalse(AlertArea.useSaved(app)); org.junit.Assert.assertNull(AlertArea.read(app))
   compose.onNodeWithText("Automatic official alert checks use: your current location", substring = true).assertIsDisplayed()
   compose.onRoot().captureRoboImage(filePath = "build/outputs/quake-area-choice-failed-fix.png") }
+ @Test fun alertAreaStaleButCurrentModeDoesNotClaimMatching() {
+  val app = org.robolectric.RuntimeEnvironment.getApplication()
+  AlertArea.save(app, naini.copy(savedAtMillis = System.currentTimeMillis() - 20L * 86_400_000L))
+  AlertArea.setUseSaved(app, false)
+  showArea()
+  compose.onNodeWithText("not in use right now", substring = true).assertIsDisplayed()
+  compose.onAllNodesWithText("matched to this saved area", substring = true).assertCountEquals(0)
+  compose.onNodeWithText("Automatic official alert checks use: your current location", substring = true).assertIsDisplayed()
+  compose.onRoot().captureRoboImage(filePath = "build/outputs/quake-area-stale-current.png") }
 }
