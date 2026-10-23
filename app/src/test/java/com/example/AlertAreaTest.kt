@@ -56,20 +56,35 @@ class AlertAreaTest {
         assertTrue(AlertArea.changedSince(3L, 4L))
     }
 
-    @Test fun afterAreaChangeAlertsInNewAreaAnnounceOnceAndOldWarningNotSpoken() {
-        // Before: area A had a seen alert and an active warning that has expired.
-        val oldActive = mapOf(SachetAlertState.identityKey("Heavy Rain", "Region A") to SachetAlertEntry("Severe", 1_000L))
-        assertEquals(1, SachetAlertState.expiredKeys(oldActive, 2_000L).size)
-        // The area change forgets seen ids and active entries (AlertArea.save/clear).
-        val seenAfter = emptySet<String>()
-        val activeAfter = emptyMap<String, SachetAlertEntry>()
-        // No "warning over" for the old area is spoken in the new one.
-        assertTrue(SachetAlertState.expiredKeys(activeAfter, 2_000L).isEmpty())
-        // An alert for area B that was in the feed before is no longer skipped as seen, and is announced.
-        val feed = listOf("guid-B" to "link")
-        assertEquals(1, feed.filter { it.first !in seenAfter }.size)
+    /** Stand-in for the prefs file: the same scoped keys the workers use, no manual set clearing. */
+    private fun workerRun(store: MutableMap<String, String>, startVer: Long, alertKey: String, nowMillis: Long): SachetDecision? {
+        val raw = store[AlertArea.scoped("active_alerts", startVer)] ?: ""
+        val active = SachetAlertState.decode(raw).toMutableMap()
+        val decision = SachetAlertState.decide(active[alertKey], "Severe")
+        active[alertKey] = SachetAlertEntry("Severe", nowMillis + 1_000L)
+        store[AlertArea.scoped("active_alerts", startVer)] = SachetAlertState.encode(active)
+        return if (decision == SachetDecision.SAME_SEVERITY_SKIP) null else decision
+    }
+
+    @Test fun scopedKeysDifferPerVersionAndKeepLegacyAtZero() {
+        assertEquals("seen_ids", AlertArea.scoped("seen_ids", 0L))
+        assertTrue(AlertArea.scoped("seen_ids", 1L) != AlertArea.scoped("seen_ids", 2L))
+        assertTrue(AlertArea.scoped("seen_ids", 1L) != "seen_ids")
+    }
+
+    @Test fun oldAreaWorkerFinishingAfterAreaChangeCannotTouchNewAreaMemory() {
+        val store = mutableMapOf<String, String>()
         val key = SachetAlertState.identityKey("Heavy Rain", "Region B")
-        assertEquals(SachetDecision.FIRST_ALERT, SachetAlertState.decide(activeAfter[key], "Severe"))
+        // Area A (version 1): a worker announces the alert once and records it.
+        assertEquals(SachetDecision.FIRST_ALERT, workerRun(store, 1L, key, 0L))
+        // User moves to area B (version 2). New area starts with empty memory.
+        // A late worker that started under version 1 commits AFTER the change.
+        workerRun(store, 1L, key, 0L)
+        // Area B's first run still announces: nothing from version 1 leaked into version 2.
+        assertEquals(SachetDecision.FIRST_ALERT, workerRun(store, 2L, key, 0L))
+        // And its second run is silent (same severity), proving B tracks its own state.
+        assertEquals(null, workerRun(store, 2L, key, 0L))
+        assertTrue(SachetAlertState.decode(store[AlertArea.scoped("active_alerts", 2L)] ?: "").containsKey(key))
     }
 
     @Test fun usgsFeedUsesNoCoordinatesAndFitsMinimumMagnitude() {
