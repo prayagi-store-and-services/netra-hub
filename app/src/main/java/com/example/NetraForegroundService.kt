@@ -72,6 +72,13 @@ class NetraForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private val drivingServiceOwner = java.util.UUID.randomUUID().toString()
+    /** The actual heartbeat entry point, shared by service execution and deterministic lifecycle tests. */
+    internal fun reconcileDrivingMonitoring(sensorMgr: com.example.data.sensor.SensorManager) {
+        sensorMgr.noteServiceOwner(drivingServiceOwner)
+        sensorMgr.startMonitoring()
+    }
+
     private fun startHeartbeatLoop() {
         serviceScope.launch {
             while (isActive) {
@@ -90,7 +97,7 @@ class NetraForegroundService : Service() {
                         if (!sensorMgr.isMonitoringActive.value) {
                             Log.w("NetraForegroundService", "Heartbeat detected sensor manager inactive. Restoring monitoring...")
                         }
-                        sensorMgr.startMonitoring()
+                        reconcileDrivingMonitoring(sensorMgr)
                     }
 
                     // Adaptive Power Intelligence Engine (NAPIE) context analysis
@@ -116,8 +123,6 @@ class NetraForegroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceJob.cancel()
-        // The trip belongs to the driving state, not the service lifecycle: the process-wide gate may still be
-        // open (the singleton repository lives on), so only stop recording when we are not driving.
         // The service is the final owner of the trip: SensorManager.stopMonitoring keeps an open-gate trip
         // alive across transient restarts, so this teardown must stop it regardless of the driving flag.
         // A later service start reconciles through SensorManager.startMonitoring (trip resumes if the gate is still open).
