@@ -75,7 +75,7 @@ class DrivingPipelineIntegrationTest {
         val first = Robolectric.buildService(NetraForegroundService::class.java).get()
         first.reconcileDrivingMonitoring(manager)
         first.onDestroy()
-        assertFalse(DrivingTrip.isRecording())
+        assertTrue(DrivingTrip.isRecording()) // service is not the repository-owned trip lifetime
         val recreated = Robolectric.buildService(NetraForegroundService::class.java).get()
         recreated.reconcileDrivingMonitoring(manager)
         assertTrue(DrivingTrip.isRecording())
@@ -83,6 +83,43 @@ class DrivingPipelineIntegrationTest {
         assertTrue(DrivingTrip.isRecording()); assertEquals(1, spoken.size)
         assertEquals(1, store.disk.count { it.started })
         recreated.onDestroy()
+    }
+    @Test fun realServiceCreateStartDestroyReusesRepositoryMonitoringOwner() {
+        val first = Robolectric.buildService(NetraForegroundService::class.java).create().startCommand(0, 1)
+        val owner = first.get().monitoringOwnerForTests()
+        assertNotNull(owner)
+        first.destroy()
+        val second = Robolectric.buildService(NetraForegroundService::class.java).create().startCommand(0, 2)
+        try {
+            assertSame(owner, second.get().monitoringOwnerForTests())
+            assertTrue(owner!!.isMonitoringActive.value)
+        } finally { second.destroy(); owner?.stopMonitoring() }
+    }
+    @Test fun sampleAndAcceptedEventShareExplicitCorrelationId() {
+        open()
+        val fact = context.getSharedPreferences("netra_sensor_diagnostics", Context.MODE_PRIVATE)
+            .getString("recent_samples", "")!!.lineSequence().first()
+        val event = store.disk.single()
+        assertTrue(fact.contains("eventId=" + event.id))
+        assertTrue(fact.contains("requestId=driving_" + event.id))
+        val sampleId = fact.substringAfter("sampleId=").substringBefore(" ")
+        assertTrue(event.diagnostics.contains("triggerSampleId=" + sampleId))
+    }
+    @Test fun concurrentStopAndGpsProcessingDoNotDuplicateTransitions() {
+        val start = java.util.concurrent.CountDownLatch(1)
+        val errors = java.util.concurrent.ConcurrentLinkedQueue<Throwable>()
+        val callbacks = Thread {
+            try { start.await(); repeat(30) { feed(20f, 1_000L) } }
+            catch (t: Throwable) { errors.add(t) }
+        }
+        val stop = Thread {
+            try { start.await(); repeat(30) { manager.stopMonitoring() } }
+            catch (t: Throwable) { errors.add(t) }
+        }
+        callbacks.start(); stop.start(); start.countDown()
+        callbacks.join(); stop.join()
+        assertTrue(errors.toString(), errors.isEmpty())
+        assertEquals(1, spoken.size); assertEquals(1, store.disk.size)
     }
     @Test fun perSampleFactsAreBoundedAndContainDecisionOwnershipAndResult() {
         open()
