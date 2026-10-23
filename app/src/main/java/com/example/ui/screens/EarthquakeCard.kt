@@ -213,8 +213,8 @@ private fun AlertAreaControls() {
     val now = System.currentTimeMillis()
     Text("Alert area", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary)
     Text(
-        area?.let { "Official alerts use your saved area: " + com.example.data.engine.AlertArea.placeText(it) + " (saved " + fmt.format(Date(it.savedAtMillis)) + "). It stays on this phone and is not uploaded. The automatic checks use it instead of asking for a new location each time." }
-            ?: "No area saved. Automatic checks ask for a fresh location each time. Save your area once to use it instead. It stays on this phone and is not uploaded.",
+        area?.let { "Official alerts use your saved area: " + com.example.data.engine.AlertArea.placeText(it) + " (saved " + fmt.format(Date(it.savedAtMillis)) + "). It is saved on this phone only. Automatic alert checks use it instead of asking for a new location each time, and do not send it anywhere (the manual Check now button still sends your coordinates to USGS). Changing it starts alert tracking fresh for the new area." }
+            ?: "No area saved. Automatic checks ask for a fresh location each time. Save your area once to use it instead. It is saved on this phone only. Naming the place uses Android's location service when you save.",
         fontSize = 11.sp, color = BentoTextSecondary
     )
     area?.let { a -> com.example.data.engine.AlertArea.staleNote(a, now)?.let { Text(it, fontSize = 11.sp, color = BentoRed) } }
@@ -222,6 +222,7 @@ private fun AlertAreaControls() {
         Button(enabled = !busy, onClick = {
             busy = true
             scope.launch {
+              try {
                 val loc = withContext(Dispatchers.IO) { OfficialLocationContextManager(context).refreshLocation() }
                 val ok = loc.locationStatus == "LOCATION_AVAILABLE" || loc.locationStatus == "COORDINATES_AVAILABLE" || loc.locationStatus == "GEOCODER_FAILED"
                 if (!ok || !com.example.data.engine.AlertArea.plausible(loc.latitude, loc.longitude)) {
@@ -235,7 +236,11 @@ private fun AlertAreaControls() {
                     area = a
                     note = "Area saved: " + com.example.data.engine.AlertArea.placeText(a) + ". The next automatic check will use it."
                 }
+              } catch (e: Exception) {
+                note = "Unavailable: area not saved (" + (e.message ?: "error") + ")."
+              } finally {
                 busy = false
+              }
             }
         }) { Text(if (busy) "Saving..." else if (area == null) "Save my area" else "Update area", fontSize = 12.sp) }
         if (area != null) Button(enabled = !busy, onClick = {
