@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+# Stationary-phone false driving detection fixed (v1.4.32)
+
+- Driving mode could switch ON and OFF while the phone lay still indoors: the gate opened on a single raw GPS speed reading with no accuracy check, and a NaN/infinite reading was treated as a low speed instead of unknown. Several parts of the app also each started their own sensor pipeline, so driving announcements could repeat and gates could disagree. Now the gate opens only after speed stays at/above 15 km/h for 10 seconds, speed from coarse or high-error fixes (position accuracy over 50 m, or speed error over 4 m/s, or a non-finite value) is treated as unknown, and one shared sensor pipeline per process makes exactly one announcement per real change. Detection stays fully on-device; nothing is sent anywhere. Not a vulnerability fix.
+
 # Crash report consent: destination shown before Send (v1.4.31)
 
 - The Crash report card and the preview dialog now name the destination before anything is sent: developer email prayagideepak@gmail.com through the FormSubmit service (formsubmit.co). The exact report text is still shown first, and sending still happens only when you tap Send. Text-only change; no new permission, library or server. Not a vulnerability fix.
