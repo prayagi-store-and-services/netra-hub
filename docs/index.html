@@ -80,7 +80,8 @@ footer{text-align:center;color:var(--mute);padding:24px 16px;font-size:.85rem;bo
 <div class="pills"><span>Stay Aware</span><span>&bull;</span><span>Stay Prepared</span><span>&bull;</span><span>Stay Safe</span></div>
 <p>Unified Android safety and emergency dashboard: sensors, earthquake information, SOS, privacy and wellness tools in one app.</p>
 <div class="chips"><div class="chip"><i>&#128276;</i>Real-time Alerts</div><div class="chip"><i>&#129517;</i>Sensor Monitoring</div><div class="chip"><i>&#127384;</i>Emergency SOS</div><div class="chip"><i>&#128737;</i>Privacy Protection</div></div>
-<a id="dl" class="btn off" href="#">Download APK<small>Not released yet</small></a>
+<aside id="human-safety-notice" role="note" style="border:2px solid #fbbf24;border-radius:12px;padding:16px;margin:16px 0;color:var(--text);overflow-wrap:anywhere"><strong>Temporary safety notice</strong><p>Filhaal Netra Human Safety ko install ya use na karein. Phone garam hone aur battery tezi se ghatne ki reports mili hain. Installed ho toh abhi uninstall kar dein. Jaancha hua fix verify hone tak download band rahega; sirf naya version aa jana fix ka saboot nahi hai.</p></aside>
+<button id="dl" class="btn off" type="button" disabled>Download temporarily paused</button>
 </div>
 <div class="phone" role="img" aria-label="Illustration, not a screenshot"><div class="ph-h"><img src="icon.svg" alt="">Netra Human Safety</div><div class="gauge">Safe<small>Illustration</small></div><div class="ph-note">Illustration only. Real screenshots: see below.</div></div>
 </div>
@@ -139,7 +140,7 @@ fetch("https://api.github.com/repos/"+R+"/releases?per_page=8").then(function(r)
  var x=L.filter(function(y){return !y.draft&&!y.prerelease})[0];if(!x)throw 0;
  var al=(x.assets||[]).filter(function(y){return /\.apk$/i.test(y.name)});var a=al.filter(function(y){return y.name!=="app-release.apk"})[0]||al[0];
  set("rv",x.tag_name||U);set("st-ver",x.tag_name||U);set("rt",x.published_at?new Date(x.published_at).toLocaleString(undefined,{year:"numeric",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):U);
- if(a){var b=document.getElementById("dl");b.href=a.browser_download_url;b.className="btn";b.innerHTML="Download "+x.tag_name+" APK<small>Free</small>";set("rs",sz(a.size));set("st-size",sz(a.size));
+ if(a){/* Human Safety downloads stay paused until a verified fix is approved. */set("rs",sz(a.size));set("st-size",sz(a.size));
   if(a.digest&&/^sha256:/.test(a.digest))set("sha","SHA-256: "+a.digest.slice(7))}
  var tot=0,known=false;L.forEach(function(r){(r.assets||[]).forEach(function(y){if(/\.apk$/i.test(y.name)&&typeof y.download_count==="number"){tot+=y.download_count;known=true}})});
  set("st-dl",known?String(tot):U);
