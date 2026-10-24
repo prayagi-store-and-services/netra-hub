@@ -137,6 +137,37 @@ class MonitoringPauseRegressionTest {
         assertEquals(listOf(true, false, true), observed)
         collector.cancel()
     }
+    @Test fun rejectedOldHeartbeatCannotTearDownResumedManagerOrService() = kotlinx.coroutines.runBlocking {
+        val controller = Robolectric.buildService(NetraForegroundService::class.java).create()
+        try {
+            val service = controller.get()
+            var resumedManager: SensorManager? = null
+            // Drive the ACTUAL production loop, pause just before publication, then resume
+            // after rejection but before that old loop's caller continuation completes.
+            val oldLoop = service.startHeartbeatLoop(
+                beforePublication = {
+                    assertTrue(MonitoringPreference.setByUser(context, false))
+                    service.monitoringOwnerForTests()?.stopByUser()
+                },
+                afterRejected = {
+                    assertTrue(MonitoringPreference.setByUser(context, true))
+                    val owned = service.monitoringOwnerForTests()!!
+                    resumedManager = owned
+                    owned.startMonitoring()
+                    DrivingSignal.publish(context, true)
+                }
+            )
+            kotlinx.coroutines.withTimeout(10_000L) { oldLoop.join() }
+            assertTrue(oldLoop.isCompleted)
+            assertFalse(oldLoop.isCancelled)
+            assertNotNull(resumedManager)
+            assertTrue(MonitoringPreference.isEnabled(context))
+            assertTrue(resumedManager!!.isMonitoringActive.value)
+            assertTrue(DrivingSignal.isDriving(context))
+            assertFalse(shadowOf(service).isStoppedBySelf)
+            resumedManager?.stopByUser()
+        } finally { controller.destroy() }
+    }
     @Test fun explicitReenableAllowsMonitoringAgain() {
         assertTrue(MonitoringPreference.setByUser(context, false))
         val owned = SensorManager(context).also { manager = it }
