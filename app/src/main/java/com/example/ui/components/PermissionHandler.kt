@@ -78,7 +78,7 @@ fun PermissionHandler(
     }
 
     LaunchedEffect(locationGranted) {
-        if (locationGranted) {
+        if (locationGranted && com.example.monitoring.MonitoringPreference.isEnabled(context)) {
             val serviceIntent = Intent(context, NetraForegroundService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(serviceIntent)
