@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 import com.example.data.db.SystemAuditEntity
@@ -35,6 +37,8 @@ class NetraSafetyRepository private constructor(private val context: Context) {
          * start a second SensorManager with its own location stream and driving gate, so driving announcements played
          * twice and gates competed. Every caller must use this accessor.
          */
+        fun getIfCreated(): NetraSafetyRepository? = instance
+
         fun get(context: Context): NetraSafetyRepository =
             instance ?: synchronized(this) { instance ?: NetraSafetyRepository(context.applicationContext).also { instance = it } }
     }
@@ -192,17 +196,20 @@ class NetraSafetyRepository private constructor(private val context: Context) {
 
         // Periodic AI Risk Engine evaluation (every 2 seconds)
         scope.launch {
-            while (true) {
-                delay(2000L)
-                evaluateAiRisk()
-                com.example.data.engine.NetraWatchdogEngine.notifyUpdate("Safety")
+            com.example.monitoring.MonitoringPreference.enabledFlow(context).collectLatest { enabled ->
+                if (enabled) while (isActive) {
+                    delay(2000L)
+                    evaluateAiRisk()
+                    com.example.data.engine.NetraWatchdogEngine.notifyUpdate("Safety")
+                }
             }
         }
 
         // Periodic 15-minute System Health Check
         scope.launch {
-            while (true) {
-                delay(900_000L) // 15 minutes
+            com.example.monitoring.MonitoringPreference.enabledFlow(context).collectLatest { enabled ->
+                if (enabled) while (isActive) {
+                delay(900_000L) // 15 minutes, cancelled rather than polled while paused
                 try {
                     com.example.util.LoggingManager.info(
                         "System Sync",
@@ -212,11 +219,13 @@ class NetraSafetyRepository private constructor(private val context: Context) {
                     )
                 } catch (_: Exception) {
                 }
+                }
             }
         }
     }
 
     suspend fun evaluateAiRisk() {
+        if (!com.example.monitoring.MonitoringPreference.isEnabled(context)) return
         val currentFusion = fusionState.value
         val result = RuleBasedSafetyEngine.evaluateSafety(currentFusion)
         _riskAnalysis.value = result
