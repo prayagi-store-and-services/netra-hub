@@ -81,6 +81,20 @@ class DrivingPipelineIntegrationTest {
         } finally { owned.stopMonitoring() }
     }
 
+    @Test fun requestedSlowHardwareRateIsNotOnlyAnEmissionFilter() {
+        assertEquals(200_000, SensorObservers.hardwareSamplingPeriodUs(150L))
+        assertEquals(1_000_000, SensorObservers.hardwareSamplingPeriodUs(1000L))
+        assertEquals(20_000_000, SensorObservers.hardwareSamplingPeriodUs(20_000L))
+        assertEquals(200_000, SensorObservers.hardwareSamplingPeriodUs(-1L))
+        assertTrue(SensorObservers.hardwareSamplingPeriodUs(Long.MAX_VALUE) > 0)
+    }
+    @Test fun expectedMagneticPauseDoesNotRestartThePipeline() {
+        assertFalse(com.example.data.engine.WatchdogEngine.shouldRecoverMagneticStream("Magnetic Field", false))
+        assertTrue(com.example.data.engine.WatchdogEngine.shouldRecoverMagneticStream("Magnetic Field", true))
+        assertTrue(com.example.data.engine.WatchdogEngine.shouldRecoverMagneticStream("Magnetic Field", null))
+        assertTrue(com.example.data.engine.WatchdogEngine.shouldRecoverMagneticStream("Temperature", false))
+    }
+
     @Test fun cachedAndOutOfOrderInterleavingsDoNotCancelFreshConfirmation() {
         feed(20f, 0); val first = mono
         feed(20f)
