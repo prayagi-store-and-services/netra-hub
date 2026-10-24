@@ -46,7 +46,8 @@ class NetraSafetyRepository private constructor(private val context: Context) {
     val unifiedEventDao = db.unifiedEventDao()
     
     val settingsRepo = SettingsRepository(context)
-    val sensorManager = SensorManager(context, settingsRepository = settingsRepo)
+    val powerManagerEngine = com.example.data.engine.PowerManagerEngine()
+    val sensorManager = SensorManager(context, settingsRepository = settingsRepo, powerManagerEngine = powerManagerEngine)
     val safetyEngine = com.example.data.engine.NetraSafetyEngine(context)
     val safetyEngineState = safetyEngine.safetyEngineState
     val alertManager = safetyEngine.alertManager
@@ -63,7 +64,6 @@ class NetraSafetyRepository private constructor(private val context: Context) {
 
     val batteryManager = sensorManager.batteryManager
     val auditEngine = SystemSelfAuditEngine(context, db) { this }
-    val powerManagerEngine = com.example.data.engine.PowerManagerEngine()
 
     private val serviceStartTimeMap = java.util.concurrent.ConcurrentHashMap<String, Long>()
     
