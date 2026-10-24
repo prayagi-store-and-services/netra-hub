@@ -1,5 +1,6 @@
 package com.example.data.sensor
 
+import kotlinx.coroutines.flow.first
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.example.NetraForegroundService
@@ -56,6 +57,29 @@ class DrivingPipelineIntegrationTest {
         manager.acceptLocationReading(reading(speed, fix ?: mono, source))
     }
     private fun open() { feed(20f, 0); feed(20f); feed(20f) }
+
+    @Test fun injectedPowerEngineDrivesOneRestartAndRepeatedProfileDoesNotRestart() = kotlinx.coroutines.runBlocking {
+        val power = com.example.data.engine.PowerManagerEngine()
+        val owned = SensorManager(context, powerManagerEngine = power)
+        try {
+            // Wait for the real initial StateFlow collection before measuring transitions.
+            kotlinx.coroutines.withTimeout(5_000L) {
+                owned.sensorThrottles.first { it[android.hardware.Sensor.TYPE_ACCELEROMETER] == 150L }
+            }
+            owned.startMonitoring()
+            val before = owned.monitoringStartCountForTests()
+            power.updateMode(com.example.data.engine.PowerMode.IDLE)
+            kotlinx.coroutines.withTimeout(5_000L) {
+                owned.sensorThrottles.first { it[android.hardware.Sensor.TYPE_ACCELEROMETER] == 750L }
+            }
+            // Taking the owner monitor waits for the collector's whole restart, not just its map assignment.
+            assertEquals(before + 1, owned.monitoringStartCountForTests())
+            power.updateMode(com.example.data.engine.PowerMode.IDLE)
+            owned.updateThrottlingBasedOnPowerMode(com.example.data.engine.PowerMode.IDLE)
+            assertEquals(before + 1, owned.monitoringStartCountForTests())
+            assertEquals(5_000L, owned.sensorThrottles.value[android.hardware.Sensor.TYPE_LIGHT])
+        } finally { owned.stopMonitoring() }
+    }
 
     @Test fun cachedAndOutOfOrderInterleavingsDoNotCancelFreshConfirmation() {
         feed(20f, 0); val first = mono
