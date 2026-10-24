@@ -76,7 +76,7 @@ open class MainActivity : ComponentActivity() {
             true
         }
 
-        if (hasLocationPermission) {
+        if (hasLocationPermission && com.example.monitoring.MonitoringPreference.isEnabled(this)) {
             com.example.data.engine.SafetyCheckTrigger.onPermissionGranted(applicationContext)
             val serviceIntent = Intent(this, NetraForegroundService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
