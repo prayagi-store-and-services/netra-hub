@@ -17,6 +17,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.ui.MainScreen
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import com.example.ui.MainViewModel
 import com.example.ui.theme.NetraTheme
 
@@ -76,7 +79,7 @@ open class MainActivity : ComponentActivity() {
             true
         }
 
-        if (hasLocationPermission) {
+        if (hasLocationPermission && com.example.monitoring.MonitoringPreference.isEnabled(this)) {
             com.example.data.engine.SafetyCheckTrigger.onPermissionGranted(applicationContext)
             val serviceIntent = Intent(this, NetraForegroundService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -93,7 +96,16 @@ open class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen(viewModel = viewModel)
+                    androidx.compose.foundation.layout.Column {
+                        androidx.compose.material3.Text(
+                            com.example.update.HumanSafetyHold.MESSAGE,
+                            modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(16.dp),
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.error
+                        )
+                        androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.weight(1f)) {
+                            MainScreen(viewModel = viewModel)
+                        }
+                    }
                 }
             }
         }

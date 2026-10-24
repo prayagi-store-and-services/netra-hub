@@ -27,6 +27,10 @@ import kotlinx.coroutines.withContext
 /** Settings card: shows the installed version and a "Check for update" button that tells whether this is the latest version. */
 @Composable
 fun UpdateCheckCard(modifier: Modifier = Modifier) {
+    if (HumanSafetyHold.matches(repo = AppUpdater.REPO)) {
+        HumanSafetyHoldCard(modifier)
+        return
+    }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
@@ -45,6 +49,7 @@ fun UpdateCheckCard(modifier: Modifier = Modifier) {
                     status = null
                     newer = null
                     when (val r = withContext(Dispatchers.IO) { AppUpdater.checkNow(context) }) {
+                        is AppUpdater.CheckResult.Paused -> status = HumanSafetyHold.MESSAGE
                         is AppUpdater.CheckResult.Latest -> status = "You are on the latest version."
                         is AppUpdater.CheckResult.Newer -> { newer = r.release; status = "Update available: " + r.release.versionName }
                         is AppUpdater.CheckResult.Failed -> status = "Unavailable: could not check. Check your internet connection and try again."
@@ -78,6 +83,18 @@ fun UpdateCheckCard(modifier: Modifier = Modifier) {
                     }
                 }
             }
+        }
+    }
+}
+
+/** The same production warning card is rendered by the native visual test. */
+@Composable
+internal fun HumanSafetyHoldCard(modifier: Modifier = Modifier) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Human Safety downloads paused", fontWeight = FontWeight.Bold)
+            Text(HumanSafetyHold.MESSAGE)
+            OutlinedButton(enabled = false, onClick = {}) { Text("Download and update paused") }
         }
     }
 }

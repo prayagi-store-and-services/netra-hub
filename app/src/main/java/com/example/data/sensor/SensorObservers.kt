@@ -34,6 +34,12 @@ import kotlin.math.sqrt
 
 class SensorObservers(private val context: Context) {
 
+    companion object {
+        // Match the existing normal rate at minimum; slower requested streams must also slow hardware callbacks.
+        internal fun hardwareSamplingPeriodUs(refreshIntervalMs: Long): Int =
+            refreshIntervalMs.coerceIn(200L, Int.MAX_VALUE / 1000L).toInt() * 1000
+    }
+
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
     // PowerManager.addThermalStatusListener keeps its listener map in a plain
@@ -87,7 +93,7 @@ class SensorObservers(private val context: Context) {
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
 
-        sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+        sensorManager.registerListener(listener, sensor, hardwareSamplingPeriodUs(refreshIntervalMs))
 
         awaitClose {
             sensorManager.unregisterListener(listener)

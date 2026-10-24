@@ -83,6 +83,7 @@ object AppUpdater {
         object Latest : CheckResult()
         data class Newer(val release: AppRelease) : CheckResult()
         object Failed : CheckResult()
+        object Paused : CheckResult()
     }
 
     /** Pure decision for a latest.json text: newer release, already latest, or unreadable (Failed). */
@@ -98,6 +99,7 @@ object AppUpdater {
 
     /** Manual "Check for update": always asks now (ignores the once-a-day limit). Call off the main thread. */
     fun checkNow(context: Context): CheckResult {
+        if (HumanSafetyHold.matches(repo = REPO)) return CheckResult.Paused
         return try {
             val c = open(latestJsonUrl())
             if (c.responseCode != 200) return CheckResult.Failed
@@ -127,6 +129,7 @@ object AppUpdater {
 
     /** Checks at most once a day. Returns a newer release, or null (up to date, already checked today, or offline). */
     fun checkIfDue(context: Context): AppRelease? {
+        if (HumanSafetyHold.matches(repo = REPO)) return null
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
         if (now - prefs.getLong(KEY_LAST_CHECK, 0L) < DAY_MS) return null
@@ -172,10 +175,11 @@ object AppUpdater {
 
     /** The file for this release when it was already saved in the background (a verified download has exactly the expected size). */
     fun savedFile(context: Context, release: AppRelease): File? =
-        File(File(context.cacheDir, "updates"), "$APP_LABEL-${release.tag}.apk").takeIf { it.exists() && it.length() == release.size }
+        File(File(context.cacheDir, "updates"), "$APP_LABEL-${release.tag}.apk").takeIf { !HumanSafetyHold.matches(repo = REPO) }?.takeIf { it.exists() && it.length() == release.size }
 
     /** Downloads the APK and verifies size and sha256. Deletes the file and throws if anything is off. */
     fun download(context: Context, release: AppRelease, onProgress: ((Long, Long) -> Unit)? = null): File {
+        HumanSafetyHold.requireAllowed(repo = REPO)
         val dir = File(context.cacheDir, "updates").apply { mkdirs() }
         dir.listFiles()?.filter { !it.name.endsWith("-${release.tag}.apk") }?.forEach { it.delete() }
         val file = File(dir, "$APP_LABEL-${release.tag}.apk")
@@ -208,6 +212,7 @@ object AppUpdater {
 
     /** Opens the system installer. Throws a readable message when the user must first allow installs from this app. */
     fun install(context: Context, file: File) {
+        HumanSafetyHold.requireAllowed(repo = REPO)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
             context.startActivity(
                 Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + context.packageName))
@@ -227,6 +232,8 @@ object AppUpdater {
 /** Shows the update prompt (version, what changed, Update / Later) when a newer release exists. Checks at most once a day. */
 @Composable
 fun AppUpdatePrompt() {
+    // MainActivity renders the persistent warning. Do not offer an update dialog during quarantine.
+    if (HumanSafetyHold.matches(repo = AppUpdater.REPO)) return
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var release by remember { mutableStateOf<AppRelease?>(null) }

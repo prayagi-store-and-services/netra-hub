@@ -94,7 +94,9 @@ class BatteryManager(private val context: Context) {
 
     internal fun getReceiver(): BroadcastReceiver = batteryReceiver
 
+    @Synchronized
     fun startMonitoring() {
+        if (!com.example.monitoring.MonitoringPreference.isEnabled(context)) return
         if (isRegistered) return
         val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
         val stickyIntent = context.registerReceiver(batteryReceiver, filter)
@@ -104,6 +106,7 @@ class BatteryManager(private val context: Context) {
         isRegistered = true
     }
 
+    @Synchronized
     fun stopMonitoring() {
         if (!isRegistered) return
         try {

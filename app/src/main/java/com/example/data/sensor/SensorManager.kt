@@ -44,6 +44,7 @@ class SensorManager(
 
     private val monitorOwner = java.util.UUID.randomUUID().toString()
     private var monitoringStarts = 0
+    @Synchronized internal fun monitoringStartCountForTests(): Int = monitoringStarts
     private var lastSampleDecision = "not_processed"
     private var serviceOwner = "none"
     private var serviceStarts = 0
@@ -147,6 +148,7 @@ class SensorManager(
     }
 
     @Synchronized private fun updateMonitoringState(type: Int, enabled: Boolean) {
+        if (_monitoringEnabled.value[type] == enabled) return
         val current = _monitoringEnabled.value.toMutableMap()
         current[type] = enabled
         _monitoringEnabled.value = current
@@ -158,7 +160,7 @@ class SensorManager(
         }
     }
 
-    private fun updateThrottlingBasedOnPowerMode(mode: PowerMode) {
+    @Synchronized internal fun updateThrottlingBasedOnPowerMode(mode: PowerMode) {
         val multiplier = when (mode) {
             PowerMode.ACTIVE -> 1L
             PowerMode.PASSIVE -> 2L
@@ -174,12 +176,18 @@ class SensorManager(
             Sensor.TYPE_MAGNETIC_FIELD to 500L
         )
         
-        baseIntervals.forEach { (type, baseInterval) ->
-            setSensorThrottle(type, baseInterval * multiplier)
+        val updated = _sensorThrottles.value + baseIntervals.mapValues { (_, base) -> base * multiplier }
+        if (updated == _sensorThrottles.value) return
+        _sensorThrottles.value = updated
+        // Apply the complete power profile with one restart, not one GPS rebind per sensor.
+        if (_isMonitoringActive.value) {
+            stopMonitoring()
+            startMonitoring()
         }
     }
 
     @Synchronized fun setSensorThrottle(sensorType: Int, intervalMs: Long) {
+        if (_sensorThrottles.value[sensorType] == intervalMs) return
         val current = _sensorThrottles.value.toMutableMap()
         current[sensorType] = intervalMs
         _sensorThrottles.value = current
@@ -208,6 +216,11 @@ class SensorManager(
      */
     @Synchronized
     fun startMonitoring() {
+        // Final authority: lifecycle, watchdog, NASRE and service recovery all converge here.
+        if (!com.example.monitoring.MonitoringPreference.isEnabled(context)) {
+            stopByUser()
+            return
+        }
         // Reconcile FIRST, even when already active: a recreated service after teardown must still find a
         // dead trip under an open gate and resume it. Early-returning before this would keep tripOFF/gateON.
         reconcileTrip()
@@ -247,6 +260,16 @@ class SensorManager(
         }
     }
 
+    /** Permanent user pause is not a transient power/configuration restart. */
+    @Synchronized
+    fun stopByUser() {
+        speedGate.reset()
+        DrivingState.reset() // null update preserves the prior speed; explicit pause must clear it
+        com.example.driving.DrivingTrip.stop()
+        com.example.driving.DrivingSignal.publish(context, false)
+        stopMonitoring()
+    }
+
     @Synchronized
     fun stopMonitoring() {
         _isMonitoringActive.value = false
@@ -270,14 +293,7 @@ class SensorManager(
 
         val supportedCapabilities = capabilityManager.getSupportedCapabilities()
         supportedCapabilities.forEach { cap ->
-            val isEnabledBySettings = _monitoringEnabled.value[cap.type] == true
-            val hasSubscribers = subscribers.value[cap.type]?.isNotEmpty() == true
-
-            val isCoreSafety = cap.type == Sensor.TYPE_ACCELEROMETER || cap.type == Sensor.TYPE_STEP_DETECTOR || cap.type == Sensor.TYPE_STEP_COUNTER
-            // Background listening only while moving at 30 km/h or more (user setting, on by default).
-            // A sensor screen the user has open (a subscriber) still gets live data.
-            val gateAllows = !SpeedGate.isEnabled(context) || speedGate.isOpen
-            val shouldRun = hasSubscribers || (isEnabledBySettings && gateAllows)
+            val shouldRun = isHardwareStreamExpected(cap.type)
             
             if (shouldRun && !sensorJobs.containsKey(cap.type)) {
                 val baseThrottle = _sensorThrottles.value[cap.type] ?: 150L
@@ -317,6 +333,15 @@ class SensorManager(
         }
     }
 
+    /** Expected idle is not a failed listener: shared by registration and watchdog recovery. */
+    @Synchronized internal fun isHardwareStreamExpected(sensorType: Int): Boolean {
+        if (!_isMonitoringActive.value) return false
+        val supported = capabilityManager.getSupportedCapabilities().any { it.type == sensorType }
+        val subscriber = subscribers.value[sensorType]?.isNotEmpty() == true
+        val gateAllows = !SpeedGate.isEnabled(context) || speedGate.isOpen
+        return supported && (subscriber || (_monitoringEnabled.value[sensorType] == true && gateAllows))
+    }
+
     private val readingBuffer = java.util.concurrent.ConcurrentLinkedQueue<RawSensorReading>()
     private var lastAggregationTime = 0L
     private val AGGREGATION_INTERVAL = 5000L // 5 seconds
@@ -332,6 +357,7 @@ class SensorManager(
     /** Every GPS sample leaves a bounded LOCAL decision fact, including original timestamps, result and
      * runtime ownership. No coordinates and no network. Audio event IDs/results live in the journal. */
     @Synchronized internal fun acceptLocationReading(reading: RawSensorReading) {
+        if (!com.example.monitoring.MonitoringPreference.isEnabled(context)) return
         if (reading.sensorId != "gnss_location") return
         val before = speedGate.diagnosticState()
         val processingAt = wallNow()
@@ -492,6 +518,7 @@ class SensorManager(
     }
 
     @Synchronized private fun acceptMonitoredReading(generation: Long, reading: RawSensorReading) {
+        if (!com.example.monitoring.MonitoringPreference.isEnabled(context)) return
         if (!_isMonitoringActive.value || generation != monitoringGeneration) return
         handleIncomingReading(reading)
     }

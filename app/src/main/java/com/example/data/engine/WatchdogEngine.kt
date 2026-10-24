@@ -16,6 +16,9 @@ class WatchdogEngine(
     private val securityEngine: SecurityEngine?
 ) {
     companion object {
+        internal fun shouldRecoverMagneticStream(moduleName: String, expected: Boolean?): Boolean =
+            moduleName != "Magnetic Field" || expected != false
+
         const val CURRENT_RELEASE_MANIFEST_VERSION = "2026.08.13-NETRA-V3"
         val REQUIRED_MODULES = listOf(
             "Temperature", "Magnetic Field", "Network", "Bluetooth",
@@ -138,6 +141,14 @@ class WatchdogEngine(
 
         // Fix: Check for Event-Based or Passive modules before recovery (Fix 4)
         if (meta.type == ModuleType.EVENT_BASED || meta.type == ModuleType.PASSIVE) {
+            startStaleTimer(moduleName)
+            return
+        }
+
+        // The speed/settings gate intentionally unregisters the magnetometer at idle.
+        // Recovering that pause would repeatedly restart the whole sensor/GPS pipeline.
+        if (!shouldRecoverMagneticStream(moduleName, sensorManager?.isHardwareStreamExpected(android.hardware.Sensor.TYPE_MAGNETIC_FIELD))) {
+            meta.failureLevel = 0
             startStaleTimer(moduleName)
             return
         }
