@@ -39,6 +39,11 @@ object UpdateAlert {
     }
 
     fun schedule(context: Context) {
+        if (HumanSafetyHold.matches(repo = AppUpdater.REPO)) {
+            WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
+            (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(NOTIFICATION_ID)
+            return
+        }
         val request = PeriodicWorkRequestBuilder<UpdateAlertWorker>(6, TimeUnit.HOURS)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()
@@ -49,6 +54,10 @@ object UpdateAlert {
     fun handle(activity: Activity, intent: Intent?) {
         if (intent?.getBooleanExtra(EXTRA_AUTO_UPDATE, false) != true) return
         intent.removeExtra(EXTRA_AUTO_UPDATE)
+        if (HumanSafetyHold.matches(repo = AppUpdater.REPO)) {
+            Toast.makeText(activity, HumanSafetyHold.MESSAGE, Toast.LENGTH_LONG).show()
+            return
+        }
         val app = activity.applicationContext
         Toast.makeText(app, "Downloading the update...", Toast.LENGTH_SHORT).show()
         Thread {
@@ -71,6 +80,7 @@ object UpdateAlert {
     }
 
     internal fun notifyIfNew(c: Context, release: AppRelease, appName: String, downloaded: Boolean = false) {
+        if (HumanSafetyHold.matches(repo = AppUpdater.REPO)) return
         val prefs = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (release.versionCode <= prefs.getLong("notified_code", 0L)) return
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -97,6 +107,7 @@ object UpdateAlert {
 
 class UpdateAlertWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        if (HumanSafetyHold.matches(repo = AppUpdater.REPO)) return@withContext Result.success()
         try {
             val r = AppUpdater.checkNow(applicationContext)
             if (r is AppUpdater.CheckResult.Newer) {
