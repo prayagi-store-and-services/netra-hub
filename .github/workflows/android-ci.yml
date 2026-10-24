@@ -42,6 +42,14 @@ jobs:
           set -o pipefail
           mkdir -p app/build/ci-diagnostics
           gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest --stacktrace 2>&1 | tee app/build/ci-diagnostics/android-build.log
+      - name: Preserve full unit test report before filtered native renders
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p app/build/ci-diagnostics/full-unit-results
+          if [ -d app/build/test-results/testDebugUnitTest ]; then
+            cp -a app/build/test-results/testDebugUnitTest/. app/build/ci-diagnostics/full-unit-results/
+          fi
       - name: Render production version header
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.example.EcosystemHeaderScreenshotTest -Proborazzi.test.record=true --stacktrace
       - name: Render earthquake filter controls and dialogs
@@ -57,6 +65,7 @@ jobs:
             app/build/test-results/testDebugUnitTest/*.xml
             app/build/ui-shots/*.png
             app/build/ci-diagnostics/android-build.log
+            app/build/ci-diagnostics/full-unit-results/
             app/build/outputs/ecosystem-version-header*.png
             app/build/outputs/quake-*.png
             app/src/test/screenshots/monitoring_*.png
