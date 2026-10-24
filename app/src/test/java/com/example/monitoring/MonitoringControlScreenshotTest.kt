@@ -1,6 +1,8 @@
 package com.example.monitoring
 
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.assertTextEquals
@@ -19,6 +21,12 @@ import org.robolectric.annotation.GraphicsMode
 @Config(qualifiers = "w320dp-h800dp-xxhdpi", sdk = [34], application = android.app.Application::class)
 class MonitoringControlScreenshotTest {
     @get:Rule val compose = createComposeRule()
+    @Test fun humanSafetyHold320() {
+        compose.setContent { NetraTheme { com.example.update.HumanSafetyHoldCard() } }
+        compose.onNodeWithText(com.example.update.HumanSafetyHold.MESSAGE).assertExists()
+        compose.onNodeWithText("Download and update paused").assertIsNotEnabled()
+        compose.onRoot().captureRoboImage(filePath = "src/test/screenshots/monitoring_human_safety_hold_320.png")
+    }
     @Test fun pausedControl320() {
         compose.setContent { NetraTheme { MonitoringControlContent(enabled = false, onAction = {}) } }
         compose.onNodeWithTag("monitoring_state").assertTextEquals("Sensor monitoring: paused")
