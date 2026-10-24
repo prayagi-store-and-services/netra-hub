@@ -38,6 +38,7 @@ class NasrePowerModule(
 
     private fun restoreServices() {
         scope.launch {
+            if (!com.example.monitoring.MonitoringPreference.isEnabled(context)) return@launch
             // Restore required components
             val serviceIntent = Intent(context, NetraForegroundService::class.java)
             try {
