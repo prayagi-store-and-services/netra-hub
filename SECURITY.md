@@ -1,5 +1,13 @@
 # Security notes - netra-hub
 
+## Monitoring pause, power ownership and updater quarantine (v1.5.1)
+
+- Explicit sensor-monitoring pause is saved before teardown and remains authoritative for boot, charger, permission, service and recovery paths. Pausing stops driving detection and automatic sensor alerts. SOS shake and official-alert workers are separate. Resume requires a deliberate action. The enabled label describes the saved choice, not proof that a service is running; failed pause/resume actions show an error.
+- The repository and sensor manager share one power-profile owner. Unchanged profiles avoid restarting the sensor pipeline; profile changes batch to one restart. Hardware sampling uses the chosen interval, and an intentionally disabled magnetometer is not restarted by its watchdog. GPS timing and driving-entry thresholds are unchanged. The existing keep-screen-on behavior is intentionally preserved.
+- A rejected old heartbeat exits without tearing down a newly resumed shared manager or service. Each enabled service start replaces its heartbeat; paused queued starts use startId-safe stopping. Paused repository loops wait for preference changes rather than polling.
+- The approved heat/battery advisory remains visible. In-app updater checks, background jobs, cached-file reuse, download and installer handoff are locally paused; a newer release cannot automatically lift the hold. This does not revoke old clients or APKs opened externally.
+- Validation is CI/unit tests and native Robolectric renders, not a physical-device heat or battery test. These changes are not proof that reported overheating/drain is fixed. Do not install or use Human Safety until a checked fix is separately verified. No new telemetry, permission, account setting or library. This is a stability/quarantine change, not a security patch.
+
 # Optional saved alert area for Official alerts and earthquakes (v1.5.0)
 
 - New choice on the Earthquake card: "Use current location each check" (default, same as before) or "Use saved area". Saved area stores a chosen place on the phone only. Existing installs keep the current-location mode until the user changes it.
