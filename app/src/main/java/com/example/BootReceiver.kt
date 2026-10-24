@@ -8,6 +8,7 @@ import android.util.Log
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (!com.example.monitoring.MonitoringPreference.isEnabled(context)) return
         val action = intent.action
         Log.d("BootReceiver", "Received broadcast action: $action")
         
