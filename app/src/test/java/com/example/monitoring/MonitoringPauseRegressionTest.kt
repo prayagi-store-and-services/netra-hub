@@ -137,7 +137,7 @@ class MonitoringPauseRegressionTest {
         assertEquals(listOf(true, false, true), observed)
         collector.cancel()
     }
-    @Test fun rejectedOldHeartbeatCannotTearDownResumedManagerOrService() = kotlinx.coroutines.runBlocking {
+    @Test fun rejectedOldHeartbeatCannotTearDownResumedManagerOrService(): Unit = kotlinx.coroutines.runBlocking<Unit> {
         val controller = Robolectric.buildService(NetraForegroundService::class.java).create()
         try {
             val service = controller.get()
