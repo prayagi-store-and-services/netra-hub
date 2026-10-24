@@ -28,6 +28,7 @@ class NetraForegroundService : Service() {
 
 
     private var isStarted = false
+    private var heartbeatJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -37,7 +38,7 @@ class NetraForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!com.example.monitoring.MonitoringPreference.isEnabled(this)) {
-            stopSelf()
+            stopSelf(startId)
             return START_NOT_STICKY
         }
         repository = NetraSafetyRepository.get(applicationContext)
@@ -68,8 +69,11 @@ class NetraForegroundService : Service() {
         if (!isStarted) {
             isStarted = true
             com.example.data.engine.EngineCoordinator.startAllEngines()
-            startHeartbeatLoop()
         }
+        // A new start command owns a fresh heartbeat. A completed pre-pause loop cannot
+        // strand a rapid resume behind the one-time engine-start flag.
+        heartbeatJob?.cancel()
+        heartbeatJob = startHeartbeatLoop()
         
         Log.d("NetraForegroundService", "NetraForegroundService started with START_STICKY heartbeat active.")
         return START_STICKY
@@ -83,14 +87,28 @@ class NetraForegroundService : Service() {
     /** The actual heartbeat entry point, shared by service execution and deterministic lifecycle tests. */
     internal fun reconcileDrivingMonitoring(sensorMgr: com.example.data.sensor.SensorManager) {
         if (!com.example.monitoring.MonitoringPreference.isEnabled(this)) {
-            sensorMgr.stopByUser()
+            // Only the explicit pause owner may tear down this shared manager. A paused
+            // observation from an old heartbeat must never stop a later resumed owner.
             return
         }
         sensorMgr.noteServiceOwner(drivingServiceOwner)
         sensorMgr.startMonitoring()
     }
 
-    private fun startHeartbeatLoop() {
+    /** Publication has no teardown authority. The optional boundary is used by the
+     * deterministic regression to resume exactly after a rejected old publication. */
+    internal fun publishHeartbeatDriving(drivingNow: Boolean, afterRejected: () -> Unit = {}): Boolean {
+        val published = com.example.monitoring.MonitoringPreference.publishIfEnabled(this) {
+            com.example.driving.DrivingSignal.publish(applicationContext, drivingNow)
+        }
+        if (!published) afterRejected()
+        return published
+    }
+
+    internal fun startHeartbeatLoop(
+        beforePublication: () -> Unit = {},
+        afterRejected: () -> Unit = {}
+    ): Job =
         serviceScope.launch {
             while (isActive && com.example.monitoring.MonitoringPreference.isEnabled(this@NetraForegroundService)) {
                 try {
@@ -120,14 +138,10 @@ class NetraForegroundService : Service() {
                     val drivingNow = isMotionDetected || com.example.data.sensor.DrivingState.driving.value
                     // Serialize the last publish with the preference write. A pre-pause heartbeat
                     // cannot overwrite the explicit not-driving signal after pause returns.
-                    val published = com.example.monitoring.MonitoringPreference.publishIfEnabled(this@NetraForegroundService) {
-                        com.example.driving.DrivingSignal.publish(applicationContext, drivingNow)
-                    }
-                    if (!published) {
-                        repository?.sensorManager?.stopByUser()
-                        stopSelf()
-                        break
-                    }
+                    beforePublication()
+                    if (!publishHeartbeatDriving(drivingNow, afterRejected)) break
+                    // Rejected/cancelled heartbeats exit without owning service or sensor teardown.
+                    if (!isActive) break
                     wasDriving = drivingNow
                     val newMode = repository?.powerManagerEngine?.determineMode(isScreenOn, isCharging, isMotionDetected)
                     newMode?.let { repository?.powerManagerEngine?.updateMode(it) }
@@ -138,7 +152,6 @@ class NetraForegroundService : Service() {
                 delay(30_000L) // 30 second heartbeat interval
             }
         }
-    }
 
     override fun onDestroy() {
         super.onDestroy()
