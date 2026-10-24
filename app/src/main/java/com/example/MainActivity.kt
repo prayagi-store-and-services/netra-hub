@@ -65,7 +65,8 @@ open class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         com.example.util.LoggingManager.init(applicationContext)
 
-        // Let Android turn the screen off normally; monitoring does not require a lit display.
+        // Keep the screen on 24/7 while the application is active
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         // Start Foreground Service to keep app running in the background if permission is already granted
         val hasLocationPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
