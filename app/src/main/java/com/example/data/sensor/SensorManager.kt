@@ -216,6 +216,11 @@ class SensorManager(
      */
     @Synchronized
     fun startMonitoring() {
+        // Final authority: lifecycle, watchdog, NASRE and service recovery all converge here.
+        if (!com.example.monitoring.MonitoringPreference.isEnabled(context)) {
+            stopByUser()
+            return
+        }
         // Reconcile FIRST, even when already active: a recreated service after teardown must still find a
         // dead trip under an open gate and resume it. Early-returning before this would keep tripOFF/gateON.
         reconcileTrip()
@@ -253,6 +258,16 @@ class SensorManager(
                 receive(reading)
             }
         }
+    }
+
+    /** Permanent user pause is not a transient power/configuration restart. */
+    @Synchronized
+    fun stopByUser() {
+        speedGate.reset()
+        DrivingState.reset() // null update preserves the prior speed; explicit pause must clear it
+        com.example.driving.DrivingTrip.stop()
+        com.example.driving.DrivingSignal.publish(context, false)
+        stopMonitoring()
     }
 
     @Synchronized
@@ -342,6 +357,7 @@ class SensorManager(
     /** Every GPS sample leaves a bounded LOCAL decision fact, including original timestamps, result and
      * runtime ownership. No coordinates and no network. Audio event IDs/results live in the journal. */
     @Synchronized internal fun acceptLocationReading(reading: RawSensorReading) {
+        if (!com.example.monitoring.MonitoringPreference.isEnabled(context)) return
         if (reading.sensorId != "gnss_location") return
         val before = speedGate.diagnosticState()
         val processingAt = wallNow()
@@ -502,6 +518,7 @@ class SensorManager(
     }
 
     @Synchronized private fun acceptMonitoredReading(generation: Long, reading: RawSensorReading) {
+        if (!com.example.monitoring.MonitoringPreference.isEnabled(context)) return
         if (!_isMonitoringActive.value || generation != monitoringGeneration) return
         handleIncomingReading(reading)
     }
