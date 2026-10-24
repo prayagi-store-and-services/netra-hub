@@ -262,6 +262,7 @@ fun MainScreen(
                 .padding(innerPadding)
                 .background(BentoBackground)
         ) {
+            com.example.ui.components.MonitoringControlCard()
             if (persistentAlert != null) {
                 Card(
                     modifier = Modifier.padding(16.dp).fillMaxWidth(),
