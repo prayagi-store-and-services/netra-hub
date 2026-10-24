@@ -31,11 +31,16 @@ class NetraForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        repository = NetraSafetyRepository.get(applicationContext)
+        // Do not construct the sensor repository from a queued restart while paused.
         createNotificationChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!com.example.monitoring.MonitoringPreference.isEnabled(this)) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        repository = NetraSafetyRepository.get(applicationContext)
         val notification = createNotification()
         val hasLocationPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
@@ -77,13 +82,17 @@ class NetraForegroundService : Service() {
     private val drivingServiceOwner = java.util.UUID.randomUUID().toString()
     /** The actual heartbeat entry point, shared by service execution and deterministic lifecycle tests. */
     internal fun reconcileDrivingMonitoring(sensorMgr: com.example.data.sensor.SensorManager) {
+        if (!com.example.monitoring.MonitoringPreference.isEnabled(this)) {
+            sensorMgr.stopByUser()
+            return
+        }
         sensorMgr.noteServiceOwner(drivingServiceOwner)
         sensorMgr.startMonitoring()
     }
 
     private fun startHeartbeatLoop() {
         serviceScope.launch {
-            while (isActive) {
+            while (isActive && com.example.monitoring.MonitoringPreference.isEnabled(this@NetraForegroundService)) {
                 try {
                     // Perform heartbeat health check & sensor monitoring check
                     Log.d("NetraForegroundService", "Heartbeat tick: Background monitoring active, sensors and AI engine running.")
@@ -109,7 +118,16 @@ class NetraForegroundService : Service() {
                     val isMotionDetected = repository?.sensorManager?.fusionState?.value?.isDrivingConfirmed ?: false
                     
                     val drivingNow = isMotionDetected || com.example.data.sensor.DrivingState.driving.value
-                    com.example.driving.DrivingSignal.publish(applicationContext, drivingNow)
+                    // Serialize the last publish with the preference write. A pre-pause heartbeat
+                    // cannot overwrite the explicit not-driving signal after pause returns.
+                    val published = com.example.monitoring.MonitoringPreference.publishIfEnabled(this@NetraForegroundService) {
+                        com.example.driving.DrivingSignal.publish(applicationContext, drivingNow)
+                    }
+                    if (!published) {
+                        repository?.sensorManager?.stopByUser()
+                        stopSelf()
+                        break
+                    }
                     wasDriving = drivingNow
                     val newMode = repository?.powerManagerEngine?.determineMode(isScreenOn, isCharging, isMotionDetected)
                     newMode?.let { repository?.powerManagerEngine?.updateMode(it) }
