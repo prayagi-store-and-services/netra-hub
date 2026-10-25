@@ -11,13 +11,20 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import org.robolectric.Robolectric
+import com.example.nasre.NasreInitializer
 
 @RunWith(OwnedProcessTestRunner::class)
 @Config(sdk = [34])
 class ProcessOwnershipTest {
     @Test fun realManifestProviderStartsAndOwnedGraphCanBeDisposedAndRecreated() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        // No replacement manifest or mocked provider: manifest content-provider startup must have run.
+        // Robolectric does not eagerly initialize this manifest provider. Resolve the real manifest
+        // declaration and create the actual provider, without a mock or replacement manifest.
+        val info = context.packageManager.resolveContentProvider(context.packageName + ".nasre", 0)
+        assertNotNull("Real manifest must declare NASRE provider", info)
+        assertEquals(NasreInitializer::class.java.name, info!!.name)
+        Robolectric.buildContentProvider(NasreInitializer::class.java).create()
         val original = NetraSafetyRepository.getIfCreated()
         assertNotNull("Real NasreInitializer must create the repository", original)
         assertTrue("Real NasreInitializer must create NASRE", NasreEngine.isCreated())
