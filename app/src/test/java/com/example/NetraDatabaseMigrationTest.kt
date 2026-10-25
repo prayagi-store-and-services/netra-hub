@@ -25,7 +25,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-@RunWith(AndroidJUnit4::class)
+@RunWith(com.example.OwnedProcessTestRunner::class)
 class NetraDatabaseMigrationTest {
 
     private lateinit var context: Context
