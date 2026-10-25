@@ -584,4 +584,10 @@ class NetraSafetyEngine(
         val curr = currentStr.replace("°C", "").trim().toFloatOrNull() ?: 0f
         return if (curr >= peak) currentStr else peakStr
     }
+    internal suspend fun dispose() {
+        val owner = scope.coroutineContext[kotlinx.coroutines.Job]!!
+        owner.cancel()
+        alertManager.dispose()
+        owner.join()
+    }
 }
