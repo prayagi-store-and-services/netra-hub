@@ -78,6 +78,7 @@ class SensorManager(
     private val _liveReadings = MutableStateFlow<Map<String, RawSensorReading>>(emptyMap())
     val liveReadings: StateFlow<Map<String, RawSensorReading>> = _liveReadings.asStateFlow()
 
+    private var disposed = false
     private var monitoringGeneration = 0L
     // Configuration collectors belong to this process-persistent manager, not a transient monitor run.
     private val configurationScope = CoroutineScope(Dispatchers.Default + Job())
@@ -216,6 +217,7 @@ class SensorManager(
      */
     @Synchronized
     fun startMonitoring() {
+        if (disposed) return
         // Final authority: lifecycle, watchdog, NASRE and service recovery all converge here.
         if (!com.example.monitoring.MonitoringPreference.isEnabled(context)) {
             stopByUser()
@@ -621,4 +623,18 @@ class SensorManager(
         super.onDestroy(owner)
         stopMonitoring()
     }
+
+    /** Terminal owner teardown only. Ordinary pause/resume keeps configuration collectors. */
+    internal suspend fun dispose() {
+        val active = synchronized(this) {
+            disposed = true
+            stopMonitoring()
+            job
+        }
+        val configuration = configurationScope.coroutineContext[Job]!!
+        configuration.cancel()
+        active.join()
+        configuration.join()
+    }
+
 }
