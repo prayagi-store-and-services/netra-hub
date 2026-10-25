@@ -95,7 +95,7 @@ class WatchdogEngine(
         }
         scope.launch(Dispatchers.IO) {
             while (isActive) {
-                val event = SensorEventBus.take()
+                val event = runInterruptible { SensorEventBus.take() }
                 notifyUpdate(event.data.toString())
             }
         }
@@ -430,4 +430,11 @@ class WatchdogEngine(
             }
         }
     }
+
+    internal suspend fun dispose() {
+        val owner = scope.coroutineContext[Job]!!
+        owner.cancelAndJoin()
+        timeoutJobs.clear()
+    }
+
 }
