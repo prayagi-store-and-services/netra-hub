@@ -1183,6 +1183,6 @@ internal suspend fun <T> withReceiverCleanup(context: Context, receiver: Broadca
     try {
         block()
     } finally {
-        // Registration can fail or permission can be absent. Never hide cancellation or the original scan error.
+        // Registration can fail or permission can be absent. Suppress only the not-registered case.
         try { context.unregisterReceiver(receiver) } catch (_: IllegalArgumentException) { }
     }
