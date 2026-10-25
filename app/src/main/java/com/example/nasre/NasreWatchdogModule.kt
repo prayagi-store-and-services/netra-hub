@@ -36,4 +36,12 @@ class NasreWatchdogModule(
     override fun getStatus(): String {
         return "Active"
     }
+
+    override suspend fun dispose() {
+        val owner = scope.coroutineContext[kotlinx.coroutines.Job]!!
+        owner.cancel()
+        engine.dispose()
+        owner.join()
+    }
+
 }
