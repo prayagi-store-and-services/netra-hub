@@ -11,7 +11,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(com.example.OwnedProcessTestRunner::class)
 @Config(sdk = [34], application = android.app.Application::class)
 class DrivingEventsIdempotencyTest {
     private val spoken = mutableListOf<Pair<String, String>>()
@@ -102,7 +102,7 @@ class DrivingEventsIdempotencyTest {
 }
 
 /** Actual Android SQLite persistence adapter tests, separate from the injectable failure model above. */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(com.example.OwnedProcessTestRunner::class)
 @Config(sdk = [34], application = android.app.Application::class)
 class AndroidDrivingJournalStoreTest {
     @Test fun persistedSnapshotSurvivesStoreReopenAndUpsertDoesNotDuplicate() {
