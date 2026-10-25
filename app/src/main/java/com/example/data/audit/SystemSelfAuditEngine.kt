@@ -411,4 +411,11 @@ class SystemSelfAuditEngine(
     fun getServiceStats(): List<ServiceStat> {
         return serviceStats.values.toList().sortedBy { it.name }
     }
+
+    internal suspend fun dispose() {
+        val owner = scope.coroutineContext[kotlinx.coroutines.Job]!!
+        owner.cancel()
+        owner.join()
+    }
+
 }
