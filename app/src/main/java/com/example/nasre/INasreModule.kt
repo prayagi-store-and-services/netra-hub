@@ -7,5 +7,6 @@ interface INasreModule {
     fun initialize()
     fun start()
     fun stop()
+    suspend fun dispose()
     fun getStatus(): String
 }
