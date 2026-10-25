@@ -17,7 +17,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(com.example.OwnedProcessTestRunner::class)
 @Config(sdk = [36])
 class PinSecurityTest {
 
@@ -98,7 +98,7 @@ class PinGateTest {
 
 
 /** End to end: default PIN, forced change, own PIN only, and the upgrade of an old hash. */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(com.example.OwnedProcessTestRunner::class)
 class PinCheckerTest {
     private val storage = Pbkdf2PinStorageService()
     private val checker = PinChecker(storage)
