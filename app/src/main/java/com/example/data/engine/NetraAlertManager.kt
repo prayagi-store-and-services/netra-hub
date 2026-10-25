@@ -346,4 +346,11 @@ class NetraAlertManager(
             } catch (_: Exception) {}
         }
     }
+
+    internal suspend fun dispose() {
+        val owner = scope.coroutineContext[kotlinx.coroutines.Job]!!
+        owner.cancel()
+        owner.join()
+    }
+
 }
