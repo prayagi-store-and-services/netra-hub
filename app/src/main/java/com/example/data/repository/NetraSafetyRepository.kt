@@ -37,6 +37,11 @@ class NetraSafetyRepository private constructor(private val context: Context) {
          * start a second SensorManager with its own location stream and driving gate, so driving announcements played
          * twice and gates competed. Every caller must use this accessor.
          */
+        internal suspend fun disposeIfCreated() {
+            val owned = synchronized(this) { instance.also { instance = null } }
+            owned?.dispose()
+        }
+
         fun getIfCreated(): NetraSafetyRepository? = instance
 
         fun get(context: Context): NetraSafetyRepository =
@@ -310,4 +315,14 @@ class NetraSafetyRepository private constructor(private val context: Context) {
     suspend fun clearAuditHistory() {
         systemAuditDao.clearAllAudits()
     }
+
+    internal suspend fun dispose() {
+        val owner = scope.coroutineContext[Job]!!
+        owner.cancel()
+        auditEngine.dispose()
+        sensorManager.dispose()
+        safetyEngine.dispose()
+        owner.join()
+    }
+
 }

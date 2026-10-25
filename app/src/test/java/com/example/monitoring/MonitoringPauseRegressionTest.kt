@@ -22,7 +22,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(com.example.OwnedProcessTestRunner::class)
 @Config(sdk = [34], application = android.app.Application::class)
 class MonitoringPauseRegressionTest {
     private lateinit var context: Context

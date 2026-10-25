@@ -12,7 +12,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /** Temporary update hold: driving on/off speech is muted; history, trip and the stored user switch are untouched. */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(com.example.OwnedProcessTestRunner::class)
 @Config(sdk = [34], application = android.app.Application::class)
 class DrivingTemporaryHoldTest {
     private val spoken = mutableListOf<String>()

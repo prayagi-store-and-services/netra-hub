@@ -16,7 +16,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(com.example.OwnedProcessTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w320dp-h800dp-xxhdpi", sdk = [34], application = android.app.Application::class)
 class MonitoringControlScreenshotTest {

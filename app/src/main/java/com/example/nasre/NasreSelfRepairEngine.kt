@@ -32,4 +32,11 @@ class NasreSelfRepairEngine(
             // Log the repair action
         }
     }
+
+    override suspend fun dispose() {
+        val owner = scope.coroutineContext[kotlinx.coroutines.Job]!!
+        owner.cancel()
+        owner.join()
+    }
+
 }

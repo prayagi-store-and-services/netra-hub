@@ -13,7 +13,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import com.example.ui.NetraVersionHeader
-@RunWith(RobolectricTestRunner::class)
+@RunWith(com.example.OwnedProcessTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w360dp-h800dp-xhdpi", sdk = [34], application = android.app.Application::class)
 class EcosystemHeaderScreenshotTest {

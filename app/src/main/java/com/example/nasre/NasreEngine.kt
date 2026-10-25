@@ -33,6 +33,14 @@ class NasreEngine(
         @Volatile
         private var INSTANCE: NasreEngine? = null
 
+        /** Called by the terminal process owner, never by a transient screen/service pause. */
+        internal suspend fun disposeIfCreated() {
+            val owned = synchronized(this) { INSTANCE.also { INSTANCE = null } }
+            owned?.dispose()
+        }
+
+        internal fun isCreated(): Boolean = INSTANCE != null
+
         fun getInstance(
             context: Context,
             batteryManager: BatteryManager?,
@@ -74,4 +82,18 @@ class NasreEngine(
         logger.stop()
         powerModule.stop()
     }
+
+    internal suspend fun dispose() {
+        val owner = scope.coroutineContext[kotlinx.coroutines.Job]!!
+        owner.cancel()
+        healthMonitor.dispose()
+        watchdog.dispose()
+        analyzer.dispose()
+        repairEngine.dispose()
+        optimizer.dispose()
+        logger.dispose()
+        powerModule.dispose()
+        owner.join()
+    }
+
 }

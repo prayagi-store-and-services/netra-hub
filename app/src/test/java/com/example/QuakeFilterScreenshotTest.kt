@@ -19,7 +19,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-@RunWith(RobolectricTestRunner::class)
+@RunWith(com.example.OwnedProcessTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w360dp-h800dp-xhdpi", sdk = [34], application = Application::class)
 class QuakeFilterScreenshotTest {
