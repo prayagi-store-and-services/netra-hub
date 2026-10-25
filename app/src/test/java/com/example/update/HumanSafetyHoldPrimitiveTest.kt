@@ -9,7 +9,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
-@RunWith(RobolectricTestRunner::class)
+@RunWith(com.example.OwnedProcessTestRunner::class)
 @Config(sdk = [34], application = Application::class)
 class HumanSafetyHoldPrimitiveTest {
     private val context get() = RuntimeEnvironment.getApplication()
