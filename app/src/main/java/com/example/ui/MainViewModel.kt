@@ -958,6 +958,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
+            withReceiverCleanup(context, receiver) {
             try {
                 if (context.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED) {
                     val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
@@ -1098,7 +1099,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val btManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
                     btManager?.adapter?.cancelDiscovery()
                 }
-                context.unregisterReceiver(receiver)
             } catch (e: Exception) {}
 
             // Final state transition
@@ -1141,6 +1141,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     finalState.riskScore
                 )
             }
+            } // receiver ownership ends on success, cancellation or failure
         }
     }
 
@@ -1176,3 +1177,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ttsManager.shutdown()
     }
 }
+
+/** A scan owns its receiver until completion, cancellation or failure, not until the screen's next scan. */
+internal suspend fun <T> withReceiverCleanup(context: Context, receiver: BroadcastReceiver, block: suspend () -> T): T =
+    try {
+        block()
+    } finally {
+        // Registration can fail or permission can be absent. Never hide cancellation or the original scan error.
+        try { context.unregisterReceiver(receiver) } catch (_: IllegalArgumentException) { }
+    }
