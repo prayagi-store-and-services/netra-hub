@@ -20,7 +20,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 /** Deterministic fake-TTS tests: callback timing, late init, queue order, failures. */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(com.example.OwnedProcessTestRunner::class)
 @Config(sdk = [34], application = android.app.Application::class)
 class OfficialAlertAnnouncerTest {
 
