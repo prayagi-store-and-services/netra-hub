@@ -19,7 +19,7 @@ import org.robolectric.annotation.Config
 
 /** Real SensorManager GPS entrypoint, actual gate/events/trip wiring and actual service teardown/heartbeat.
  * GPS and clocks are deterministic inputs; no GPS permission, real network or sleeps are needed. */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(com.example.OwnedProcessTestRunner::class)
 @Config(sdk = [34], application = android.app.Application::class)
 class DrivingPipelineIntegrationTest {
     private lateinit var context: Context
