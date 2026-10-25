@@ -17,7 +17,7 @@ import com.example.nasre.NasreInitializer
 @RunWith(OwnedProcessTestRunner::class)
 @Config(sdk = [34])
 class ProcessOwnershipTest {
-    @Test fun realManifestProviderStartsAndOwnedGraphCanBeDisposedAndRecreated() = runBlocking {
+    @Test fun realManifestProviderStartsAndOwnedGraphCanBeDisposedAndRecreated() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         // Robolectric does not eagerly initialize this manifest provider. Resolve the real manifest
         // declaration and create the actual provider, without a mock or replacement manifest.
@@ -28,13 +28,10 @@ class ProcessOwnershipTest {
         val original = NetraSafetyRepository.getIfCreated()
         assertNotNull("Real NasreInitializer must create the repository", original)
         assertTrue("Real NasreInitializer must create NASRE", NasreEngine.isCreated())
-        withTimeout(10_000) {
-            NasreEngine.disposeIfCreated()
-            NetraSafetyRepository.disposeIfCreated()
-            // Disposal is idempotent and must return without a delayed audit touching a dead context.
-            NasreEngine.disposeIfCreated()
-            NetraSafetyRepository.disposeIfCreated()
-        }
+        // Provider startup includes real Dispatchers.Main registration/cleanup. The test must
+        // not block the paused main looper while waiting for those jobs to join.
+        OwnedProcessCleanup.dispose()
+        OwnedProcessCleanup.dispose()
         assertNull(NetraSafetyRepository.getIfCreated())
         assertFalse(NasreEngine.isCreated())
         val recreated = NetraSafetyRepository.get(context)
