@@ -73,8 +73,10 @@ jobs:
           set -euo pipefail
           APK=app/build/outputs/apk/release/app-release.apk
           "$APKSIGNER" verify --print-certs "$APK" | tee "$RUNNER_TEMP/netra-cert.txt"
-          test "$(grep -c '^Signer #[0-9][0-9]* certificate SHA-256 digest:' "$RUNNER_TEMP/netra-cert.txt")" = 1
-          CERT="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/netra-cert.txt" | tr 'A-F' 'a-f')"
+          # Android build-tools can label the sole signer as Signer #1 or V2 Signer.
+          # Count all certificate digest lines first so an extra/unknown signer fails closed.
+          test "$(grep -c 'certificate SHA-256 digest:' "$RUNNER_TEMP/netra-cert.txt")" = 1
+          CERT="$(sed -nE 's/^(Signer #1|V2 Signer:) certificate SHA-256 digest: ([0-9a-fA-F]{64})$/\2/p' "$RUNNER_TEMP/netra-cert.txt" | tr 'A-F' 'a-f')"
           test "$CERT" = "543b46402206ae0022d352f65bea618386bd7aa681b4d5bcfb5ce02bac49c8c4"
           AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -1)"
           "$AAPT" dump badging "$APK" > "$RUNNER_TEMP/netra-badging.txt"
