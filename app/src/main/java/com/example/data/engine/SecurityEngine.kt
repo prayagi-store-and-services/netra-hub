@@ -192,7 +192,7 @@ class SecurityEngine(
             // 2. Biometrics
             var biometricStatus = FeatureStatus.UNKNOWN
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && context.checkSelfPermission(android.Manifest.permission.USE_BIOMETRIC) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     val bm = context.getSystemService(BiometricManager::class.java)
                     if (bm != null) {
                         val canAuthStrong = bm.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
@@ -208,7 +208,7 @@ class SecurityEngine(
                     } else {
                         biometricStatus = FeatureStatus.NOT_SUPPORTED
                     }
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && context.checkSelfPermission(android.Manifest.permission.USE_BIOMETRIC) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     val bm = context.getSystemService(BiometricManager::class.java)
                     if (bm != null) {
                         val canAuth = bm.canAuthenticate()
@@ -222,7 +222,7 @@ class SecurityEngine(
                     } else {
                         biometricStatus = FeatureStatus.NOT_SUPPORTED
                     }
-                } else {
+                } else if (context.checkSelfPermission(android.Manifest.permission.USE_FINGERPRINT) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     val fingerprintManager = context.getSystemService(Context.FINGERPRINT_SERVICE) as? android.hardware.fingerprint.FingerprintManager
                     if (fingerprintManager != null) {
                         biometricStatus = if (fingerprintManager.isHardwareDetected) {
