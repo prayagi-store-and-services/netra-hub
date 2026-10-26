@@ -41,7 +41,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p app/build/ci-diagnostics
-          gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest --stacktrace 2>&1 | tee app/build/ci-diagnostics/android-build.log
+          gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --stacktrace 2>&1 | tee app/build/ci-diagnostics/android-build.log
       - name: Preserve full unit test report before filtered native renders
         if: always()
         shell: bash
@@ -64,6 +64,7 @@ jobs:
           path: |
             app/build/test-results/testDebugUnitTest/*.xml
             app/build/ui-shots/*.png
+            app/build/reports/lint-results-debug.*
             app/build/ci-diagnostics/android-build.log
             app/build/ci-diagnostics/full-unit-results/
             app/build/outputs/ecosystem-version-header*.png
