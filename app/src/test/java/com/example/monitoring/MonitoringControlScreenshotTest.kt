@@ -21,11 +21,10 @@ import org.robolectric.annotation.GraphicsMode
 @Config(qualifiers = "w320dp-h800dp-xxhdpi", sdk = [34], application = android.app.Application::class)
 class MonitoringControlScreenshotTest {
     @get:Rule val compose = createComposeRule()
-    @Test fun humanSafetyHold320() {
-        compose.setContent { NetraTheme { com.example.update.HumanSafetyHoldCard() } }
-        compose.onNodeWithText(com.example.update.HumanSafetyHold.MESSAGE).assertExists()
-        compose.onNodeWithText("Download and update paused").assertIsNotEnabled()
-        compose.onRoot().captureRoboImage(filePath = "src/test/screenshots/monitoring_human_safety_hold_320.png")
+    @Test fun centralUpdates320() {
+        compose.setContent { NetraTheme { com.example.update.UpdateCheckCard() } }
+        compose.onNodeWithText("Updates are available only through Netra Ecosystem. This app does not download or install updates.").assertExists()
+        compose.onRoot().captureRoboImage(filePath = "src/test/screenshots/monitoring_central_updates_320.png")
     }
     @Test fun pausedControl320() {
         compose.setContent { NetraTheme { MonitoringControlContent(enabled = false, onAction = {}) } }
