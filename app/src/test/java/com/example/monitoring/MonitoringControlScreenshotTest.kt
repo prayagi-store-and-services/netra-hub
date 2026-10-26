@@ -21,6 +21,20 @@ import org.robolectric.annotation.GraphicsMode
 @Config(qualifiers = "w320dp-h800dp-xxhdpi", sdk = [34], application = android.app.Application::class)
 class MonitoringControlScreenshotTest {
     @get:Rule val compose = createComposeRule()
+    @Test fun unavailableBiometric320() {
+        compose.setContent { NetraTheme {
+            com.example.ui.screens.SecurityFeatureItemRow(
+                feature = com.example.data.model.SecurityFeature(
+                    id = "biometric", name = "Biometric Authentication",
+                    category = com.example.data.model.FeatureCategory.B,
+                    isMandatory = false, scoreWeight = 1,
+                    status = com.example.data.model.FeatureStatus.UNKNOWN
+                ), onItemClick = {}, onToggle = {}
+            )
+        } }
+        compose.onNodeWithText("Unavailable").assertExists()
+        compose.onRoot().captureRoboImage(filePath = "src/test/screenshots/monitoring_biometric_unavailable_320.png")
+    }
     @Test fun centralUpdates320() {
         compose.setContent { NetraTheme { com.example.update.UpdateCheckCard() } }
         compose.onNodeWithText("Updates are available only through Netra Ecosystem. This app does not download or install updates.").assertExists()
