@@ -1,6 +1,3 @@
 package com.example.update
 
-import androidx.core.content.FileProvider
-
-/** Separate FileProvider so update APKs never share paths with the app's other providers. */
-class UpdateFileProvider : FileProvider()
+// Per-app updater removed. No download, installer or provider capability remains here.

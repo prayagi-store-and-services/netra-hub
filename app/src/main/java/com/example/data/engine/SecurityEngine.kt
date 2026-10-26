@@ -4,7 +4,6 @@ import android.app.KeyguardManager
 import android.app.admin.DevicePolicyManager
 import android.bluetooth.BluetoothAdapter
 import android.content.Context
-import android.hardware.biometrics.BiometricManager
 import android.location.LocationManager
 import android.nfc.NfcAdapter
 import android.os.Build
@@ -190,62 +189,8 @@ class SecurityEngine(
             val isScreenLockEnabled = actualSecure
             
             // 2. Biometrics
-            var biometricStatus = FeatureStatus.UNKNOWN
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    val bm = context.getSystemService(BiometricManager::class.java)
-                    if (bm != null) {
-                        val canAuthStrong = bm.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-                        val canAuthWeak = bm.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK)
-                        
-                        biometricStatus = when {
-                            canAuthStrong == BiometricManager.BIOMETRIC_SUCCESS || canAuthWeak == BiometricManager.BIOMETRIC_SUCCESS -> FeatureStatus.ENABLED
-                            canAuthStrong == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED || canAuthWeak == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> FeatureStatus.DISABLED
-                            canAuthStrong == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE && canAuthWeak == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> FeatureStatus.NOT_SUPPORTED
-                            canAuthStrong == BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE || canAuthWeak == BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> FeatureStatus.UNKNOWN
-                            else -> FeatureStatus.UNKNOWN
-                        }
-                    } else {
-                        biometricStatus = FeatureStatus.NOT_SUPPORTED
-                    }
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    val bm = context.getSystemService(BiometricManager::class.java)
-                    if (bm != null) {
-                        val canAuth = bm.canAuthenticate()
-                        biometricStatus = when (canAuth) {
-                            BiometricManager.BIOMETRIC_SUCCESS -> FeatureStatus.ENABLED
-                            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> FeatureStatus.DISABLED
-                            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> FeatureStatus.NOT_SUPPORTED
-                            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> FeatureStatus.UNKNOWN
-                            else -> FeatureStatus.UNKNOWN
-                        }
-                    } else {
-                        biometricStatus = FeatureStatus.NOT_SUPPORTED
-                    }
-                } else {
-                    val fingerprintManager = context.getSystemService(Context.FINGERPRINT_SERVICE) as? android.hardware.fingerprint.FingerprintManager
-                    if (fingerprintManager != null) {
-                        biometricStatus = if (fingerprintManager.isHardwareDetected) {
-                            if (fingerprintManager.hasEnrolledFingerprints()) {
-                                FeatureStatus.ENABLED
-                            } else {
-                                FeatureStatus.DISABLED
-                            }
-                        } else {
-                            FeatureStatus.NOT_SUPPORTED
-                        }
-                    } else {
-                        biometricStatus = FeatureStatus.NOT_SUPPORTED
-                    }
-                }
-            } catch (e: SecurityException) {
-                android.util.Log.w("SecurityEngine", "Biometric permission not granted: ${e.message}")
-                biometricStatus = FeatureStatus.UNKNOWN
-            } catch (e: Exception) {
-                android.util.Log.e("SecurityEngine", "Biometric status detection issue: ", e)
-                biometricStatus = FeatureStatus.UNKNOWN
-            }
-            
+            val biometricStatus = queryBiometricStatus(context)
+
             // Check for manual biometric overrides
             val savedBiometric = getSavedStatus("biometric", FeatureStatus.UNKNOWN)
             val finalBiometricStatus = if (savedBiometric != FeatureStatus.UNKNOWN) {
@@ -681,3 +626,8 @@ class SecurityEngine(
         }
     }
 }
+
+// This app does not declare USE_BIOMETRIC or USE_FINGERPRINT. Do not query restricted
+// services or turn a missing capability into an enabled status. Saved manual status
+// remains separate in SecurityEngine and is not device verification.
+internal fun queryBiometricStatus(context: Context): FeatureStatus = FeatureStatus.UNKNOWN

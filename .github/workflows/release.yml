@@ -6,8 +6,11 @@ on:
       tag:
         description: Release tag (must equal v plus versionName in app/build.gradle.kts, for example v1.0.1)
         required: true
+      expected_sha:
+        description: Exact reviewed main commit SHA (must match this run)
+        required: true
       notes:
-        description: What changed (shown in the in-app update prompt)
+        description: What changed (shown in Netra Ecosystem release notes)
         required: true
         default: Bug fixes and improvements.
 
@@ -19,6 +22,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      - name: Require reviewed main head
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          test "$GITHUB_SHA" = "$EXPECTED_SHA"
+          test "${#EXPECTED_SHA}" = 40
       - name: Checkout
         uses: actions/checkout@v7
       - name: Set up JDK 21
@@ -41,11 +52,12 @@ jobs:
           -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048
           -validity 10000 -dname "CN=Android Debug,O=Android,C=US" -noprompt
       - name: Run unit tests
-        run: gradle --no-daemon :app:testDebugUnitTest --stacktrace
+        run: gradle --no-daemon :app:testDebugUnitTest :app:lintDebug --stacktrace
       - name: Restore signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
+          umask 077
           test -n "$KEYSTORE_BASE64"
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/netra-release.jks"
       - name: Build signed release APK
@@ -55,10 +67,21 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: gradle --no-daemon :app:assembleRelease --stacktrace
-      - name: Verify the APK is signed
+      - name: Verify approved signer, package and monotonic release identity
         run: |
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)"
-          "$APKSIGNER" verify --print-certs app/build/outputs/apk/release/app-release.apk
+          set -euo pipefail
+          APK=app/build/outputs/apk/release/app-release.apk
+          "$APKSIGNER" verify --print-certs "$APK" | tee "$RUNNER_TEMP/netra-cert.txt"
+          test "$(grep -c '^Signer #[0-9][0-9]* certificate SHA-256 digest:' "$RUNNER_TEMP/netra-cert.txt")" = 1
+          CERT="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/netra-cert.txt" | tr 'A-F' 'a-f')"
+          test "$CERT" = "543b46402206ae0022d352f65bea618386bd7aa681b4d5bcfb5ce02bac49c8c4"
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -1)"
+          "$AAPT" dump badging "$APK" > "$RUNNER_TEMP/netra-badging.txt"
+          grep -Fq "package: name='com.aistudio.netrasensorhub.kxmpzq' versionCode='78' versionName='1.5.2'" "$RUNNER_TEMP/netra-badging.txt"
+          # Baseline: https://github.com/prayagi-store-and-services/netra-hub/releases/tag/v1.5.1
+          # app-release.apk decoded: code77; cert SHA256 independently extracted 26 Oct 2026.
+          # A future release must explicitly review and advance this guard, never change signing identity.
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -69,8 +92,10 @@ jobs:
           D=app/build/outputs/apk/release
           VNAME="$(sed -n 's/^ *versionName = "\(.*\)".*/\1/p' app/build.gradle.kts | head -1)"
           VCODE="$(sed -n 's/^ *versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -1)"
+          test "$VNAME" = "1.5.2"
+          test "$VCODE" = "78"
           test "$TAG" = "v$VNAME"
-          # Named copy for people. app-release.apk stays because the in-app updater needs that exact name.
+          # Named copy for people; stable app-release.apk name is consumed by Netra Ecosystem.
           NAMED="$D/netra-hub-$TAG.apk"
           cp "$D/app-release.apk" "$NAMED"
           SHA="$(sha256sum "$D/app-release.apk" | cut -d' ' -f1)"
@@ -79,3 +104,6 @@ jobs:
             '{tag:$tag,versionName:$vn,versionCode:$vc,sha256:$sha,size:$size,notes:$notes}' > "$D/latest.json"
           gh release create "$TAG" "$D/app-release.apk" "$NAMED" "$D/latest.json" \
             --title "$TAG" --notes "$NOTES" --target "$GITHUB_SHA"
+      - name: Delete restored signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/netra-release.jks"

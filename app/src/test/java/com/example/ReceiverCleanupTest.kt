@@ -24,7 +24,7 @@ class ReceiverCleanupTest {
     private class Owner(base: Context) : ContextWrapper(base) {
         val active = mutableSetOf<BroadcastReceiver>()
         var releases = 0
-        override fun registerReceiver(receiver: BroadcastReceiver?, filter: IntentFilter?): Intent? {
+        override fun registerReceiver(receiver: BroadcastReceiver?, filter: IntentFilter?, flags: Int): Intent? {
             if (receiver != null) active.add(receiver)
             return null
         }
@@ -40,7 +40,7 @@ class ReceiverCleanupTest {
             val receiver = receiver()
             val job = launch {
                 withReceiverCleanup(owner, receiver) {
-                    owner.registerReceiver(receiver, IntentFilter("scan"))
+                    owner.registerReceiver(receiver, IntentFilter("scan"), Context.RECEIVER_NOT_EXPORTED)
                     awaitCancellation()
                 }
             }
@@ -55,12 +55,12 @@ class ReceiverCleanupTest {
         val owner = Owner(ApplicationProvider.getApplicationContext())
         val completed = receiver()
         assertEquals(42, withReceiverCleanup(owner, completed) {
-            owner.registerReceiver(completed, IntentFilter("scan")); 42
+            owner.registerReceiver(completed, IntentFilter("scan"), Context.RECEIVER_NOT_EXPORTED); 42
         })
         val failed = receiver()
         try {
             withReceiverCleanup(owner, failed) {
-                owner.registerReceiver(failed, IntentFilter("scan"))
+                owner.registerReceiver(failed, IntentFilter("scan"), Context.RECEIVER_NOT_EXPORTED)
                 throw IllegalStateException("scan failed")
             }
             fail("Original failure must propagate")
