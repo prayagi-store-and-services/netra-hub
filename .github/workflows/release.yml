@@ -52,7 +52,7 @@ jobs:
           -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048
           -validity 10000 -dname "CN=Android Debug,O=Android,C=US" -noprompt
       - name: Run unit tests
-        run: gradle --no-daemon :app:testDebugUnitTest --stacktrace
+        run: gradle --no-daemon :app:testDebugUnitTest :app:lintDebug --stacktrace
       - name: Restore signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
