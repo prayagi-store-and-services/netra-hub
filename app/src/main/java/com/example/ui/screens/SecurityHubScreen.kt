@@ -1057,6 +1057,13 @@ fun SecurityFeatureItemRow(
                 fontWeight = FontWeight.Bold,
                 color = BentoTextPrimary
             )
+            if (feature.status == FeatureStatus.UNKNOWN) {
+                Text(
+                    text = "Unavailable",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BentoTextMuted
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(8.dp))
