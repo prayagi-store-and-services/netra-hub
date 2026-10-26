@@ -1,5 +1,14 @@
 # Security notes - netra-hub
 
+## Eco-only updates and owner-cleared release (v1.5.2)
+
+- Removes the per-app APK network checker/downloader/installer, install permission and dedicated update provider. Legacy periodic update work cancellation is requested; its old worker is inert, notifications/channel/preferences and update cache retirement is best-effort. Settings now gives informational Eco-only update guidance.
+- Owner reported the tested heating/battery issue resolved and approved public release on 26 October 2026. The old app-local advisory is removed in this build. This is the owner's test report, not a new measured battery/thermal result from CI. Android/OEM restrictions and all normal monitoring controls remain.
+- Includes receiver cancellation cleanup and joined terminal process-owner cleanup already reviewed on main. No unrelated sensor thresholds, driving GPS cadence or alert ownership changed.
+- This removes an app-side APK installation surface. It does not prove Play Protect clearance, all vulnerabilities fixed, zero drain, or OS patches installed. Existing external APK copies and older installed app code cannot be recalled.
+- Validation remains subject to exact-head CI, removal/migration tests, native Settings guidance pixels, release signer/package/version/hash continuity and Eco propagation. No physical/ADB testing was restarted.
+
+
 ## Monitoring pause, power ownership and updater quarantine (v1.5.1)
 
 - Explicit sensor-monitoring pause is saved before teardown and remains authoritative for boot, charger, permission, service and recovery paths. Pausing stops driving detection and automatic sensor alerts. SOS shake and official-alert workers are separate. Resume requires a deliberate action. The enabled label describes the saved choice, not proof that a service is running; failed pause/resume actions show an error.
