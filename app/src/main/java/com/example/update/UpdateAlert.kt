@@ -23,5 +23,5 @@ object CentralUpdates {
 }
 /** Old persisted WorkManager requests resolve to a harmless terminal worker. */
 class UpdateAlertWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context,params) {
-    override suspend fun doWork(): Result { CentralUpdates.retireLegacy(applicationContext); return Result.success() }
+    override suspend fun doWork(): Result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { CentralUpdates.retireLegacy(applicationContext); Result.success() }
 }
