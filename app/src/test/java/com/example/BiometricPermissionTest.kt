@@ -15,6 +15,12 @@ import org.robolectric.annotation.Config
 @RunWith(OwnedProcessTestRunner::class)
 @Config(sdk = [24, 29, 34], application = Application::class)
 class BiometricPermissionTest {
+    @Test fun mergedManifestHasNoBiometricCapability() {
+        val context = ApplicationProvider.getApplicationContext<Application>()
+        val permissions = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS).requestedPermissions.orEmpty()
+        org.junit.Assert.assertFalse(permissions.contains(android.Manifest.permission.USE_BIOMETRIC))
+        org.junit.Assert.assertFalse(permissions.contains(android.Manifest.permission.USE_FINGERPRINT))
+    }
     @Test fun deniedPermissionReturnsUnknownWithoutQuery() {
         val base = ApplicationProvider.getApplicationContext<Application>()
         var queries = 0
