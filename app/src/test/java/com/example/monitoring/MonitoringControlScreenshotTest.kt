@@ -1,5 +1,7 @@
 package com.example.monitoring
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -23,6 +25,8 @@ class MonitoringControlScreenshotTest {
     @get:Rule val compose = createComposeRule()
     @Test fun unavailableBiometric320() {
         compose.setContent { NetraTheme {
+            androidx.compose.material3.Surface(color = com.example.ui.theme.BentoCardBg) {
+            androidx.compose.foundation.layout.Column(modifier = androidx.compose.ui.Modifier.padding(16.dp)) {
             com.example.ui.screens.SecurityFeatureItemRow(
                 feature = com.example.data.model.SecurityFeature(
                     id = "biometric", name = "Biometric Authentication",
@@ -31,6 +35,8 @@ class MonitoringControlScreenshotTest {
                     status = com.example.data.model.FeatureStatus.UNKNOWN
                 ), onItemClick = {}, onToggle = {}
             )
+            }
+            }
         } }
         compose.onNodeWithText("Unavailable").assertExists()
         compose.onRoot().captureRoboImage(filePath = "src/test/screenshots/monitoring_biometric_unavailable_320.png")
