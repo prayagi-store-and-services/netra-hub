@@ -273,6 +273,8 @@ class OfficialLocationContextManager(private val context: Context) {
                     } catch (e: Exception) {}
                 }
             }
+        } catch (e: SecurityException) {
+            if (!continuation.isCompleted) continuation.resume(null)
         } catch (e: Exception) {
             if (!continuation.isCompleted) {
                 continuation.resume(null)
