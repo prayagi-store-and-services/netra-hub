@@ -1055,13 +1055,13 @@ fun SecurityFeatureItemRow(
                 text = feature.name,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
-                color = BentoTextPrimary
+                color = MaterialTheme.colorScheme.onSurface
             )
             if (feature.status == FeatureStatus.UNKNOWN) {
                 Text(
                     text = "Unavailable",
                     style = MaterialTheme.typography.bodySmall,
-                    color = BentoTextMuted
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -1115,7 +1115,7 @@ fun AuditRow(label: String, value: String) {
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            color = BentoTextPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Bold
         )
     }
@@ -1129,7 +1129,7 @@ fun DiagnosticLabelValue(label: String, value: String) {
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodySmall, color = BentoTextMuted)
-        Text(text = value, style = MaterialTheme.typography.bodySmall, color = BentoTextPrimary, fontWeight = FontWeight.Bold)
+        Text(text = label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
     }
 }
