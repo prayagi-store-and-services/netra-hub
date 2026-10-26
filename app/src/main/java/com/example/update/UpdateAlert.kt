@@ -1,126 +1,27 @@
 package com.example.update
 
-import android.Manifest
-import android.app.Activity
-import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
-import android.widget.Toast
-import androidx.core.app.NotificationCompat
-import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import java.io.File
 
-/**
- * Update alert: every 6 hours (network required) asks the repo's latest release whether a newer version exists and
- * posts one notification per new version. Tapping it opens the app, downloads the verified build and starts the install.
- */
-object UpdateAlert {
-    const val EXTRA_AUTO_UPDATE = "netra_auto_update"
-    private const val CHANNEL_ID = "netra_app_update"
-    private const val NOTIFICATION_ID = 7431
-    private const val WORK_NAME = "netra_update_alert"
-    private const val PREFS = "netra_update_alert"
-
-    fun start(activity: Activity) {
-        schedule(activity.applicationContext)
-        handle(activity, activity.intent)
-    }
-
-    fun schedule(context: Context) {
-        if (HumanSafetyHold.matches(repo = AppUpdater.REPO)) {
-            WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
-            (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(NOTIFICATION_ID)
-            return
-        }
-        val request = PeriodicWorkRequestBuilder<UpdateAlertWorker>(6, TimeUnit.HOURS)
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-            .build()
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
-    }
-
-    /** Runs when the notification was tapped: download, verify, hand to the installer. */
-    fun handle(activity: Activity, intent: Intent?) {
-        if (intent?.getBooleanExtra(EXTRA_AUTO_UPDATE, false) != true) return
-        intent.removeExtra(EXTRA_AUTO_UPDATE)
-        if (HumanSafetyHold.matches(repo = AppUpdater.REPO)) {
-            Toast.makeText(activity, HumanSafetyHold.MESSAGE, Toast.LENGTH_LONG).show()
-            return
-        }
-        val app = activity.applicationContext
-        Toast.makeText(app, "Downloading the update...", Toast.LENGTH_SHORT).show()
-        Thread {
-            try {
-                val result = AppUpdater.checkNow(app)
-                if (result is AppUpdater.CheckResult.Newer) {
-                    val file = AppUpdater.savedFile(app, result.release) ?: AppUpdater.download(app, result.release)
-                    activity.runOnUiThread {
-                        try { AppUpdater.install(app, file) } catch (e: Exception) {
-                            Toast.makeText(app, e.message ?: "Update failed.", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                } else {
-                    activity.runOnUiThread { Toast.makeText(app, "No newer version found.", Toast.LENGTH_LONG).show() }
-                }
-            } catch (e: Exception) {
-                activity.runOnUiThread { Toast.makeText(app, e.message ?: "Update failed.", Toast.LENGTH_LONG).show() }
-            }
-        }.start()
-    }
-
-    internal fun notifyIfNew(c: Context, release: AppRelease, appName: String, downloaded: Boolean = false) {
-        if (HumanSafetyHold.matches(repo = AppUpdater.REPO)) return
-        val prefs = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (release.versionCode <= prefs.getLong("notified_code", 0L)) return
-        if (Build.VERSION.SDK_INT >= 33 &&
-            c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) return
-        val nm = c.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            nm.createNotificationChannel(NotificationChannel(CHANNEL_ID, "App updates", NotificationManager.IMPORTANCE_DEFAULT))
-        }
-        val launch = c.packageManager.getLaunchIntentForPackage(c.packageName) ?: return
-        launch.putExtra(EXTRA_AUTO_UPDATE, true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        val open = PendingIntent.getActivity(c, 0, launch, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val n = NotificationCompat.Builder(c, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle("Update available")
-            .setContentText(if (downloaded) "A new $appName (" + release.versionName + ") is downloaded. Tap to install." else "A new $appName (" + release.versionName + ") is out. Tap to update.")
-            .setContentIntent(open)
-            .setAutoCancel(true)
-            .build()
-        nm.notify(NOTIFICATION_ID, n)
-        prefs.edit().putLong("notified_code", release.versionCode).apply()
+/** Migration only: never schedules, checks, downloads or installs an APK. */
+object CentralUpdates {
+    fun retireLegacy(context: Context) {
+        try { WorkManager.getInstance(context).cancelUniqueWork("netra_update_alert").result.get(5, java.util.concurrent.TimeUnit.SECONDS) } catch (_: Exception) { }
+        try { (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).apply {
+            try { cancel(7431) } catch (_: Exception) { }
+            try { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) deleteNotificationChannel("netra_app_update") } catch (_: Exception) { }
+        } } catch (_: Exception) { }
+        try { context.getSharedPreferences("netra_app_update",0).edit().clear().apply() } catch (_: Exception) { }
+        try { context.getSharedPreferences("netra_update_alert",0).edit().clear().apply() } catch (_: Exception) { }
+        try { File(context.cacheDir,"updates").deleteRecursively() } catch (_: Exception) { }
     }
 }
-
-class UpdateAlertWorker(appContext: Context, params: WorkerParameters) : CoroutineWorker(appContext, params) {
-    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        if (HumanSafetyHold.matches(repo = AppUpdater.REPO)) return@withContext Result.success()
-        try {
-            val r = AppUpdater.checkNow(applicationContext)
-            if (r is AppUpdater.CheckResult.Newer) {
-                // Save the update now when the connection allows it, so one tap installs it. Nothing is sent anywhere.
-                var saved = AppUpdater.savedFile(applicationContext, r.release) != null
-                if (!saved && PreDownload.allowedNow(applicationContext, false, r.release.size)) {
-                    saved = try { AppUpdater.download(applicationContext, r.release); true } catch (_: Exception) { false }
-                }
-                UpdateAlert.notifyIfNew(applicationContext, r.release, AppUpdater.APP_LABEL, saved)
-            }
-        } catch (_: Exception) {
-            // Try again at the next run.
-        }
-        Result.success()
-    }
+/** Old persisted WorkManager requests resolve to a harmless terminal worker. */
+class UpdateAlertWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context,params) {
+    override suspend fun doWork(): Result { CentralUpdates.retireLegacy(applicationContext); return Result.success() }
 }
