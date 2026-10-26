@@ -29,7 +29,7 @@ open class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
-        com.example.update.UpdateAlert.handle(this, intent)
+        // Legacy update intents are inert; updates are handled only by Netra Ecosystem.
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,9 +55,12 @@ open class MainActivity : ComponentActivity() {
             return
         }
         com.example.festival.JayMataDi.greetIfDue(this)
-        // Remove any installer file left from an in-app update (runs in the background).
-        Thread { com.example.update.AppUpdater.cleanLeftovers(applicationContext) }.start()
-        com.example.update.UpdateAlert.start(this)
+        // Best-effort retirement of legacy updater state must never prevent launch.
+        val cleanupContext = applicationContext
+        Thread {
+            try { com.example.update.CentralUpdates.retireLegacy(cleanupContext) }
+            catch (_: Exception) { /* No updater can run even if old cache cleanup fails. */ }
+        }.start()
         // Anonymous daily usage count (+1 on a public counter, nothing else). The user can turn it off in Settings.
         // Automatic crash reports: a crash saved last time is sent now, in the background. No personal data.
         com.example.stats.CrashReporter.install(this)
@@ -91,17 +94,11 @@ open class MainActivity : ComponentActivity() {
 
         setContent {
             NetraTheme {
-                com.example.update.AppUpdatePrompt()
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     androidx.compose.foundation.layout.Column {
-                        androidx.compose.material3.Text(
-                            com.example.update.HumanSafetyHold.MESSAGE,
-                            modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(16.dp),
-                            color = androidx.compose.material3.MaterialTheme.colorScheme.error
-                        )
                         androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.weight(1f)) {
                             MainScreen(viewModel = viewModel)
                         }
@@ -113,7 +110,7 @@ open class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        Thread { com.example.update.AppUpdater.cleanStale(applicationContext) }.start()
+
         viewModel.securityEngine.scanDevice()
     }
 }
