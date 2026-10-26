@@ -80,14 +80,14 @@ footer{text-align:center;color:var(--mute);padding:24px 16px;font-size:.85rem;bo
 <div class="pills"><span>Stay Aware</span><span>&bull;</span><span>Stay Prepared</span><span>&bull;</span><span>Stay Safe</span></div>
 <p>Unified Android safety and emergency dashboard: sensors, earthquake information, SOS, privacy and wellness tools in one app.</p>
 <div class="chips"><div class="chip"><i>&#128276;</i>Real-time Alerts</div><div class="chip"><i>&#129517;</i>Sensor Monitoring</div><div class="chip"><i>&#127384;</i>Emergency SOS</div><div class="chip"><i>&#128737;</i>Privacy Protection</div></div>
-<p class="lead" id="release-status" role="status">The next release is being verified. Download will be available after its checks pass. Owner feedback received; independent release checks are still in progress.</p>
+<p class="lead" id="release-status" role="status">The next release is being verified. Download will be available after its checks pass. Battery and safety behavior still need team feedback.</p>
 <button id="dl" class="btn off" type="button" disabled>Release checks in progress</button>
 </div>
 <div class="phone" role="img" aria-label="Illustration, not a screenshot"><div class="ph-h"><img src="icon.svg" alt="">Netra Human Safety</div><div class="gauge">Safe<small>Illustration</small></div><div class="ph-note">Illustration only. Real screenshots: see below.</div></div>
 </div>
 <div class="stats">
 <div class="stat"><b id="st-ver">Unavailable</b><span>Latest version</span></div>
-<div class="stat"><b id="st-dl">Unavailable</b><span>v1.5.2 APK downloads (GitHub)</span></div>
+<div class="stat"><b id="st-dl">Unavailable</b><span>APK downloads (GitHub)</span></div>
 <div class="stat"><b id="st-size">Unavailable</b><span>APK size</span></div>
 <div class="stat"><b>Android 7.0+</b><span>Minimum version</span></div>
 </div>
@@ -136,23 +136,17 @@ var R=NETRA_SITE.repo,U="Unavailable";
 function set(i,t){var e=document.getElementById(i);if(e)e.textContent=t}
 function sz(b){return (b/1048576).toFixed(1)+" MB"}
 function dt(s){return s?new Date(s).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}):U}
-fetch("https://api.github.com/repos/"+R+"/releases/tags/v1.5.2",{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(x){
- if(x.tag_name!=="v1.5.2"||x.draft||x.prerelease||!x.published_at||isNaN(Date.parse(x.published_at)))throw 0;
- var L=[x];
- var a=(x.assets||[]).filter(function(y){return y.name==="app-release.apk"&&y.state==="uploaded"&&y.size>0&&/^sha256:[0-9a-f]{64}$/.test(y.digest||"")&&y.browser_download_url==="https://github.com/prayagi-store-and-services/netra-hub/releases/download/v1.5.2/app-release.apk"})[0];if(!a)throw 0;
+fetch("https://api.github.com/repos/"+R+"/releases?per_page=8").then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(L){
+ var x=L.filter(function(y){return !y.draft&&!y.prerelease})[0];if(!x)throw 0;
+ var al=(x.assets||[]).filter(function(y){return /\.apk$/i.test(y.name)});var a=al.filter(function(y){return y.name!=="app-release.apk"})[0]||al[0];
  set("rv",x.tag_name||U);set("st-ver",x.tag_name||U);set("rt",x.published_at?new Date(x.published_at).toLocaleString(undefined,{year:"numeric",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):U);
- if(a){set("rs",sz(a.size));set("st-size",sz(a.size));
-  // Never reactivate an older held build. Only the verified v1.5.2 candidate can open this gate.
-  if(x.tag_name==="v1.5.2"){
-    set("release-status","v1.5.2 released: app-local updater removed; monitoring and terminal-owner cleanup included. Owner reported heating/battery resolved on the tested build; no new measured battery or thermal guarantee is claimed.");
-    var dl=document.getElementById("dl");if(dl){var link=document.createElement("a");link.id="dl";link.className="btn";link.href="https://prayagi-store-and-services.github.io/netra-eco/";link.textContent="Get updates through Netra Ecosystem";dl.replaceWith(link)}
-  }
+ if(a){/* Human Safety downloads stay paused until a verified fix is approved. */set("rs",sz(a.size));set("st-size",sz(a.size));
   if(a.digest&&/^sha256:/.test(a.digest))set("sha","SHA-256: "+a.digest.slice(7))}
  var tot=0,known=false;L.forEach(function(r){(r.assets||[]).forEach(function(y){if(/\.apk$/i.test(y.name)&&typeof y.download_count==="number"){tot+=y.download_count;known=true}})});
  set("st-dl",known?String(tot):U);
  var p=document.getElementById("prev");
- if(p){p.textContent="";L.filter(function(y){return y!==x&&!y.draft}).slice(0,4).forEach(function(r){var d=document.createElement("div");d.className="rv";var s1=document.createElement("span");s1.textContent=r.tag_name;var s2=document.createElement("span");s2.textContent=dt(r.published_at);d.appendChild(s1);d.appendChild(s2);p.appendChild(d)});if(!p.firstChild)p.textContent="v1.5.1 and older: held history, not offered for download."}
-}).catch(function(){set("rv","Release status unavailable");set("release-status","Release status unavailable. Download stays paused. v1.5.1 and older builds remain held history.");set("rt",U);set("rs",U)});
+ if(p){p.textContent="";L.filter(function(y){return y!==x&&!y.draft}).slice(0,4).forEach(function(r){var d=document.createElement("div");d.className="rv";var s1=document.createElement("span");s1.textContent=r.tag_name;var s2=document.createElement("span");s2.textContent=dt(r.published_at);d.appendChild(s1);d.appendChild(s2);p.appendChild(d)});if(!p.firstChild)p.textContent=U}
+}).catch(function(){set("rv","Not released yet");set("rt",U);set("rs",U)});
 })();
 </script>
 <script src="counter.js"></script><script src="netra-site.js"></script>
