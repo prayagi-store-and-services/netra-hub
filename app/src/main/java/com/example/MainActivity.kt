@@ -94,6 +94,7 @@ open class MainActivity : ComponentActivity() {
 
         setContent {
             NetraTheme {
+                com.example.update.AppUpdatePrompt()
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
