@@ -24,10 +24,14 @@ class CentralizedUpdatesPolicyTest {
         val info=c.packageManager.getPackageInfo(c.packageName,android.content.pm.PackageManager.GET_PERMISSIONS or android.content.pm.PackageManager.GET_PROVIDERS)
         assertFalse(info.requestedPermissions.orEmpty().contains("android.permission.REQUEST_INSTALL_PACKAGES"))
         assertFalse(info.providers.orEmpty().any { it.name.contains("UpdateFileProvider") })
-        for(name in listOf("AppUpdater","UpdateFileProvider","PreDownload")) {
+        for(name in listOf("UpdateFileProvider","PreDownload")) {
             try { Class.forName("com.example.update.$name"); fail("Removed capability still exists: $name") }
             catch (_: ClassNotFoundException) { }
         }
+    }
+    @Test fun metadataHelperHasNoInstallerMethods() {
+        val methods=com.example.update.AppUpdater::class.java.declaredMethods.map { it.name.lowercase() }
+        assertFalse(methods.any { it.contains("download") || it.contains("installapk") || it.contains("startinstall") })
     }
     @Test fun legacyCacheAndPreferencesAreRetired() {
         val c=ApplicationProvider.getApplicationContext<Application>()
