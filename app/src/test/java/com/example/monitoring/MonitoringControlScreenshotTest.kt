@@ -8,15 +8,6 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.assertTextEquals
-
-import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.assertTextEquals
 import com.example.ui.components.MonitoringControlContent
 import com.example.ui.theme.NetraTheme
 import com.github.takahirom.roborazzi.captureRoboImage
