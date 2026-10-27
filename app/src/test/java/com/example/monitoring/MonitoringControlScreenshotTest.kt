@@ -8,6 +8,15 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.assertTextEquals
+
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertTextEquals
 import com.example.ui.components.MonitoringControlContent
 import com.example.ui.theme.NetraTheme
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -42,8 +51,8 @@ class MonitoringControlScreenshotTest {
         compose.onRoot().captureRoboImage(filePath = "src/test/screenshots/monitoring_biometric_unavailable_320.png")
     }
     @Test fun centralUpdates320() {
-        compose.setContent { NetraTheme { com.example.update.UpdateCheckCard() } }
-        compose.onNodeWithText("Updates are available only through Netra Ecosystem. This app does not download or install updates.").assertExists()
+        compose.setContent { NetraTheme { com.example.update.UpdateCheckCard(metadataLoader={com.example.update.AppUpdater.Newer(999,"9.9 (fixture)")}) } }
+        compose.onNodeWithText("Updates open in compatible Netra Ecosystem or this app's Eco website page. No update is downloaded here.").assertExists()
         compose.onRoot().captureRoboImage(filePath = "src/test/screenshots/monitoring_central_updates_320.png")
     }
     @Test fun pausedControl320() {
