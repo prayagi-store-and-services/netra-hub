@@ -47,6 +47,7 @@
 
     <!-- Lets the hub see whether the official 112 India app is installed. Nothing else is queried. -->
     <queries>
+        <intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.APP_BROWSER"/></intent>
         <package android:name="com.prayagi.netraeco"/>
         <intent><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https"/></intent>
         <package android:name="in.cdac.ners.psa.mobile.android.national" />
