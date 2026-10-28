@@ -63,4 +63,30 @@ class EcoMetadataHandoffTest {
   assertThrows(IllegalArgumentException::class.java){AppUpdater.readMetadata(java.io.ByteArrayInputStream(ByteArray(131073)))}
   assertEquals(131072,AppUpdater.readMetadata(java.io.ByteArrayInputStream(ByteArray(131072))).size)
  }
+ @Test fun deniedEcoLaunchFallsBackToExactBrowserPage(){
+  val c=RuntimeEnvironment.getApplication();installBrowser(c)
+  Shadows.shadowOf(c.packageManager).installPackage(PackageInfo().apply{packageName=AppUpdater.ECO_PACKAGE;longVersionCode=59})
+  val launched=mutableListOf<Intent>()
+  val wrapper=object:android.content.ContextWrapper(c){
+   override fun startActivity(intent:Intent){
+    if(intent.`package`==AppUpdater.ECO_PACKAGE)throw SecurityException("fixture denial")
+    launched.add(intent)
+   }
+  }
+  assertTrue(AppUpdater.openEco(wrapper))
+  assertEquals("org.browser.test",launched.single().`package`)
+  assertEquals(AppUpdater.ECO_PAGE,launched.single().dataString)
+ }
+ @Test fun unavailableEcoLaunchFallsBack(){
+  val c=RuntimeEnvironment.getApplication();installBrowser(c)
+  Shadows.shadowOf(c.packageManager).installPackage(PackageInfo().apply{packageName=AppUpdater.ECO_PACKAGE;longVersionCode=59})
+  var browser=false
+  val wrapper=object:android.content.ContextWrapper(c){
+   override fun startActivity(intent:Intent){
+    if(intent.`package`==AppUpdater.ECO_PACKAGE)throw android.content.ActivityNotFoundException("fixture removed")
+    browser=intent.`package`=="org.browser.test"
+   }
+  }
+  assertTrue(AppUpdater.openEco(wrapper));assertTrue(browser)
+ }
 }
