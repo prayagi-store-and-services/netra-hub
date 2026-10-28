@@ -216,17 +216,6 @@ class SecurityEngine(
                 false
             }
             
-            // 5. Unknown Apps
-            val isUnknownAppsAllowed = try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.packageManager.canRequestPackageInstalls()
-                } else {
-                    false
-                }
-            } catch (e: Exception) {
-                false
-            }
-
             // 6. Location
             val isLocationOn = try {
                 locationManager?.isProviderEnabled(LocationManager.GPS_PROVIDER) == true ||
@@ -412,16 +401,6 @@ class SecurityEngine(
                     scoreWeight = 0,
                     status = if (!isSamsung) FeatureStatus.NOT_SUPPORTED else getSavedStatus("power_menu_lock", FeatureStatus.UNKNOWN),
                     description = "Blocks access to power options while the device is locked, preventing unauthorized shut-downs."
-                ),
-                // 16. Unknown Apps (Optional, 0 pts)
-                SecurityFeature(
-                    id = "unknown_apps",
-                    name = "Unknown Apps Installation",
-                    category = FeatureCategory.B,
-                    isMandatory = false,
-                    scoreWeight = 0,
-                    status = if (!isUnknownAppsAllowed) FeatureStatus.ENABLED else FeatureStatus.DISABLED,
-                    description = "Secures your operating system against installations of unknown APKs from files/browsers."
                 ),
                 // 17. Location (Optional, 0 pts)
                 SecurityFeature(
