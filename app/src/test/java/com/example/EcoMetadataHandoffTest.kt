@@ -20,6 +20,8 @@ class EcoMetadataHandoffTest {
  @Test fun compatibleEcoGetsExactUri(){
   val c=RuntimeEnvironment.getApplication();val pm=Shadows.shadowOf(c.packageManager)
   pm.installPackage(PackageInfo().apply{packageName=AppUpdater.ECO_PACKAGE;longVersionCode=59})
+  val eco=Intent(Intent.ACTION_VIEW,android.net.Uri.parse(AppUpdater.ECO_PAGE)).addCategory(Intent.CATEGORY_BROWSABLE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).setPackage(AppUpdater.ECO_PACKAGE)
+  pm.addResolveInfoForIntent(eco, android.content.pm.ResolveInfo().apply{activityInfo=android.content.pm.ActivityInfo().apply{packageName=AppUpdater.ECO_PACKAGE;name="MainActivity";exported=true}})
   assertTrue(AppUpdater.openEco(c))
   val i=Shadows.shadowOf(c).nextStartedActivity
   assertEquals(AppUpdater.ECO_PACKAGE,i.`package`);assertEquals(AppUpdater.ECO_PAGE,i.dataString)
