@@ -21,6 +21,7 @@ class EcoUpdateNoticeScreenshotTest {
   rule.waitUntil(10000){rule.onAllNodesWithText("Update").fetchSemanticsNodes().isNotEmpty()}
   rule.onNodeWithText("Update").assertIsDisplayed()
   rule.onAllNodesWithText("Download").assertCountEquals(0)
+  rule.onAllNodesWithText("Check again").assertCountEquals(0)
   rule.runOnIdle{
    val v=rule.activity.window.decorView;val b=android.graphics.Bitmap.createBitmap(v.width,v.height,android.graphics.Bitmap.Config.ARGB_8888);v.draw(android.graphics.Canvas(b))
    java.io.File("build/outputs/metadata-update-notice.png").apply{parentFile?.mkdirs()}.outputStream().use{b.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)};b.recycle()
