@@ -38,27 +38,30 @@ object AppUpdater {
             parseNewer(bytes.toString(Charsets.UTF_8),installedCode(context))
         } finally { connection.disconnect() }
     }
-    fun openEco(context: Context): Boolean {
-        val page=android.net.Uri.parse(ECO_PAGE)
-        val compatible=try {
-            val info=context.packageManager.getPackageInfo(ECO_PACKAGE,0)
-            (if(android.os.Build.VERSION.SDK_INT>=28)info.longVersionCode else info.versionCode.toLong())>=MIN_ECO_HANDOFF_VERSION
-        }catch(_:android.content.pm.PackageManager.NameNotFoundException){false}
-        if(compatible)try {
-            context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,page).setPackage(ECO_PACKAGE).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));return true
-        } catch (_: android.content.ActivityNotFoundException) { } catch (_:SecurityException) { }
-        return try {
-            val browser=android.content.Intent(android.content.Intent.ACTION_VIEW,page).addCategory(android.content.Intent.CATEGORY_BROWSABLE).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            // Generic web capability, not the target app-link resolver list. Android marks
-            // browsers that handle all web URIs; target-specific app handlers are not browsers.
-            val generic=android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://"))
-                .addCategory(android.content.Intent.CATEGORY_BROWSABLE)
-            val candidates=context.packageManager.queryIntentActivities(generic,android.content.pm.PackageManager.MATCH_DEFAULT_ONLY or android.content.pm.PackageManager.GET_RESOLVED_FILTER)
-            val handler=candidates.firstOrNull {
-                it.filter?.let { filter -> filter.hasDataScheme("https") && filter.countDataAuthorities()==0 && filter.countDataPaths()==0 } == true && it.activityInfo.exported &&
-                it.activityInfo.packageName!=ECO_PACKAGE && it.activityInfo.packageName!=context.packageName
-            } ?: return false
-            context.startActivity(browser.setPackage(handler.activityInfo.packageName));true
-        } catch (_:android.content.ActivityNotFoundException){false} catch (_:SecurityException){false}
+    fun openEco(context: Context): Boolean { return try {
+        val intent = ecoIntent(context) ?: return false
+        context.startActivity(intent); true
+    } catch (_: android.content.ActivityNotFoundException) { false } catch (_: SecurityException) { false } }
+    fun ecoIntent(context: Context): android.content.Intent? {
+        val page = android.net.Uri.parse(ECO_PAGE)
+        val base = android.content.Intent(android.content.Intent.ACTION_VIEW, page)
+            .addCategory(android.content.Intent.CATEGORY_BROWSABLE)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        val compatible = try {
+            val info = context.packageManager.getPackageInfo(ECO_PACKAGE, 0)
+            (if (android.os.Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()) >= MIN_ECO_HANDOFF_VERSION
+        } catch (_: android.content.pm.PackageManager.NameNotFoundException) { false }
+        if (compatible) {
+            val eco = android.content.Intent(base).setPackage(ECO_PACKAGE)
+            if (context.packageManager.resolveActivity(eco, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.exported == true) return eco
+        }
+        val generic = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://"))
+            .addCategory(android.content.Intent.CATEGORY_BROWSABLE)
+        val handler = context.packageManager.queryIntentActivities(generic,
+            android.content.pm.PackageManager.MATCH_DEFAULT_ONLY or android.content.pm.PackageManager.GET_RESOLVED_FILTER).firstOrNull {
+            it.filter?.let { f -> f.hasDataScheme("https") && f.countDataAuthorities() == 0 && f.countDataPaths() == 0 } == true &&
+                it.activityInfo.exported && it.activityInfo.packageName != ECO_PACKAGE && it.activityInfo.packageName != context.packageName
+        } ?: return null
+        return base.setPackage(handler.activityInfo.packageName)
     }
 }
