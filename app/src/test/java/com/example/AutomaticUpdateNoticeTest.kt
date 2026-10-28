@@ -27,4 +27,40 @@ class AutomaticUpdateNoticeTest {
   c.getSharedPreferences("eco_metadata_notice_v1",0).edit().clear().putLong("attempt",System.currentTimeMillis()).putLong("code",9999).putString("name","9.9").commit()
   assertEquals(9999L, AutomaticUpdateNotice.check(c)!!.code)
  }
+ private fun seed(c:Application){
+  c.getSharedPreferences("eco_metadata_notice_v1",0).edit().clear().putLong("attempt",System.currentTimeMillis()).putLong("code",9999).putString("name","9.9").commit()
+ }
+ @Test fun permissionDenialKeepsPopupDataWithoutNotification(){
+  val c=RuntimeEnvironment.getApplication();seed(c)
+  org.robolectric.Shadows.shadowOf(c).denyPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+  assertNotNull(AutomaticUpdateNotice.check(c))
+  assertTrue(c.getSystemService(android.app.NotificationManager::class.java).activeNotifications.isEmpty())
+  assertEquals(0L,c.getSharedPreferences("eco_metadata_notice_v1",0).getLong("notified",0))
+ }
+ @Test fun blockedChannelIsNotMarkedNotified(){
+  val c=RuntimeEnvironment.getApplication();seed(c)
+  org.robolectric.Shadows.shadowOf(c).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+  val manager=c.getSystemService(android.app.NotificationManager::class.java)
+  manager.createNotificationChannel(android.app.NotificationChannel("eco_metadata_notice","App updates",android.app.NotificationManager.IMPORTANCE_NONE))
+  assertNotNull(AutomaticUpdateNotice.check(c))
+  assertTrue(manager.activeNotifications.isEmpty())
+  assertEquals(0L,c.getSharedPreferences("eco_metadata_notice_v1",0).getLong("notified",0))
+ }
+ @Test fun notifiedVersionIsNotPostedAgain(){
+  val c=RuntimeEnvironment.getApplication();seed(c)
+  org.robolectric.Shadows.shadowOf(c).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+  val manager=c.getSystemService(android.app.NotificationManager::class.java)
+  AutomaticUpdateNotice.check(c)
+  assertEquals(1,manager.activeNotifications.size)
+  manager.cancelAll()
+  AutomaticUpdateNotice.check(c)
+  assertTrue(manager.activeNotifications.isEmpty())
+ }
+ @Test fun workerUsesDailyNetworkAndBatteryConstraints(){
+  val spec=AutomaticUpdateNotice.request().workSpec
+  assertEquals(AutomaticUpdateNotice.INTERVAL_MS,spec.intervalDuration)
+  assertEquals(androidx.work.NetworkType.CONNECTED,spec.constraints.requiredNetworkType)
+  assertTrue(spec.constraints.requiresBatteryNotLow())
+  assertFalse(spec.constraints.requiresCharging())
+ }
 }
