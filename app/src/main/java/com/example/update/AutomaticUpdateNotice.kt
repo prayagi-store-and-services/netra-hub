@@ -41,7 +41,7 @@ object AutomaticUpdateNotice {
         if (Build.VERSION.SDK_INT >= 33 && androidx.core.content.ContextCompat.checkSelfPermission(c, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) return
         val p = prefs(c)
         if (p.getLong("notified", 0) >= result.code) return
-        val intent = AppUpdater.ecoIntent(c) ?: return
+        val intent = android.content.Intent(c, EcoUpdateRouteActivity::class.java)
         val manager = c.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= 26) {
             manager.createNotificationChannel(NotificationChannel(CHANNEL, "App updates", NotificationManager.IMPORTANCE_DEFAULT))
@@ -59,17 +59,26 @@ object AutomaticUpdateNotice {
     }
     fun wasDismissed(c: Context, code: Long) = prefs(c).getLong("dismissed", 0) >= code
     fun dismiss(c: Context, code: Long) { prefs(c).edit().putLong("dismissed", code).apply() }
-    fun start(c: Context) {
-        CentralUpdates.retireLegacy(c)
-        val request = PeriodicWorkRequestBuilder<EcoMetadataWorker>(24, TimeUnit.HOURS)
+    internal fun request() = PeriodicWorkRequestBuilder<EcoMetadataWorker>(24, TimeUnit.HOURS)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).setRequiresBatteryNotLow(true).build())
             .build()
-        WorkManager.getInstance(c).enqueueUniquePeriodicWork("eco_metadata_notice_v1", ExistingPeriodicWorkPolicy.KEEP, request)
+    fun start(c: Context) {
+        CentralUpdates.retireLegacy(c)
+        WorkManager.getInstance(c).enqueueUniquePeriodicWork("eco_metadata_notice_v1", ExistingPeriodicWorkPolicy.KEEP, request())
     }
 }
 class EcoMetadataWorker(c: Context, p: WorkerParameters) : CoroutineWorker(c, p) {
     override suspend fun doWork(): Result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         try { AutomaticUpdateNotice.check(applicationContext) } catch (_: Exception) { }
         Result.success()
+    }
+}
+
+/** Internal notification tap: choose route at tap time and fall back if Eco cannot open. */
+class EcoUpdateRouteActivity : android.app.Activity() {
+    override fun onCreate(state: android.os.Bundle?) {
+        super.onCreate(state)
+        if (!AppUpdater.openEco(this)) android.widget.Toast.makeText(this, "Could not open Eco or a browser.", android.widget.Toast.LENGTH_LONG).show()
+        finish()
     }
 }
