@@ -38,23 +38,24 @@ object AppUpdater {
             parseNewer(bytes.toString(Charsets.UTF_8),installedCode(context))
         } finally { connection.disconnect() }
     }
-    fun openEco(context: Context): Boolean { return try {
-        val intent = ecoIntent(context) ?: return false
-        context.startActivity(intent); true
-    } catch (_: android.content.ActivityNotFoundException) { false } catch (_: SecurityException) { false } }
+    fun openEco(context: Context): Boolean {
+        val eco = ecoIntent(context)
+        if (eco != null) try { context.startActivity(eco); return true }
+        catch (_: android.content.ActivityNotFoundException) { } catch (_: SecurityException) { }
+        val browser = browserIntent(context) ?: return false
+        return try { context.startActivity(browser); true }
+        catch (_: android.content.ActivityNotFoundException) { false } catch (_: SecurityException) { false }
+    }
+    private fun pageIntent() = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(ECO_PAGE))
+        .addCategory(android.content.Intent.CATEGORY_BROWSABLE).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
     fun ecoIntent(context: Context): android.content.Intent? {
-        val page = android.net.Uri.parse(ECO_PAGE)
-        val base = android.content.Intent(android.content.Intent.ACTION_VIEW, page)
-            .addCategory(android.content.Intent.CATEGORY_BROWSABLE)
-            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         val compatible = try {
             val info = context.packageManager.getPackageInfo(ECO_PACKAGE, 0)
             (if (android.os.Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()) >= MIN_ECO_HANDOFF_VERSION
         } catch (_: android.content.pm.PackageManager.NameNotFoundException) { false }
-        if (compatible) {
-            val eco = android.content.Intent(base).setPackage(ECO_PACKAGE)
-            if (context.packageManager.resolveActivity(eco, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.exported == true) return eco
-        }
+        return if (compatible) pageIntent().setPackage(ECO_PACKAGE) else null
+    }
+    private fun browserIntent(context: Context): android.content.Intent? {
         val generic = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://"))
             .addCategory(android.content.Intent.CATEGORY_BROWSABLE)
         val handler = context.packageManager.queryIntentActivities(generic,
@@ -62,6 +63,6 @@ object AppUpdater {
             it.filter?.let { f -> f.hasDataScheme("https") && f.countDataAuthorities() == 0 && f.countDataPaths() == 0 } == true &&
                 it.activityInfo.exported && it.activityInfo.packageName != ECO_PACKAGE && it.activityInfo.packageName != context.packageName
         } ?: return null
-        return base.setPackage(handler.activityInfo.packageName)
+        return pageIntent().setPackage(handler.activityInfo.packageName)
     }
 }
