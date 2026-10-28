@@ -17,6 +17,7 @@ import kotlinx.coroutines.withContext
   catch(_:Exception){result=null;status="Unavailable: could not check the latest version."}
  }
  Card(modifier=modifier){ Column(Modifier.padding(16.dp)){
+  Text("Beta / testing: safety and device verification are incomplete. Do not rely on this app as your only emergency protection.")
   Text(status)
   if(result!=null) Button(onClick={if(!AppUpdater.openEco(context))status="Could not open Eco or a browser. Try again."}){Text("Update")}
   Text("Automatic metadata checks run at most once a day, subject to Android battery and network limits. Notifications need your Android permission. Updates open in compatible Netra Ecosystem or this app's Eco website page. No update is downloaded here.")
