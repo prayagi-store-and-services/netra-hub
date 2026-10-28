@@ -58,6 +58,8 @@ jobs:
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.example.monitoring.MonitoringControlScreenshotTest -Proborazzi.test.record=true --stacktrace
       - name: Render automatic Eco notice
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.example.EcoUpdateNoticeScreenshotTest -Proborazzi.test.record=true --stacktrace
+      - name: Render community links
+        run: gradle --no-daemon :app:testDebugUnitTest --tests com.example.community.CommunityCardTest -Proborazzi.test.record=true --stacktrace
       - name: Upload build log and test results
         if: always()
         uses: actions/upload-artifact@v7
@@ -70,6 +72,7 @@ jobs:
             app/build/ci-diagnostics/android-build.log
             app/build/ci-diagnostics/full-unit-results/
             app/build/outputs/metadata-update-notice.png
+            app/build/outputs/community-*.png
             app/build/outputs/ecosystem-version-header*.png
             app/build/outputs/quake-*.png
             app/src/test/screenshots/monitoring_*.png
