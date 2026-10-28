@@ -200,6 +200,7 @@ function mount(){
  s.appendChild(el('h2','Contact us privately'));
  s.appendChild(el('p','For a complaint or feedback you do not want to publish, use this private contact form. Only what you enter is sent after you agree.'));
  if(app){s.appendChild(link('Open private contact form',ROOT+'contact.html?app='+encodeURIComponent(id)));host.appendChild(s);return;}
+ s.appendChild(link('Open private contact form in its own page',ROOT+'contact.html?app='+encodeURIComponent(id)));
  var f=el('iframe');f.title='Private Netra contact form';f.loading='lazy';f.src=ROOT+'contact.html?app='+encodeURIComponent(id);s.appendChild(f);
  host.appendChild(s);
 }
