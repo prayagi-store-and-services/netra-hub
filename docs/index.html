@@ -89,7 +89,7 @@ footer{text-align:center;color:var(--mute);padding:24px 16px;font-size:.85rem;bo
 </div>
 <div class="stats">
 <div class="stat"><b id="st-ver">Unavailable</b><span>Latest version</span></div>
-<div class="stat"><b id="st-dl">Unavailable</b><span>v1.5.3 APK downloads (GitHub)</span></div>
+<div class="stat"><b id="st-dl">Unavailable</b><span>v1.5.4 APK downloads (GitHub)</span></div>
 <div class="stat"><b id="st-size">Unavailable</b><span>APK size</span></div>
 <div class="stat"><b>Android 7.0+</b><span>Minimum version</span></div>
 </div>
@@ -138,15 +138,15 @@ var R=NETRA_SITE.repo,U="Unavailable";
 function set(i,t){var e=document.getElementById(i);if(e)e.textContent=t}
 function sz(b){return (b/1048576).toFixed(1)+" MB"}
 function dt(s){return s?new Date(s).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}):U}
-fetch("https://api.github.com/repos/"+R+"/releases/tags/v1.5.3",{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(x){
- if(x.tag_name!=="v1.5.3"||x.draft||x.prerelease||!x.published_at||isNaN(Date.parse(x.published_at)))throw 0;
+fetch("https://api.github.com/repos/"+R+"/releases/tags/v1.5.4",{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(x){
+ if(x.tag_name!=="v1.5.4"||x.draft||x.prerelease||!x.published_at||isNaN(Date.parse(x.published_at)))throw 0;
  var L=[x];
- var a=(x.assets||[]).filter(function(y){return y.name==="app-release.apk"&&y.state==="uploaded"&&y.size===4439166&&y.digest==="sha256:1c03d2f0aeaac3ac1c5a7471b945b2c20b02def80e125ae84d64a405d273aab5"&&y.browser_download_url==="https://github.com/prayagi-store-and-services/netra-hub/releases/download/v1.5.3/app-release.apk"})[0];if(!a)throw 0;
+ var a=(x.assets||[]).filter(function(y){return y.name==="app-release.apk"&&y.state==="uploaded"&&y.size===4439198&&y.digest==="sha256:11cc7c34eca4f022aeace806399f90e7f0b176c4ff15927578b90df06feab90a"&&y.browser_download_url==="https://github.com/prayagi-store-and-services/netra-hub/releases/download/v1.5.4/app-release.apk"})[0];if(!a)throw 0;
  set("rv",x.tag_name||U);set("st-ver",x.tag_name||U);set("rt",x.published_at?new Date(x.published_at).toLocaleString(undefined,{year:"numeric",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):U);
  if(a){set("rs",sz(a.size));set("st-size",sz(a.size));
-  // Never reactivate an older held build. Only the verified v1.5.3 candidate can open this gate.
-  if(x.tag_name==="v1.5.3"){
-    set("release-status","v1.5.4 Beta/testing candidate: daily automatic update notices and no manual update check. Release checks are in progress. v1.5.3 is the last published version. Safety and physical-device verification are incomplete.");
+  // Never reactivate an older held build. Only the verified v1.5.4 candidate can open this gate.
+  if(x.tag_name==="v1.5.4"){
+    set("release-status","v1.5.4 released - Beta/testing: daily automatic update notices and no manual update check. Updates open through Netra Ecosystem. Safety and physical-device verification are incomplete.");
     var dl=document.getElementById("dl");if(dl){var link=document.createElement("a");link.id="dl";link.className="btn";link.href="https://prayagi-store-and-services.github.io/netra-eco/";link.textContent="Get updates through Netra Ecosystem";dl.replaceWith(link)}
   }
   if(a.digest&&/^sha256:/.test(a.digest))set("sha","SHA-256: "+a.digest.slice(7))}
