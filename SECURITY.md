@@ -1,5 +1,9 @@
 # Security notes - netra-hub
 
+## 1.5.4 metadata notices
+Metadata-only 24-hour constrained WorkManager checks share a persisted attempt gate with the foreground UI. No APK handling or installer permission. Notification denial is respected; the popup still works. No new server, telemetry or dependency. Notification is deduplicated by version; failed requests do not retry frequently. Android can delay background work. This is not a vulnerability patch or proof of battery/physical-device behavior. Release requires exact-head CI, independent review, and native UI verification.
+
+
 ## Eco-only updates and owner-cleared release (v1.5.2)
 
 - Removes the per-app APK network checker/downloader/installer, install permission and dedicated update provider. Legacy periodic update work cancellation is requested; its old worker is inert, notifications/channel/preferences and update cache retirement is best-effort. Settings now gives informational Eco-only update guidance.

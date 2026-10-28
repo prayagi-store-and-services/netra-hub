@@ -80,11 +80,6 @@ private fun batteryStatus(c: Context): String = try {
     if ((c.getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(c.packageName)) "Allowed (unrestricted)" else "Not allowed (Android may limit background work)"
 } catch (e: Exception) { "Unavailable" }
 
-private fun installStatus(c: Context): String = try {
-    if (Build.VERSION.SDK_INT < 26) "Not needed on this Android version"
-    else if (c.packageManager.canRequestPackageInstalls()) "Allowed" else "Not allowed"
-} catch (e: Exception) { "Unavailable" }
-
 private fun hubPermissions(): List<HubPerm> = listOf(
     HubPerm("Location", "Used for weather and temperature sync and for the location in the SOS message. If you deny it, only these features are limited; sensors keep working.",
         { runtime(it, android.Manifest.permission.ACCESS_FINE_LOCATION) }, { appDetails(it) }),
@@ -104,8 +99,6 @@ private fun hubPermissions(): List<HubPerm> = listOf(
         { alarmStatus(it) }, { if (Build.VERSION.SDK_INT >= 31) tryOpen(it, Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + it.packageName))) else appDetails(it) }),
     HubPerm("Battery optimisation", "Lets the safety service keep running in the background. Tap to change it on the Android page.",
         { batteryStatus(it) }, { tryOpen(it, Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }),
-    HubPerm("Install apps", "Used only when you tap Install on an update, so Android can install the new app file.",
-        { installStatus(it) }, { if (Build.VERSION.SDK_INT >= 26) tryOpen(it, Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + it.packageName))) else appDetails(it) }),
     HubPerm("Internet and network state", "Used to check for updates and weather. Always allowed by Android (normal permission).", { "Always allowed" }, null),
     HubPerm("Run at start, keep awake, vibrate, foreground service", "Used so safety monitoring can restart after a reboot, run while the screen is off and vibrate on alerts. Normal permissions, always allowed.", { "Always allowed" }, null)
 )

@@ -64,6 +64,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication">
+        <activity android:name="com.example.update.EcoUpdateRouteActivity" android:exported="false" />
         <activity
             android:name=".NetraMainActivity"
             android:enabled="false"
