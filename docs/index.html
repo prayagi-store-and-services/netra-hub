@@ -146,7 +146,7 @@ fetch("https://api.github.com/repos/"+R+"/releases/tags/v1.5.3",{cache:"no-store
  if(a){set("rs",sz(a.size));set("st-size",sz(a.size));
   // Never reactivate an older held build. Only the verified v1.5.3 candidate can open this gate.
   if(x.tag_name==="v1.5.3"){
-    set("release-status","v1.5.3 released: metadata-only newer-version notice and exact Eco handoff added. Hub does not download or install APKs. No new measured battery or thermal guarantee is claimed.");
+    set("release-status","v1.5.4 Beta/testing candidate: daily automatic update notices and no manual update check. Release checks are in progress. v1.5.3 is the last published version. Safety and physical-device verification are incomplete.");
     var dl=document.getElementById("dl");if(dl){var link=document.createElement("a");link.id="dl";link.className="btn";link.href="https://prayagi-store-and-services.github.io/netra-eco/";link.textContent="Get updates through Netra Ecosystem";dl.replaceWith(link)}
   }
   if(a.digest&&/^sha256:/.test(a.digest))set("sha","SHA-256: "+a.digest.slice(7))}
