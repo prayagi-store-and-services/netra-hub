@@ -106,20 +106,7 @@ fun EarthquakeCard() {
             fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary
         )
         val sPrefs = remember { context.getSharedPreferences(com.example.data.engine.SachetWatchWorker.PREFS, android.content.Context.MODE_PRIVATE) }
-        var reportText by remember { mutableStateOf(com.example.data.engine.OfficialWeatherReports.text(context,System.currentTimeMillis())) }
-        androidx.compose.runtime.DisposableEffect(sPrefs) {
-            val areas = context.getSharedPreferences(com.example.data.engine.AlertArea.PREFS,android.content.Context.MODE_PRIVATE)
-            val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
-                reportText = com.example.data.engine.OfficialWeatherReports.text(context,System.currentTimeMillis())
-            }
-            sPrefs.registerOnSharedPreferenceChangeListener(listener)
-            areas.registerOnSharedPreferenceChangeListener(listener)
-            onDispose { sPrefs.unregisterOnSharedPreferenceChangeListener(listener); areas.unregisterOnSharedPreferenceChangeListener(listener) }
-        }
-        androidx.compose.runtime.LaunchedEffect(Unit) {
-            while (true) { kotlinx.coroutines.delay(30_000); reportText = com.example.data.engine.OfficialWeatherReports.text(context,System.currentTimeMillis()) }
-        }
-        Text(reportText,fontSize = 12.sp,color = BentoTextPrimary)
+        OfficialWeatherReportCard()
         AlertAreaControls()
         var announceOn by remember { mutableStateOf(com.example.data.engine.OfficialAlertAnnouncer.isEnabled(context)) }
         androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
@@ -275,4 +262,25 @@ internal fun AlertAreaControls() {
         }) { Text("Clear area", fontSize = 12.sp) }
     }
     note?.let { Text(it, fontSize = 11.sp, color = BentoTextSecondary) }
+}
+
+@androidx.compose.runtime.Composable
+internal fun OfficialWeatherReportCard() {
+    val context=androidx.compose.ui.platform.LocalContext.current
+    val sPrefs=androidx.compose.runtime.remember { context.getSharedPreferences(com.example.data.engine.SachetWatchWorker.PREFS,android.content.Context.MODE_PRIVATE) }
+        var reportText by remember { mutableStateOf(com.example.data.engine.OfficialWeatherReports.text(context,System.currentTimeMillis())) }
+        androidx.compose.runtime.DisposableEffect(sPrefs) {
+            val areas = context.getSharedPreferences(com.example.data.engine.AlertArea.PREFS,android.content.Context.MODE_PRIVATE)
+            val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+                reportText = com.example.data.engine.OfficialWeatherReports.text(context,System.currentTimeMillis())
+            }
+            sPrefs.registerOnSharedPreferenceChangeListener(listener)
+            areas.registerOnSharedPreferenceChangeListener(listener)
+            onDispose { sPrefs.unregisterOnSharedPreferenceChangeListener(listener); areas.unregisterOnSharedPreferenceChangeListener(listener) }
+        }
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            while (true) { kotlinx.coroutines.delay(30_000); reportText = com.example.data.engine.OfficialWeatherReports.text(context,System.currentTimeMillis()) }
+        }
+        Text(reportText,fontSize = 12.sp,color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface)
+
 }
