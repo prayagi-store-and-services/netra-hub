@@ -1,3 +1,7 @@
+## Official-report review repair
+
+Independent notification/TTS delivery state, speech recorded only after callback success; reports remain local and output settings do not block report storage. Area-version/date/45-minute expiry invalidates display. IMD weather colours are the single weather-announcement source; nonweather Severe/Extreme CAP alerts retain independent dispatch. Public reads have8MiB caps, feature/geometry limits, official-origin links and no redirects; malformed IMD features are skipped. Rotating40-entry CAP batches revisit failures without starvation. These are automated/source checks, not physical-phone delivery proof.
+
 ## Unreleased official warning repair
 
 Public NDMA SACHET plus IMD subdivision-warning GeoJSON; whole datasets fetched and coordinates matched locally; no added permission, dependency, telemetry, upload, location persistence or accelerated background polling. Moderate warnings still require the existing location/geometry and validity checks. Versioned seen-entry state allows reevaluation after the old severity exclusion without bypassing per-warning deduplication. Status is not delivery proof or an all-clear. Not a vulnerability patch or emergency-service replacement.
