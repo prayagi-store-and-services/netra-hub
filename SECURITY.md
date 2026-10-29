@@ -1,3 +1,7 @@
+## 1.5.5 release privacy check
+
+Crash reports remain manual preview + Send only. The report is readable by third-party FormSubmit, sent over HTTPS and forwarded to the developer inbox; this is not end-to-end encryption. No crash-report behavior change. Existing daily/monthly Firebase +1 counter is ON by default with a Settings opt-out. Existing USGS coordinate query remains disclosed. IMD/NDMA warning datasets are matched locally without coordinate upload. External community links open only on tap. Full physical-device delivery remains unverified.
+
 ## Official-report review repair
 
 Independent notification/TTS delivery state, speech recorded only after callback success; reports remain local and output settings do not block report storage. Area-version/date/45-minute expiry invalidates display. IMD weather colours are the single weather-announcement source; nonweather Severe/Extreme CAP alerts retain independent dispatch. Public reads have8MiB caps, feature/geometry limits, official-origin links and no redirects; malformed IMD features are skipped. Rotating40-entry CAP batches revisit failures without starvation. These are automated/source checks, not physical-phone delivery proof.
