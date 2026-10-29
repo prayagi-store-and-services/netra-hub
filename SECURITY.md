@@ -1,3 +1,7 @@
+## Unreleased official warning repair
+
+Public NDMA SACHET plus IMD subdivision-warning GeoJSON; whole datasets fetched and coordinates matched locally; no added permission, dependency, telemetry, upload, location persistence or accelerated background polling. Moderate warnings still require the existing location/geometry and validity checks. Versioned seen-entry state allows reevaluation after the old severity exclusion without bypassing per-warning deduplication. Status is not delivery proof or an all-clear. Not a vulnerability patch or emergency-service replacement.
+
 # Security notes - netra-hub
 
 ## 1.5.4 metadata notices
