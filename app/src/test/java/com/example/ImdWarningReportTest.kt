@@ -12,6 +12,12 @@ class ImdWarningReportTest {
         val holes = if (hole) ",[[82.3,25.3],[82.7,25.3],[82.7,25.7],[82.3,25.7],[82.3,25.3]]" else ""
         return """{"type":"FeatureCollection","features":[{"geometry":{"type":"Polygon","coordinates":[[[82,25],[83,25],[83,26],[82,26],[82,25]]$holes]},"properties":{"Date":"$date","Day1_Color":$colour,"SUBDIV":"Test subdivision fixture","Day_1":"2,42"}}]}"""
     }
+    @Test fun invalidFeatureDoesNotHideValidFeature() {
+        val j = org.json.JSONObject(data());j.getJSONArray("features").put(0, org.json.JSONObject())
+        val valid = org.json.JSONObject(data()).getJSONArray("features").getJSONObject(0)
+        j.getJSONArray("features").put(valid)
+        assertNotNull(parseImdWarning(j.toString(),25.5,82.5,now))
+    }
     @Test fun colourMappingMatchesOfficialRenderer() {
         assertEquals("Red", imdColour(1)); assertEquals("Orange", imdColour(2)); assertEquals("Yellow", imdColour(3)); assertEquals("Green", imdColour(4)); assertNull(imdColour(0))
     }
