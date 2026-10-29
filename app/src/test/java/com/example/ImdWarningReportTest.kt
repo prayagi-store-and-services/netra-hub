@@ -12,6 +12,11 @@ class ImdWarningReportTest {
         val holes = if (hole) ",[[82.3,25.3],[82.7,25.3],[82.7,25.7],[82.3,25.7],[82.3,25.3]]" else ""
         return """{"type":"FeatureCollection","features":[{"geometry":{"type":"Polygon","coordinates":[[[82,25],[83,25],[83,26],[82,26],[82,25]]$holes]},"properties":{"Date":"$date","Day1_Color":$colour,"SUBDIV":"Test subdivision fixture","Day_1":"2,42"}}]}"""
     }
+    @Test fun malformedHoleRejectsWholeFeature() {
+        val j=org.json.JSONObject(data(hole=true))
+        j.getJSONArray("features").getJSONObject(0).getJSONObject("geometry").getJSONArray("coordinates").put(1,org.json.JSONArray("[[82.3,25.3],[82.7,25.3]]"))
+        assertNull(parseImdWarning(j.toString(),25.2,82.2,now))
+    }
     @Test fun invalidFeatureDoesNotHideValidFeature() {
         val j = org.json.JSONObject(data());j.getJSONArray("features").put(0, org.json.JSONObject())
         val valid = org.json.JSONObject(data()).getJSONArray("features").getJSONObject(0)
