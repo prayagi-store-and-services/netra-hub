@@ -23,7 +23,7 @@ data class CapAlert(
     val polygon: List<Pair<Double, Double>>? = null,
     val circleKm: Triple<Double, Double, Double>? = null,
     val categories: Set<String> = emptySet(),
-    val sentMillis: Long = 0L, val effectiveMillis: Long = 0L, val references: String = ""
+    val sentMillis: Long = 0L, val effectiveMillis: Long = 0L, val references: String = "", val msgType: String = "Alert"
 )
 
 internal const val SACHET_RSS = "https://sachet.ndma.gov.in/cap_public_website/rss/rss_india.xml"
@@ -92,7 +92,7 @@ internal fun parseCapAlert(xml: String): CapAlert? = try {
             id = first(root, "cap:identifier"), sender = first(root, "cap:sender"), event = first(info, "cap:event"),
             severity = first(info, "cap:severity"), headline = first(info, "cap:headline"),
             areaDesc = first(info, "cap:areaDesc"), expiresMillis = parseCapTime(first(info, "cap:expires")),
-            polygon = if (poly.size >= 3) poly else null, circleKm = circ, categories = (0 until info.getElementsByTagName("cap:category").length).map { info.getElementsByTagName("cap:category").item(it).textContent.trim() }.toSet(), sentMillis = parseCapTime(first(root,"cap:sent")), effectiveMillis = parseCapTime(first(info,"cap:effective")), references = first(root,"cap:references")
+            polygon = if (poly.size >= 3) poly else null, circleKm = circ, categories = (0 until info.getElementsByTagName("cap:category").length).map { info.getElementsByTagName("cap:category").item(it).textContent.trim() }.toSet(), sentMillis = parseCapTime(first(root,"cap:sent")), effectiveMillis = parseCapTime(first(info,"cap:effective")), references = first(root,"cap:references"), msgType = first(root,"cap:msgType").ifBlank { "Alert" }
         )
     }
 } catch (e: Exception) { null }
@@ -142,8 +142,9 @@ internal fun capMatchesPlace(
     a: CapAlert, district: String, locality: String, state: String,
     latitude: Double? = null, longitude: Double? = null, nowMillis: Long
 ): Boolean {
-    if (a.expiresMillis != 0L && a.expiresMillis < nowMillis) return false
-    if (a.severity !in setOf("Minor", "Moderate", "Severe", "Extreme", "Unknown")) return false
+    if (a.msgType !in setOf("Alert","Update","Cancel")) return false
+    if (a.expiresMillis != 0L && a.expiresMillis < nowMillis && a.msgType!="Cancel") return false
+    if (a.msgType!="Cancel" && a.severity !in setOf("Minor", "Moderate", "Severe", "Extreme", "Unknown")) return false
     if (plausibleCoords(latitude, longitude)) {
         a.polygon?.let { return pointInPolygon(latitude!!, longitude!!, it) }
         a.circleKm?.let { return haversineKm(latitude!!, longitude!!, it.first, it.second) <= it.third }
@@ -235,8 +236,9 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
                 messages.add(if (rss == null) "NDMA SACHET feed unavailable. Not an all-clear." else noWarningStatus(loc.district,loc.locality,loc.state,checked,matched.size))
                 val locationScope=if (AlertArea.useSaved(ctx)) "saved" else "current"
                 val reportsKey=AlertArea.scoped("cap_reports_v4_" + locationScope,areaVer)
-                val oldReports=if (rss == null || !AlertArea.useSaved(ctx)) org.json.JSONArray() else runCatching { org.json.JSONArray(prefs.getString(reportsKey,"[]")) }.getOrDefault(org.json.JSONArray())
-                val reports=mergeCapReports(oldReports,ordered,now)
+                val oldReports=if (rss == null) org.json.JSONArray() else runCatching { org.json.JSONArray(prefs.getString(reportsKey,"[]")) }.getOrDefault(org.json.JSONArray())
+                val revalidated=revalidateCapReports(oldReports,loc.district,loc.locality,loc.state,loc.latitude,loc.longitude,now)
+                val reports=mergeCapReports(revalidated,ordered,now)
                 prefs.edit().putString(reportsKey,reports.toString()).apply()
                 messages.add("Coverage: " + checked + " of " + (rss?.size ?: 0) + " feed entries checked this run. Up to150 active CAP reports retained; text per report limited to1500 characters. Old reports are historical matches at this area's check location, not a complete feed.")
                 val notifications = NetraNotificationManager(ctx)
@@ -267,7 +269,7 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
                     val previous=runCatching { val j=org.json.JSONObject(prefs.getString(lifeKey,"")); CapLifecycle(j.getString("severity"),j.getLong("expires"),j.getString("token")) }.getOrNull()
                     val life=capLifecycle(previous,cap.severity,cap.expiresMillis.takeIf { it > now } ?: now+45*60_000L,now)
                     prefs.edit().putString(lifeKey,org.json.JSONObject().put("severity",life.severity).put("expires",life.expires).put("token",life.token).toString()).apply()
-                    deliver(identity,life.token,cap.severity in setOf("Severe","Extreme"),cap.event + " (NDMA SACHET)",cap.headline,cap.areaDesc)
+                    deliver(identity,life.token,cap.msgType!="Cancel" && cap.severity in setOf("Severe","Extreme"),cap.event + " (NDMA SACHET)",cap.headline,cap.areaDesc)
                 }
                 if (imd == null && reports.length()==0) OfficialWeatherReports.clear(ctx)
                 else {
