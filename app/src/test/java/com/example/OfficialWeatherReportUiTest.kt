@@ -25,6 +25,13 @@ import org.robolectric.annotation.GraphicsMode
 @Config(qualifiers="w360dp-h800dp-xxhdpi", sdk=[34], application=Application::class)
 class OfficialWeatherReportUiTest {
     @get:Rule val rule=createAndroidComposeRule<ComponentActivity>()
+    private fun shot(name:String) = rule.runOnIdle {
+        val v=rule.activity.window.decorView
+        val b=android.graphics.Bitmap.createBitmap(v.width,v.height,android.graphics.Bitmap.Config.ARGB_8888)
+        v.draw(android.graphics.Canvas(b))
+        java.io.File("build/outputs/official-weather-$name.png").apply{parentFile?.mkdirs()}.outputStream().use{b.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)}
+        b.recycle()
+    }
     @Test fun scopedStoredReportVisibleThenAreaClearInvalidates() {
         val ctx=rule.activity
         val now=System.currentTimeMillis()
@@ -45,6 +52,13 @@ class OfficialWeatherReportUiTest {
             assertTrue(com.example.data.engine.OfficialWeatherReports.text(ctx,now).contains("unavailable or expired"))
         }
         rule.onNodeWithText("unavailable or expired",substring=true).assertIsDisplayed()
+        shot("area-changed")
+        rule.runOnIdle { com.example.data.engine.OfficialWeatherReports.save(ctx,com.example.data.engine.OfficialReportSnapshot(com.example.data.engine.AlertArea.version(ctx),now,now+60_000,"Fixture area","IMD Yellow warning fixture. Speech blocked: alarm volume is zero. Visual warning remains independent. Not live phone weather.")) }
+        rule.onNodeWithText("Speech blocked",substring=true).assertIsDisplayed()
+        shot("blocked")
+        rule.runOnIdle { com.example.data.engine.OfficialWeatherReports.save(ctx,com.example.data.engine.OfficialReportSnapshot(com.example.data.engine.AlertArea.version(ctx),now-60_000,now-1,"Fixture area","Expired report fixture")) }
+        rule.onNodeWithText("unavailable or expired",substring=true).assertIsDisplayed()
+        shot("expired")
     }
     @Test fun storedReportsIndependentOfNotificationOrSpeechPreferences() {
         val ctx=rule.activity;val now=System.currentTimeMillis()
