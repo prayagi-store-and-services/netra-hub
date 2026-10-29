@@ -226,7 +226,13 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
                 val messages = mutableListOf<String>()
                 messages.add(imd?.text() ?: "IMD subdivision report unavailable. Not an all-clear.")
                 messages.add(if (rss == null) "NDMA SACHET feed unavailable. Not an all-clear." else noWarningStatus(loc.district,loc.locality,loc.state,checked,matched.size))
-                matched.forEach { messages.add(it.event + ": " + it.severity + ". " + it.headline.take(1000) + ". Area: " + it.areaDesc.take(500) + ". Valid until: " + (if (it.expiresMillis > 0) java.util.Date(it.expiresMillis).toString() else "not supplied")) }
+                val locationScope=if (AlertArea.useSaved(ctx)) "saved" else "${loc.latitude}_${loc.longitude}"
+                val reportsKey=AlertArea.scoped("cap_reports_v4_" + locationScope,areaVer)
+                val oldReports=if (rss == null) org.json.JSONArray() else runCatching { org.json.JSONArray(prefs.getString(reportsKey,"[]")) }.getOrDefault(org.json.JSONArray())
+                val reports=mergeCapReports(oldReports,matched,now)
+                prefs.edit().putString(reportsKey,reports.toString()).apply()
+                for(i in 0 until reports.length()) messages.add(reports.getJSONObject(i).getString("text"))
+                messages.add("Coverage: " + checked + " of " + (rss?.size ?: 0) + " feed entries checked this run. Up to150 active CAP reports retained; text per report limited to1500 characters. Old reports are historical matches at this area's check location, not a complete feed.")
                 val notifications = NetraNotificationManager(ctx)
                 fun deliver(identity: String, token: String, audible: Boolean, event: String, body: String, area: String) {
                     val key = AlertArea.scoped("official_output_v3_" + identity,areaVer)
@@ -249,10 +255,15 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
                 }
                 // Weather speech/notification uses verified IMD colour once, not a second CAP interpretation.
                 // Non-weather Severe/Extreme CAP alerts retain independent per-alert delivery.
-                matched.filter { !capIsWeather(it) && it.severity in setOf("Severe","Extreme") }.forEach { cap ->
-                    deliver("cap_" + SachetAlertState.identityKey(cap.event,cap.areaDesc),cap.severity,true,cap.event + " (NDMA SACHET)",cap.headline,cap.areaDesc)
+                matched.filter { !capIsWeather(it) }.forEach { cap ->
+                    val identity="cap_" + SachetAlertState.identityKey(cap.event,cap.areaDesc)
+                    val lifeKey=AlertArea.scoped("cap_lifecycle_v4_" + identity,areaVer)
+                    val previous=runCatching { val j=org.json.JSONObject(prefs.getString(lifeKey,"")); CapLifecycle(j.getString("severity"),j.getLong("expires"),j.getString("token")) }.getOrNull()
+                    val life=capLifecycle(previous,cap.severity,cap.expiresMillis.takeIf { it > now } ?: now+45*60_000L,now)
+                    prefs.edit().putString(lifeKey,org.json.JSONObject().put("severity",life.severity).put("expires",life.expires).put("token",life.token).toString()).apply()
+                    deliver(identity,life.token,cap.severity in setOf("Severe","Extreme"),cap.event + " (NDMA SACHET)",cap.headline,cap.areaDesc)
                 }
-                if (imd == null && matched.isEmpty()) OfficialWeatherReports.clear(ctx)
+                if (imd == null && reports.length()==0) OfficialWeatherReports.clear(ctx)
                 else {
                     val earliestExpiry = matched.map { it.expiresMillis }.filter { it > now }.minOrNull() ?: (now + 45 * 60_000L)
                     OfficialWeatherReports.save(ctx,OfficialReportSnapshot(areaVer,now,minOf(now + 45 * 60_000L,earliestExpiry), listOf(loc.district,loc.locality,loc.state).filter { it.isNotBlank() }.distinct().joinToString(", "),messages.joinToString("\n")))
