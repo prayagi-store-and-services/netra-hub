@@ -91,7 +91,7 @@ class NetraNotificationManager(private val context: Context) {
             .setVibrate(longArrayOf(0, 500, 250, 500, 250, 1000))
 
         try {
-            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_EMERGENCY, builder.build())
+            NotificationManagerCompat.from(context).notify(title.hashCode() and 0x7fffffff, builder.build())
             return true
         } catch (e: SecurityException) {
             return false
