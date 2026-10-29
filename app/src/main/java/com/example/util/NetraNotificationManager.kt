@@ -69,7 +69,17 @@ class NetraNotificationManager(private val context: Context) {
         }
     }
 
-    fun sendEmergencyAlert(title: String, message: String, riskLevel: SafetyRiskLevel) {
+    fun canPostEmergency(): Boolean {
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (nm.getNotificationChannel(CHANNEL_ID_EMERGENCY)?.importance == NotificationManager.IMPORTANCE_NONE) return false
+        }
+        return true
+    }
+
+    fun sendEmergencyAlert(title: String, message: String, riskLevel: SafetyRiskLevel): Boolean {
+        if (!canPostEmergency()) return false
         val builder = NotificationCompat.Builder(context, CHANNEL_ID_EMERGENCY)
             .setSmallIcon(android.R.drawable.stat_sys_warning)
             .setContentTitle("NETRA ALERT: $title")
@@ -81,9 +91,10 @@ class NetraNotificationManager(private val context: Context) {
             .setVibrate(longArrayOf(0, 500, 250, 500, 250, 1000))
 
         try {
-            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_EMERGENCY, builder.build())
+            NotificationManagerCompat.from(context).notify(title.hashCode() and 0x7fffffff, builder.build())
+            return true
         } catch (e: SecurityException) {
-            // Permission might not be granted on API 33+ without runtime prompt
+            return false
         }
     }
 }

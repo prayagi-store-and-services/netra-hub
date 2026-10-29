@@ -47,7 +47,7 @@ class OfficialAlertsLogicTest {
 
     @Test fun noWarningStatusNamesDistrictAndSource() {
         val s = noWarningStatus("Prayagraj", "Civil Lines", "Uttar Pradesh", 3, 0)
-        assertTrue(s.startsWith("No official warning for Prayagraj"))
+        assertTrue(s.contains("No matching warning found in this checked batch for Prayagraj"))
         assertTrue(s.contains("NDMA SACHET"))
         assertTrue(s.contains("IMD"))
     }
@@ -59,7 +59,17 @@ class OfficialAlertsLogicTest {
 
     @Test fun matchedStatusSaysNotified() {
         val s = noWarningStatus("Prayagraj", "", "Uttar Pradesh", 2, 1)
-        assertTrue(s.startsWith("Notified: 1"))
+        assertTrue(s.startsWith("Matching official warning(s): 1"))
+    }
+
+    @Test fun seenWarningStatusNeverClaimsAllClear() {
+        val s = noWarningStatus("Kolkata", "", "West Bengal", 0, 0, 1)
+        assertTrue(s.contains("Previously matched warning"))
+        assertFalse(s.contains("No official warning"))
+    }
+
+    @Test fun emptyBatchIsNotCompleteNowcast() {
+        assertTrue(noWarningStatus("Kolkata", "", "", 0, 0).contains("not an IMD all-clear"))
     }
 
     @Test fun freshFixTriggerIsThrottled() {

@@ -153,6 +153,13 @@ object OfficialAlertAnnouncer {
         return null
     }
 
+    fun deliveryLimit(context: Context): String? {
+        if (!isEnabled(context)) return "official announcement switch is off"
+        val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        return limitsText(nm?.currentInterruptionFilter ?: NotificationManager.INTERRUPTION_FILTER_ALL, am?.getStreamVolume(AudioManager.STREAM_ALARM) ?: 0)
+    }
+
     /** Announce aloud if enabled and the category is official. Silently does nothing otherwise. */
     fun announce(context: Context, category: String, event: String, headline: String, areaDesc: String) {
         if (!shouldAnnounce(category) || !isEnabled(context)) return
