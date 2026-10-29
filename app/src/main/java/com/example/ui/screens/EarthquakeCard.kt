@@ -113,6 +113,15 @@ fun EarthquakeCard() {
             else "Official alerts, NDMA SACHET (" + fmt.format(Date(sLast)) + "): " + sMsg,
             fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary
         )
+        var imdReport by remember { mutableStateOf(sPrefs.getString(com.example.data.engine.SachetWatchWorker.KEY_IMD_REPORT, null)) }
+        androidx.compose.runtime.DisposableEffect(sPrefs) {
+            val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { p, key ->
+                if (key == com.example.data.engine.SachetWatchWorker.KEY_IMD_REPORT) imdReport = p.getString(key, null)
+            }
+            sPrefs.registerOnSharedPreferenceChangeListener(listener)
+            onDispose { sPrefs.unregisterOnSharedPreferenceChangeListener(listener) }
+        }
+        Text(imdReport ?: "IMD subdivision warning report has not run yet. Reports update on automatic checks, about every 30 minutes; Android may delay them.", fontSize = 12.sp, color = BentoTextPrimary)
         AlertAreaControls()
         var announceOn by remember { mutableStateOf(com.example.data.engine.OfficialAlertAnnouncer.isEnabled(context)) }
         androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
