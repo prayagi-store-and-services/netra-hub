@@ -39,7 +39,7 @@ fun CrashReportCard(modifier: Modifier = Modifier) {
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Crash report", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            Text("If the app crashed, you can send the last crash to the developer. It goes to the developer email prayagideepak@gmail.com through the FormSubmit service (formsubmit.co). You see the exact text before anything is sent. It holds no name, email, location or files.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("If the app crashed, you can send the last crash to the developer. It goes to the developer email prayagideepak@gmail.com over HTTPS to the third-party FormSubmit service (formsubmit.co). FormSubmit can read the report to deliver it; this is not end-to-end encryption. You see the exact text before anything is sent. It holds no name, email, location or files.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             OutlinedButton(enabled = !busy, onClick = {
                 val p = CrashReporter.manualPreview(context)
                 if (p == null) status = "Unavailable: no crash is saved on this device, so there is nothing to send." else { status = null; preview = p }
@@ -53,7 +53,7 @@ fun CrashReportCard(modifier: Modifier = Modifier) {
             title = { Text("This will be sent") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    Text("Goes to: developer email prayagideepak@gmail.com through the FormSubmit service (formsubmit.co). Nothing is sent until you tap Send.", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("Goes to: developer email prayagideepak@gmail.com over HTTPS to the third-party FormSubmit service (formsubmit.co). FormSubmit can read the report to deliver it; this is not end-to-end encryption. Nothing is sent until you tap Send.", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Text(text, fontSize = 12.sp)
                 }
             },
