@@ -244,11 +244,25 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
                 }
                 val active = SachetAlertState.decode(prefs.getString(AlertArea.scoped(KEY_ACTIVE, areaVer), "") ?: "").toMutableMap()
                 // Speak/notify once per alert; again only on a severity change. Same severity stays silent.
-                
+                val toAnnounce = mutableListOf<Pair<CapAlert, SachetDecision>>()
                 for (cap in matched) {
                     val key = SachetAlertState.identityKey(cap.event, cap.areaDesc)
+                    val decision = SachetAlertState.decide(active[key], cap.severity)
                     active[key] = SachetAlertEntry(cap.severity, cap.expiresMillis)
-                    // CAP severity is not an IMD colour. Keep the report visible; direct IMD colour gates weather speech.
+                    if (decision != SachetDecision.SAME_SEVERITY_SKIP && cap.severity in setOf("Severe", "Extreme")) toAnnounce.add(cap to decision)
+                }
+                // Retain existing high-severity official CAP safety alerts; never label their severity as an IMD colour.
+                if (toAnnounce.isNotEmpty()) {
+                    val (top, _) = toAnnounce.first()
+                    val notifications = NetraNotificationManager(ctx)
+                    if (notifications.canPostEmergency() && OfficialAlertAnnouncer.deliveryLimit(ctx) == null) {
+                        OfficialAlertAnnouncer.announce(ctx, "sachet", top.event, top.headline, top.areaDesc)
+                        notifications.sendEmergencyAlert(top.event + " (NDMA SACHET, " + top.severity + ")", top.headline + ". Area: " + top.areaDesc, SafetyRiskLevel.WARNING)
+                    } else {
+                        // Retry this bounded batch on a future check after the user fixes phone settings.
+                        toAnnounce.forEach { (cap, _) -> active.remove(SachetAlertState.identityKey(cap.event, cap.areaDesc)) }
+                        checked.clear()
+                    }
                 }
                 // Expiry is not proof of an official all-clear. Remove old stored state silently.
                 SachetAlertState.expiredKeys(active, now).forEach { active.remove(it) }
