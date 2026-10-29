@@ -3,6 +3,16 @@ import com.example.data.engine.*
 import org.junit.Assert.*
 import org.junit.Test
 class OfficialWeatherStateTest {
+ @Test fun capLifecycleExpiresAndResetsBothOutputTokens() {
+  val a=capLifecycle(null,"Severe",100,1)
+  assertEquals(a.token,capLifecycle(a,"Severe",200,50).token)
+  val expired=capLifecycle(a,"Severe",300,101)
+  assertNotEquals(a.token,expired.token)
+  val low=capLifecycle(a,"Moderate",200,50)
+  val high=capLifecycle(low,"Severe",300,60)
+  assertNotEquals(a.token,high.token)
+  assertEquals(OutputDue(true,true),officialOutputsDue(high.token,a.token,a.token,true))
+ }
  @Test fun separateOutputStateDoesNotConsumeOtherChannel() {
   assertEquals(OutputDue(false,true),officialOutputsDue("Yellow","Yellow",null,true))
   assertEquals(OutputDue(true,false),officialOutputsDue("Yellow",null,"Yellow",true))
