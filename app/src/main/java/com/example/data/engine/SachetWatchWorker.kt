@@ -21,7 +21,8 @@ data class CapAlert(
     val id: String, val sender: String, val event: String, val severity: String,
     val headline: String, val areaDesc: String, val expiresMillis: Long,
     val polygon: List<Pair<Double, Double>>? = null,
-    val circleKm: Triple<Double, Double, Double>? = null
+    val circleKm: Triple<Double, Double, Double>? = null,
+    val categories: Set<String> = emptySet()
 )
 
 internal const val SACHET_RSS = "https://sachet.ndma.gov.in/cap_public_website/rss/rss_india.xml"
@@ -90,7 +91,7 @@ internal fun parseCapAlert(xml: String): CapAlert? = try {
             id = first(root, "cap:identifier"), sender = first(root, "cap:sender"), event = first(info, "cap:event"),
             severity = first(info, "cap:severity"), headline = first(info, "cap:headline"),
             areaDesc = first(info, "cap:areaDesc"), expiresMillis = parseCapTime(first(info, "cap:expires")),
-            polygon = if (poly.size >= 3) poly else null, circleKm = circ
+            polygon = if (poly.size >= 3) poly else null, circleKm = circ, categories = (0 until info.getElementsByTagName("cap:category").length).map { info.getElementsByTagName("cap:category").item(it).textContent.trim() }.toSet()
         )
     }
 } catch (e: Exception) { null }
@@ -181,101 +182,87 @@ internal fun noWarningStatus(district: String, locality: String, state: String, 
  */
 class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
-    private fun get(url: String): String? = try {
-        val c = URL(url).openConnection() as HttpURLConnection
-        c.connectTimeout = 10000; c.readTimeout = 15000
-        if (c.responseCode != 200) null else c.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
-    } catch (e: Exception) { null }
+    private fun get(url: String): String? {
+        // Only the fixed official datasets or their same-origin CAP links are read.
+        val u = runCatching { java.net.URI(url) }.getOrNull() ?: return null
+        if (u.scheme != "https" || u.host !in setOf("sachet.ndma.gov.in", "reactjs.imd.gov.in")) return null
+        var c: HttpURLConnection? = null
+        return try {
+            c = URL(url).openConnection() as HttpURLConnection
+            c.connectTimeout = 10000; c.readTimeout = 15000; c.instanceFollowRedirects = false
+            if (c.responseCode != 200 || c.contentLengthLong > MAX_OFFICIAL_BYTES) null else c.inputStream.use { boundedOfficialText(it) }
+        } catch (_: Exception) { null } finally { c?.disconnect() }
+    }
 
     override suspend fun doWork(): Result {
         val ctx = applicationContext
         val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
         val areaVer = AlertArea.version(ctx)
-        // Status is written only while the saved area is still the one this run started with.
         fun save(msg: String) { AlertArea.commitIfCurrent(ctx, areaVer) { prefs.edit().putLong(KEY_LAST, now).putString(KEY_MSG, msg).apply() } }
         try {
             val loc = AlertArea.asLocation(ctx) ?: OfficialLocationContextManager(ctx).refreshLocation()
-            val ok = loc.locationStatus == "LOCATION_AVAILABLE" || loc.locationStatus == "COORDINATES_AVAILABLE" || loc.locationStatus == "GEOCODER_FAILED"
-            if (!ok || (!plausibleCoords(loc.latitude, loc.longitude) && loc.state.contains("unavailable", true) && loc.district.contains("unavailable", true))) {
-                save("Unavailable: " + com.example.data.service.LocationAccess.failureText(loc.locationStatus, com.example.data.service.LocationAccess.backgroundGranted(ctx)).let { if (loc.locationStatus == "LOCATION_TIMEOUT" || loc.locationStatus == "PERMISSION_NOT_GRANTED" || loc.locationStatus == "PROVIDER_DISABLED") it else "No state or district name for your location, so area alerts cannot be matched." })
+            val ok = loc.locationStatus in setOf("LOCATION_AVAILABLE", "COORDINATES_AVAILABLE", "GEOCODER_FAILED")
+            if (!ok) {
+                AlertArea.commitIfCurrent(ctx, areaVer) { OfficialWeatherReports.clear(ctx) }
+                save("Unavailable: current alert location could not be verified.")
                 return Result.success()
             }
-            // Whole public dataset: coordinates stay on this phone. Failure is not an all-clear.
-            val imd = if (plausibleCoords(loc.latitude, loc.longitude)) runCatching {
-                get(IMD_WARNING_URL)?.let { parseImdWarning(it, loc.latitude, loc.longitude, now) }
-            }.getOrNull() else null
-            AlertArea.commitIfCurrent(ctx, areaVer) {
-                prefs.edit().putString(KEY_IMD_REPORT, imd?.text() ?: "IMD subdivision report unavailable: current dated data and coordinates are required. This is not an all-clear.").putLong(KEY_IMD_LAST, now).apply()
-                if (imd != null) {
-                    val identity = AlertArea.scoped("imd_colour_" + imd.identity, areaVer)
-                    val previous = prefs.getString(identity, null)
-                    val notifications = NetraNotificationManager(ctx)
-                    if (imdShouldSpeak(previous, imd)) {
-                        // Do not consume the transition when notification channel or audio is blocked.
-                        if (notifications.canPostEmergency() && OfficialAlertAnnouncer.deliveryLimit(ctx) == null) {
-                            OfficialAlertAnnouncer.announce(ctx, "sachet", "IMD " + imd.colour + " warning", imd.hazards, imd.area)
-                            if (notifications.sendEmergencyAlert("IMD " + imd.colour + " warning", imd.text(), SafetyRiskLevel.WARNING))
-                                prefs.edit().putString(identity, imd.colour).apply()
-                        } else {
-                            prefs.edit().putString(KEY_IMD_REPORT, imd.text() + " Alert delivery blocked: " + (OfficialAlertAnnouncer.deliveryLimit(ctx) ?: "enable the emergency notification channel") + ".").apply()
-                        }
-                    } else if (!imd.audible) prefs.edit().putString(identity, imd.colour).apply()
-                }
-            }
+            val imd = if (plausibleCoords(loc.latitude,loc.longitude)) runCatching { get(IMD_WARNING_URL)?.let { parseImdWarning(it,loc.latitude,loc.longitude,now) } }.getOrNull() else null
             val rss = get(SACHET_RSS)?.let { parseSachetRss(it) }
-            if (rss == null) { save("Unavailable: the NDMA SACHET feed could not be read."); return Result.success() }
-            val seen = prefs.getStringSet(AlertArea.scoped(KEY_SEEN + "_moderate_v2", areaVer), emptySet()) ?: emptySet()
-            val fresh = rss.filter { it.first !in seen }.take(40)
-            val lat = if (plausibleCoords(loc.latitude, loc.longitude)) loc.latitude else null
-            val lon = if (plausibleCoords(loc.latitude, loc.longitude)) loc.longitude else null
+            val cursorKey = AlertArea.scoped("cap_cursor_v3",areaVer)
+            val cursor = prefs.getInt(cursorKey,0)
+            val batch = officialBatch(rss?.size ?: 0,cursor)
             val matched = mutableListOf<CapAlert>()
-            val checked = mutableListOf<String>()
-            for ((guid, link) in fresh) {
-                val cap = get(link)?.let { parseCapAlert(it) } ?: continue
-                checked.add(guid)
-                if (capMatchesPlace(cap, loc.district, loc.locality, loc.state, lat, lon, now)) matched.add(cap)
+            var checked = 0
+            for (index in batch) {
+                val cap = get(rss!![index].second)?.let { parseCapAlert(it) } ?: continue
+                checked++
+                if (capMatchesPlace(cap,loc.district,loc.locality,loc.state,loc.latitude,loc.longitude,now)) matched.add(cap)
             }
-            // Final version check, dispatch, notify and state/status commit under one lock; nothing runs if the area changed.
-            val committed = AlertArea.commitIfCurrent(ctx, areaVer) {
-                if (matched.isNotEmpty() && !NotificationManagerCompat.from(ctx).areNotificationsEnabled()) {
-                    save("Unavailable: notifications are off, " + matched.size + " matching official alert(s) could not be shown.")
-                    return Result.success()
+            val committed = AlertArea.commitIfCurrent(ctx,areaVer) {
+                // Cursor advances across failures and blocked outputs. Each entry is revisited, never permanently seen.
+                prefs.edit().putInt(cursorKey, if (rss.isNullOrEmpty()) 0 else (cursor + batch.size) % rss.size).apply()
+                val messages = mutableListOf<String>()
+                messages.add(imd?.text() ?: "IMD subdivision report unavailable. Not an all-clear.")
+                messages.add(if (rss == null) "NDMA SACHET feed unavailable. Not an all-clear." else noWarningStatus(loc.district,loc.locality,loc.state,checked,matched.size))
+                matched.forEach { messages.add(it.event + ": " + it.severity + ". " + it.headline.take(1000) + ". Area: " + it.areaDesc.take(500) + ". Valid until: " + (if (it.expiresMillis > 0) java.util.Date(it.expiresMillis).toString() else "not supplied")) }
+                val notifications = NetraNotificationManager(ctx)
+                fun deliver(identity: String, token: String, audible: Boolean, event: String, body: String, area: String) {
+                    val key = AlertArea.scoped("official_output_v3_" + identity,areaVer)
+                    val due = officialOutputsDue(token,prefs.getString(key + "_n",null),prefs.getString(key + "_s",null),audible)
+                    if (due.notification && notifications.sendEmergencyAlert(event,body,SafetyRiskLevel.WARNING)) prefs.edit().putString(key + "_n",token).apply()
+                    if (due.speech && OfficialAlertAnnouncer.deliveryLimit(ctx) == null) {
+                        OfficialAlertAnnouncer.speakNotice(ctx,OfficialAlertAnnouncer.announcementText("sachet",event,body,area),"official_" + identity.hashCode()) { success, _ ->
+                            if (success) AlertArea.commitIfCurrent(ctx,areaVer) { prefs.edit().putString(key + "_s",token).apply() }
+                        }
+                    }
+                    if (due.notification && !notifications.canPostEmergency()) messages.add("Visual warning blocked by notification settings.")
+                    if (due.speech) OfficialAlertAnnouncer.deliveryLimit(ctx)?.let { messages.add("Speech blocked: " + it) }
                 }
-                val active = SachetAlertState.decode(prefs.getString(AlertArea.scoped(KEY_ACTIVE, areaVer), "") ?: "").toMutableMap()
-                // Speak/notify once per alert; again only on a severity change. Same severity stays silent.
-                val toAnnounce = mutableListOf<Pair<CapAlert, SachetDecision>>()
-                for (cap in matched) {
-                    val key = SachetAlertState.identityKey(cap.event, cap.areaDesc)
-                    val decision = SachetAlertState.decide(active[key], cap.severity)
-                    active[key] = SachetAlertEntry(cap.severity, cap.expiresMillis)
-                    if (decision != SachetDecision.SAME_SEVERITY_SKIP && cap.severity in setOf("Severe", "Extreme")) toAnnounce.add(cap to decision)
-                }
-                // Retain existing high-severity official CAP safety alerts; never label their severity as an IMD colour.
-                if (toAnnounce.isNotEmpty()) {
-                    val (top, _) = toAnnounce.first()
-                    val notifications = NetraNotificationManager(ctx)
-                    if (notifications.canPostEmergency() && OfficialAlertAnnouncer.deliveryLimit(ctx) == null) {
-                        OfficialAlertAnnouncer.announce(ctx, "sachet", top.event, top.headline, top.areaDesc)
-                        notifications.sendEmergencyAlert(top.event + " (NDMA SACHET, " + top.severity + ")", top.headline + ". Area: " + top.areaDesc, SafetyRiskLevel.WARNING)
-                    } else {
-                        // Retry this bounded batch on a future check after the user fixes phone settings.
-                        toAnnounce.forEach { (cap, _) -> active.remove(SachetAlertState.identityKey(cap.event, cap.areaDesc)) }
-                        checked.clear()
+                if (imd != null) {
+                    if (imd.audible) deliver("imd_" + imd.area,imd.colour,true,"IMD " + imd.colour + " warning",imd.hazards,imd.area)
+                    else {
+                        val key = AlertArea.scoped("official_output_v3_imd_" + imd.area,areaVer)
+                        prefs.edit().putString(key + "_n",imd.colour).putString(key + "_s",imd.colour).apply()
                     }
                 }
-                // Expiry is not proof of an official all-clear. Remove old stored state silently.
-                SachetAlertState.expiredKeys(active, now).forEach { active.remove(it) }
-                prefs.edit().putString(AlertArea.scoped(KEY_ACTIVE, areaVer), SachetAlertState.encode(active)).apply()
-                val updated = (seen + checked).toList().takeLast(400).toSet()
-                prefs.edit().putStringSet(AlertArea.scoped(KEY_SEEN + "_moderate_v2", areaVer), updated).apply()
-                if (matched.isNotEmpty()) prefs.edit().putString(KEY_CAP_REPORT, matched.take(5).joinToString("\n") { it.event + ": " + it.severity + ". " + it.headline + ". Area: " + it.areaDesc + ". Valid until " + java.util.Date(it.expiresMillis) }).putLong(KEY_CAP_LAST, now).apply()
-                save(noWarningStatus(loc.district, loc.locality, loc.state, checked.size, matched.size, active.size) + matched.take(5).joinToString("\n", prefix = if (matched.isEmpty()) "" else "\n") { it.event + ": " + it.severity + ". " + it.headline + ". Area: " + it.areaDesc })
+                // Weather speech/notification uses verified IMD colour once, not a second CAP interpretation.
+                // Non-weather Severe/Extreme CAP alerts retain independent per-alert delivery.
+                matched.filter { !capIsWeather(it) && it.severity in setOf("Severe","Extreme") }.forEach { cap ->
+                    deliver("cap_" + SachetAlertState.identityKey(cap.event,cap.areaDesc),cap.severity,true,cap.event + " (NDMA SACHET)",cap.headline,cap.areaDesc)
+                }
+                if (imd == null && matched.isEmpty()) OfficialWeatherReports.clear(ctx)
+                else {
+                    val earliestExpiry = matched.map { it.expiresMillis }.filter { it > now }.minOrNull() ?: (now + 45 * 60_000L)
+                    OfficialWeatherReports.save(ctx,OfficialReportSnapshot(areaVer,now,minOf(now + 45 * 60_000L,earliestExpiry), listOf(loc.district,loc.locality,loc.state).filter { it.isNotBlank() }.distinct().joinToString(", "),messages.joinToString("\n")))
+                }
+                save(messages.take(2).joinToString("\n"))
             }
-            if (!committed) return Result.retry()
-            return Result.success()
-        } catch (e: Exception) {
-            save("Unavailable: check failed.")
+            return if (committed) Result.success() else Result.retry()
+        } catch (_: Exception) {
+            AlertArea.commitIfCurrent(ctx,areaVer) { OfficialWeatherReports.clear(ctx) }
+            save("Unavailable: official alert check failed. Not an all-clear.")
             return Result.retry()
         }
     }
