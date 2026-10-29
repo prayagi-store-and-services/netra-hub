@@ -16,14 +16,16 @@ internal fun imdDate(now: Long): String = SimpleDateFormat("yyyy-MM-dd", Locale.
 internal fun imdColour(code: Int): String? = when (code) { 1 -> "Red"; 2 -> "Orange"; 3 -> "Yellow"; 4 -> "Green"; else -> null }
 internal fun imdShouldSpeak(previousColour: String?, report: ImdWarningReport): Boolean = report.audible && previousColour != report.colour
 private fun imdRingContains(ring: org.json.JSONArray, lat: Double, lon: Double): Boolean {
-    if (ring.length() < 4 || ring.length() > 20000) return false
+    require(ring.length() in 4..20000)
     val points = (0 until ring.length()).map { i -> ring.getJSONArray(i).let { it.getDouble(1) to it.getDouble(0) } }
-    if (points.any { !it.first.isFinite() || !it.second.isFinite() }) return false
+    require(points.all { it.first.isFinite() && it.second.isFinite() && it.first in -90.0..90.0 && it.second in -180.0..180.0 })
+    require(points.first() == points.last())
     return pointInPolygon(lat, lon, points)
 }
 private fun imdPolygonContains(poly: org.json.JSONArray, lat: Double, lon: Double): Boolean {
-    if (poly.length() == 0 || poly.length() > 200 || !imdRingContains(poly.getJSONArray(0), lat, lon)) return false
-    return (1 until poly.length()).none { imdRingContains(poly.getJSONArray(it), lat, lon) }
+    require(poly.length() in 1..200)
+    val contains = (0 until poly.length()).map { imdRingContains(poly.getJSONArray(it),lat,lon) }
+    return contains.first() && contains.drop(1).none { it }
 }
 /** Geometry and current Indian date required. Never guess a subdivision from a state name. */
 internal fun parseImdWarning(json: String, latitude: Double, longitude: Double, now: Long): ImdWarningReport? {
