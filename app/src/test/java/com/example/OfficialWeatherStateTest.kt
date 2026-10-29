@@ -5,6 +5,25 @@ import org.junit.Test
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @org.robolectric.annotation.Config(sdk=[34], application=android.app.Application::class)
 class OfficialWeatherStateTest {
+ @Test fun equalTimeConflictsFailClosedAcrossRestartButSameRevisionRetries() {
+  val old=CapAlert("a","s","Flood","Severe","old","A",1000,sentMillis=100)
+  val newer=old.copy(id="b",severity="Moderate")
+  val ledger=org.json.JSONObject()
+  assertEquals(listOf(newer),latestCapRevisions(listOf(newer),ledger))
+  val restored=org.json.JSONObject(ledger.toString())
+  assertTrue(latestCapRevisions(listOf(old),restored).isEmpty())
+  assertEquals(listOf(newer),latestCapRevisions(listOf(newer),restored))
+  assertTrue(latestCapRevisions(listOf(newer,old),org.json.JSONObject()).isEmpty())
+  val update=old.copy(id="c",references="s,b,2026-10-29",msgType="Update")
+  assertEquals(listOf(update),latestCapRevisions(listOf(update),restored))
+ }
+ @Test fun retentionRevalidatesAreaWithoutDeviceCoordinates() {
+  val a=CapAlert("a","s","Flood","Severe","short","TestArea",500)
+  val saved=mergeCapReports(org.json.JSONArray(),listOf(a),100)
+  assertEquals(1,revalidateCapReports(saved,"TestArea","","",25.5,82.5,200).length())
+  assertEquals(0,revalidateCapReports(saved,"Elsewhere","","",25.5,82.5,200).length())
+  assertFalse(saved.toString().contains("25.5"))
+ }
  @Test fun outOfOrderRevisionsStayNewestAcrossBatchesAndRestart() {
   val old=CapAlert("a","s","Flood","Severe","old","A",1000,sentMillis=10)
   val newer=old.copy(id="b",severity="Moderate",sentMillis=20)
