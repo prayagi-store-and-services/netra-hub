@@ -17,7 +17,7 @@ internal object OfficialWeatherReports {
     private const val KEY = "official_report_v3"
     fun clear(ctx: Context) { ctx.getSharedPreferences(SachetWatchWorker.PREFS, Context.MODE_PRIVATE).edit().remove(KEY).apply() }
     fun save(ctx: Context, r: OfficialReportSnapshot) {
-        val j = org.json.JSONObject().put("version", r.version).put("checked", r.checked).put("until", r.validUntil).put("place", r.place).put("text", r.text.take(24000))
+        val j = org.json.JSONObject().put("version", r.version).put("checked", r.checked).put("until", r.validUntil).put("place", r.place).put("text", r.text)
         ctx.getSharedPreferences(SachetWatchWorker.PREFS, Context.MODE_PRIVATE).edit().putString(KEY,j.toString()).apply()
     }
     fun text(ctx: Context, now: Long): String {
@@ -30,3 +30,22 @@ internal fun capIsWeather(cap: CapAlert): Boolean = cap.categories.any { it == "
 internal data class OutputDue(val notification: Boolean, val speech: Boolean)
 internal fun officialOutputsDue(token: String, notified: String?, spoken: String?, audible: Boolean) = OutputDue(notified != token && audible, spoken != token && audible)
 internal fun officialBatch(size: Int, cursor: Int, limit: Int = 40): List<Int> = if (size <= 0) emptyList() else (0 until minOf(size,limit)).map { (cursor.coerceAtLeast(0) + it) % size }
+
+internal data class CapLifecycle(val severity: String, val expires: Long, val token: String)
+internal fun capLifecycle(previous: CapLifecycle?, severity: String, expires: Long, now: Long): CapLifecycle {
+    val same = previous != null && previous.expires > now && previous.severity == severity
+    return CapLifecycle(severity,expires,if (same) previous!!.token else severity + "|" + now)
+}
+internal fun mergeCapReports(old: org.json.JSONArray, current: List<CapAlert>, now: Long): org.json.JSONArray {
+    val items = linkedMapOf<String,org.json.JSONObject>()
+    for (i in 0 until minOf(old.length(),150)) runCatching {
+        val j=old.getJSONObject(i)
+        if (j.getLong("until") > now) items[j.getString("key")]=j
+    }
+    current.forEach { c ->
+        val key=SachetAlertState.identityKey(c.event,c.areaDesc)
+        val until=if(c.expiresMillis > now)c.expiresMillis else now+45*60_000L
+        items[key]=org.json.JSONObject().put("key",key).put("until",until).put("text",(c.event + ": " + c.severity + ". " + c.headline + ". Area: " + c.areaDesc).take(1500))
+    }
+    return org.json.JSONArray(items.values.toList().takeLast(150))
+}
