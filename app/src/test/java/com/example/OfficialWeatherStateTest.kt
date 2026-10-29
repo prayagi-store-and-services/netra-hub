@@ -2,7 +2,26 @@ package com.example
 import com.example.data.engine.*
 import org.junit.Assert.*
 import org.junit.Test
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk=[34], application=android.app.Application::class)
 class OfficialWeatherStateTest {
+ @Test fun outOfOrderRevisionsStayNewestAcrossBatchesAndRestart() {
+  val old=CapAlert("a","s","Flood","Severe","old","A",1000,sentMillis=10)
+  val newer=old.copy(id="b",severity="Moderate",sentMillis=20)
+  val ledger=org.json.JSONObject()
+  assertEquals(listOf(newer),latestCapRevisions(listOf(newer,old),ledger))
+  val restored=org.json.JSONObject(ledger.toString())
+  assertTrue(latestCapRevisions(listOf(old),restored).isEmpty())
+  assertEquals(listOf(newer),latestCapRevisions(listOf(newer),restored))
+ }
+ @Test fun perItemExpiryDoesNotRemoveImdText() {
+  val a=CapAlert("a","s","Flood","Severe","short","A",101)
+  val b=a.copy(event="Fire",headline="long",expiresMillis=500)
+  val merged=mergeCapReports(org.json.JSONArray(),listOf(a,b),100)
+  assertTrue(renderCapItems(merged.toString(),100).contains("short"))
+  assertFalse(renderCapItems(merged.toString(),102).contains("short"))
+  assertTrue(renderCapItems(merged.toString(),102).contains("long"))
+ }
  @Test fun capLifecycleExpiresAndResetsBothOutputTokens() {
   val a=capLifecycle(null,"Severe",100,1)
   assertEquals(a.token,capLifecycle(a,"Severe",200,50).token)
