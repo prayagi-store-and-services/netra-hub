@@ -29,6 +29,19 @@ class SachetWatchTest {
         assertTrue(a.expiresMillis > 0L)
     }
 
+    @Test fun moderateWarningsMatchOnlyTheirAreaAndValidity() {
+        val a = parseCapAlert(cap.replace("<cap:severity>Severe", "<cap:severity>Moderate"))!!
+        assertTrue(capMatchesPlace(a, "Varanasi", "", "", nowMillis = a.expiresMillis - 1))
+        assertFalse(capMatchesPlace(a, "Pune", "", "", nowMillis = a.expiresMillis - 1))
+        assertFalse(capMatchesPlace(a, "Varanasi", "", "", nowMillis = a.expiresMillis + 1))
+    }
+
+    @Test fun moderateToSevereAndBackAreChangesNotRepeats() {
+        assertEquals(SachetDecision.SEVERITY_CHANGED, SachetAlertState.decide(SachetAlertEntry("Moderate", 100), "Severe"))
+        assertEquals(SachetDecision.SEVERITY_CHANGED, SachetAlertState.decide(SachetAlertEntry("Severe", 100), "Moderate"))
+        assertEquals(SachetDecision.SAME_SEVERITY_SKIP, SachetAlertState.decide(SachetAlertEntry("Moderate", 100), "Moderate"))
+    }
+
     @Test fun parsesRss() {
         val rss = "<rss><channel><item><guid>7</guid><link>https://x/7</link></item><item><guid></guid><link>https://x/8</link></item></channel></rss>"
         assertEquals(listOf("7" to "https://x/7"), parseSachetRss(rss))
@@ -40,7 +53,7 @@ class SachetWatchTest {
         assertTrue(capMatchesPlace(a, "Varanasi", "Location Unavailable", "Uttar Pradesh", nowMillis = before))
         assertFalse(capMatchesPlace(a, "Pune", "Pune", "Maharashtra", nowMillis = before))
         assertFalse(capMatchesPlace(a, "Varanasi", "", "", nowMillis = a.expiresMillis + 1L))
-        assertFalse(capMatchesPlace(a.copy(severity = "Minor"), "Varanasi", "", "", nowMillis = before))
+        assertTrue(capMatchesPlace(a.copy(severity = "Minor"), "Varanasi", "", "", nowMillis = before))
         assertFalse(capMatchesPlace(a, "Location Unavailable", "Location Unavailable", "Location Unavailable", nowMillis = before))
     }
 
