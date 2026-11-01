@@ -848,7 +848,7 @@ fun SettingsScreen(
                         )
                         Text(
                             text = if (gpsGrant) "While you are moving, location stays on; when the phone is still, it turns off and wakes for a few seconds every 5 minutes to refresh. Movement comes from the accelerometer; nothing is sent anywhere. Works while Hub safety monitoring is active. Turning this off restores your previous location setting."
-                            else "Needs the one-time ADB grant you may know from automation apps: enable wireless debugging once and run "pm grant " + context.packageName + " android.permission.WRITE_SECURE_SETTINGS" from a computer or second device. Without that grant Android lets no app switch location, and this stays off.",
+                            else "Needs the one-time ADB grant you may know from automation apps: enable wireless debugging once and run this command from a computer or second device: pm grant " + context.packageName + " android.permission.WRITE_SECURE_SETTINGS - without that grant Android lets no app switch location, and this stays off.",
                             color = BentoTextSecondary,
                             fontSize = 11.sp
                         )
