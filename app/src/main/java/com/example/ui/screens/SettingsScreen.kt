@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Autorenew
@@ -817,6 +818,53 @@ fun SettingsScreen(
                 ServiceStatusRow("Bluetooth Monitoring", monitorBluetooth, onToggleBluetooth, notifyBluetooth, announceBluetooth, onToggleNotifyBluetooth, onToggleAnnounceBluetooth)
                 ServiceStatusRow("Location Monitoring", monitorLocation, onToggleLocation, notifyLocation, announceLocation, onToggleNotifyLocation, onToggleAnnounceLocation)
                 ServiceStatusRow("Proximity Monitoring", monitorProximity, onToggleProximity, notifyProximity, announceProximity, onToggleNotifyProximity, onToggleAnnounceProximity)
+            }
+        }
+
+        // GPS power saving (opt-in; needs the one-time ADB secure-settings grant)
+        item {
+            val context = LocalContext.current
+            var gpsTick by remember { mutableStateOf(0) }
+            @Suppress("UNUSED_VARIABLE") val gpsRefresh = gpsTick
+            val gpsGrant = com.example.data.service.GpsPowerController.hasGrant(context)
+            val gpsOn = com.example.data.service.GpsPowerController.isEnabled(context) && gpsGrant
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(BentoCardBg)
+                    .border(1.dp, BentoBorder, RoundedCornerShape(24.dp))
+                    .padding(20.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = BentoGreenPrimary)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "GPS POWER SAVING",
+                            color = BentoTextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (gpsGrant) "While you are moving, location stays on; when the phone is still, it turns off and wakes for a few seconds every 5 minutes to refresh. Movement comes from the accelerometer; nothing is sent anywhere. Works while Hub safety monitoring is active. Turning this off restores your previous location setting."
+                            else "Needs the one-time ADB grant you may know from automation apps: enable wireless debugging once and run "pm grant " + context.packageName + " android.permission.WRITE_SECURE_SETTINGS" from a computer or second device. Without that grant Android lets no app switch location, and this stays off.",
+                            color = BentoTextSecondary,
+                            fontSize = 11.sp
+                        )
+                    }
+                    Switch(
+                        checked = gpsOn,
+                        onCheckedChange = {
+                            com.example.data.service.GpsPowerController.setEnabled(context, it)
+                            gpsTick++
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = BentoGreenVibrant,
+                            checkedTrackColor = BentoGreenPrimary.copy(alpha = 0.3f)
+                        )
+                    )
+                }
             }
         }
 

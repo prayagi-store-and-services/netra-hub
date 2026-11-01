@@ -42,6 +42,7 @@ class NetraForegroundService : Service() {
             return START_NOT_STICKY
         }
         repository = NetraSafetyRepository.get(applicationContext)
+        com.example.data.service.GpsPowerController.ensureRunning(this)
         val notification = createNotification()
         val hasLocationPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED ||

@@ -1,3 +1,8 @@
+## 1.5.6 - GPS power saving (opt-in)
+
+- New opt-in "GPS POWER SAVING" switch in Settings. While you are moving, location stays on; when the phone is still, location turns off and wakes for a few seconds every 5 minutes to refresh. Movement is read from the accelerometer; nothing is sent anywhere.
+- Works while Hub safety monitoring is active. Android lets no app switch location by itself: this needs the one-time ADB grant of WRITE_SECURE_SETTINGS (the same step automation apps like MacroDroid use). Without the grant the switch explains the setup and nothing changes. Turning the feature off restores your previous location setting.
+
 ## 1.5.5 (Beta / testing) - IMD weather reports and warning repair
 
 - Official IMD subdivision report selected on this phone using public area polygons. Current-date Green reports update silently; Yellow, Orange and Red warnings use notification and official-alert TTS on a colour change. No coordinates are sent to IMD.
