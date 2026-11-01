@@ -1,5 +1,8 @@
 ## 1.5.5 release privacy check
 
+## 1 November 2026
+Hub 1.5.6 adds opt-in movement-triggered location power saving ("GPS POWER SAVING" in Settings). The app newly DECLARES android.permission.WRITE_SECURE_SETTINGS, never granted at install: the user may grant it once via ADB (the documented automation-app mechanism). With the grant, the app writes only the secure location_mode key (off, or the user's saved previous mode). Movement detection is accelerometer-only and needs no location permission; no location or sensor data leaves the phone. Default off; grant state shown honestly; disabling restores the previous location mode. Timing rules are unit-tested. Physical-device verification of the grant flow is pending.
+
 Crash reports remain manual preview + Send only. The report is readable by third-party FormSubmit, sent over HTTPS and forwarded to the developer inbox; this is not end-to-end encryption. No crash-report behavior change. Existing daily/monthly Firebase +1 counter is ON by default with a Settings opt-out. Existing USGS coordinate query remains disclosed. IMD/NDMA warning datasets are matched locally without coordinate upload. External community links open only on tap. Full physical-device delivery remains unverified.
 
 ## Official-report review repair
