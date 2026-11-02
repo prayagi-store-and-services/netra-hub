@@ -1,3 +1,7 @@
+## 1.5.7 - Tablet and smart-class layout
+
+- On wide screens the app no longer stretches edge to edge: every tab stays centred in a comfortable reading column, and the app header is larger for distance viewing. Phone layouts are unchanged.
+
 ## 1.5.6 - GPS power saving (opt-in)
 
 - New opt-in "GPS POWER SAVING" switch in Settings. While you are moving, location stays on; when the phone is still, location turns off and wakes for a few seconds every 5 minutes to refresh. Movement is read from the accelerometer; nothing is sent anywhere.
