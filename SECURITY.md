@@ -1,3 +1,6 @@
+## 1.5.7 adaptive interface layout (phone/tablet)
+Layout-only change: on tablets, smart-class boards and other wide screens the main content is capped and centred (compact <600dp unchanged, medium capped at 600dp, expanded capped at 840dp) and the app header title scales up for distance viewing; phones are pixel-unchanged. No new permission, library, network call, storage, server, exported component or logging. Not a vulnerability patch. Release requires final-head CI, independent review and native UI inspection.
+
 ## 1.5.5 release privacy check
 
 ## 1 November 2026

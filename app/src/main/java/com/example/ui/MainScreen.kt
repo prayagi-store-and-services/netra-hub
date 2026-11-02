@@ -68,6 +68,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.event.SensorEventBus
 import com.example.ui.screens.DashboardScreen
+import com.example.ui.utils.adaptiveContentWidth
+import com.example.ui.utils.adaptiveFontScaleFor
 import com.example.ui.screens.SensorCenterContainerScreen
 import com.example.ui.screens.HistoryLogsContainerScreen
 import com.example.ui.screens.ServiceManagerContainerScreen
@@ -261,6 +263,7 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .background(BentoBackground)
+                .adaptiveContentWidth()
         ) {
             com.example.ui.components.MonitoringControlCard()
             if (persistentAlert != null) {
@@ -610,7 +613,7 @@ fun NetraVersionHeader(ownVersion: String, clockNow: java.util.Date, isLiteMode:
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(Modifier.weight(1f).padding(end = 8.dp)) {
-                        Text(text = "${com.example.Brand.name}" + (if (isLiteMode) " (lite)" else ""), color = BentoTextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text(text = "${com.example.Brand.name}" + (if (isLiteMode) " (lite)" else ""), color = BentoTextPrimary, fontSize = 20.sp * adaptiveFontScaleFor(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp), fontWeight = FontWeight.Bold, maxLines = 1)
                         Text(text = "v" + ownVersion + " | Netra Ecosystem", color = if (isLiteMode) BentoAmber else BentoTextSecondary, fontSize = 12.sp, maxLines = 1)
                     }
                     Text(text = java.text.SimpleDateFormat("EEE d MMM, HH:mm", java.util.Locale.getDefault()).format(clockNow), color = BentoTextSecondary, fontSize = 12.sp, maxLines = 1)
