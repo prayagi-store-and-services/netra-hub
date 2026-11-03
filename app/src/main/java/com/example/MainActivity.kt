@@ -58,7 +58,11 @@ open class MainActivity : ComponentActivity() {
         // Best-effort retirement of legacy updater state must never prevent launch.
         val cleanupContext = applicationContext
         Thread {
-            try { com.example.update.AutomaticUpdateNotice.start(cleanupContext) }
+            try {
+                com.example.update.AutomaticUpdateNotice.start(cleanupContext)
+                // Launch-time metadata check; self-throttled to one network attempt per 6 hours.
+                com.example.update.AutomaticUpdateNotice.check(cleanupContext)
+            }
             catch (_: Exception) { /* No updater can run even if old cache cleanup fails. */ }
         }.start()
         // Anonymous daily usage count (+1 on a public counter, nothing else). The user can turn it off in Settings.

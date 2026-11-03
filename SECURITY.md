@@ -1,3 +1,7 @@
+## v1.5.8 - update notice cadence
+
+Presentation/cadence change only. Update checks remain metadata-only (one small GitHub releases read; artifact fields are never read, nothing downloads). Cadence rises to app start plus at most every 6 hours with the same backoff; the settings card hides update status unless a newer version verifies. The beta/testing disclaimer remains. No new permission, dependency, endpoint or stored data.
+
 ## 1.5.7 adaptive interface layout (phone/tablet)
 Layout-only change: on tablets, smart-class boards and other wide screens the main content is capped and centred (compact <600dp unchanged, medium capped at 600dp, expanded capped at 840dp) and the app header title scales up for distance viewing; phones are pixel-unchanged. No new permission, library, network call, storage, server, exported component or logging. Not a vulnerability patch. Release requires final-head CI, independent review and native UI inspection.
 

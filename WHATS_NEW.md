@@ -1,3 +1,8 @@
+## 1.5.8 - Timely update notices, cleaner settings
+
+- Update checks now run at every app start and at most every 6 hours (was once a day), so a new version shows the in-app notice and notification the same day.
+- Settings no longer shows the long static update explainer; the update line and Update button appear only when a newer version is verified. The beta/testing safety note stays.
+
 ## 1.5.7 - Tablet and smart-class layout
 
 - On wide screens the app no longer stretches edge to edge: every tab stays centred in a comfortable reading column, and the app header is larger for distance viewing. Phone layouts are unchanged.

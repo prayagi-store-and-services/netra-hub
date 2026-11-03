@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 
 /** Metadata only, at most one network attempt per 24 hours across UI and worker. */
 object AutomaticUpdateNotice {
-    internal const val INTERVAL_MS = 24L * 60 * 60 * 1000
+    internal const val INTERVAL_MS = 6L * 60 * 60 * 1000
     private const val PREFS = "eco_metadata_notice_v1"
     private const val CHANNEL = "eco_metadata_notice"
     private const val ID = 7435
