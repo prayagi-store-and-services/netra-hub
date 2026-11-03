@@ -43,7 +43,9 @@ class MonitoringControlScreenshotTest {
     }
     @Test fun centralUpdates320() {
         compose.setContent { NetraTheme { com.example.update.UpdateCheckCard(metadataLoader={com.example.update.AppUpdater.Newer(999,"9.9 (fixture)")}) } }
-        compose.onNodeWithText("Automatic metadata checks run at most once a day, subject to Android battery and network limits. Notifications need your Android permission. Updates open in compatible Netra Ecosystem or this app's Eco website page. No update is downloaded here.").assertExists()
+        // Owner rule (3 Nov): static update explainer text is gone; update status shows only when a newer version verifies.
+        compose.onNodeWithText("Automatic metadata checks run at most once a day, subject to Android battery and network limits. Notifications need your Android permission. Updates open in compatible Netra Ecosystem or this app's Eco website page. No update is downloaded here.", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("No newer version is currently known.", substring = true).assertDoesNotExist()
         compose.onRoot().captureRoboImage(filePath = "src/test/screenshots/monitoring_central_updates_320.png")
     }
     @Test fun pausedControl320() {

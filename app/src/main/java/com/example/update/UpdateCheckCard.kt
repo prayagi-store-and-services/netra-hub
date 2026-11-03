@@ -10,17 +10,16 @@ import kotlinx.coroutines.withContext
 @Composable fun UpdateCheckCard(modifier:Modifier=Modifier, metadataLoader:(android.content.Context)->AppUpdater.Newer?={AutomaticUpdateNotice.check(it)}) {
  val context=LocalContext.current
  var result by remember { mutableStateOf<AppUpdater.Newer?>(null) }
- var status by remember { mutableStateOf("Checking latest version...") }
  LaunchedEffect(Unit) {
-  status="Checking latest version..."
-  try { result=withContext(Dispatchers.IO){metadataLoader(context)};status=if(result==null)"No newer version is currently known." else "Latest version available: ${result!!.name}" }
-  catch(_:Exception){result=null;status="Unavailable: could not check the latest version."}
+  try { result=withContext(Dispatchers.IO){metadataLoader(context)} }
+  catch(_:Exception){result=null}
  }
- Card(modifier=modifier){ Column(Modifier.padding(16.dp)){
+ val newer=result
+ if(newer!=null) Card(modifier=modifier){ Column(Modifier.padding(16.dp)){
   Text("Beta / testing: safety and device verification are incomplete. Do not rely on this app as your only emergency protection.")
+  var status by remember { mutableStateOf("Latest version available: ${newer.name}") }
   Text(status)
-  if(result!=null) Button(onClick={if(!AppUpdater.openEco(context))status="Could not open Eco or a browser. Try again."}){Text("Update")}
-  Text("Automatic metadata checks run at most once a day, subject to Android battery and network limits. Notifications need your Android permission. Updates open in compatible Netra Ecosystem or this app's Eco website page. No update is downloaded here.")
+  Button(onClick={if(!AppUpdater.openEco(context))status="Could not open Eco or a browser. Try again."}){Text("Update")}
  } }
 }
 @Composable fun AppUpdatePrompt(metadataLoader:(android.content.Context)->AppUpdater.Newer?={AutomaticUpdateNotice.check(it)}) {
