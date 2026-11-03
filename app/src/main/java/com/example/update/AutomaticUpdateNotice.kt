@@ -59,7 +59,7 @@ object AutomaticUpdateNotice {
     }
     fun wasDismissed(c: Context, code: Long) = prefs(c).getLong("dismissed", 0) >= code
     fun dismiss(c: Context, code: Long) { prefs(c).edit().putLong("dismissed", code).apply() }
-    internal fun request() = PeriodicWorkRequestBuilder<EcoMetadataWorker>(24, TimeUnit.HOURS)
+    internal fun request() = PeriodicWorkRequestBuilder<EcoMetadataWorker>(AutomaticUpdateNotice.INTERVAL_MS, TimeUnit.MILLISECONDS)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).setRequiresBatteryNotLow(true).build())
             .build()
     fun start(c: Context) {
