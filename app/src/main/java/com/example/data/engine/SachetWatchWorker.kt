@@ -208,7 +208,8 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
             val loc = testIo?.location ?: (AlertArea.asLocation(ctx) ?: OfficialLocationContextManager(ctx).refreshLocation())
             val ok = loc.locationStatus in setOf("LOCATION_AVAILABLE", "COORDINATES_AVAILABLE", "GEOCODER_FAILED")
             if (!ok) {
-                AlertArea.commitIfCurrent(ctx, areaVer) { OfficialWeatherReports.clear(ctx) }
+                // Location unverified is a check failure, not evidence that alerts ended: the last verified
+                // report is kept (it expires on its own visible window) and only the status line is updated.
                 save("Unavailable: current alert location could not be verified.")
                 return Result.success()
             }
@@ -236,7 +237,9 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
                 messages.add(if (rss == null) "NDMA SACHET feed unavailable. Not an all-clear." else noWarningStatus(loc.district,loc.locality,loc.state,checked,matched.size))
                 val locationScope=if (AlertArea.useSaved(ctx)) "saved" else "current"
                 val reportsKey=AlertArea.scoped("cap_reports_v4_" + locationScope,areaVer)
-                val oldReports=if (rss == null) org.json.JSONArray() else runCatching { org.json.JSONArray(prefs.getString(reportsKey,"[]")) }.getOrDefault(org.json.JSONArray())
+                // Cached CAP reports survive a feed outage: they are loaded and revalidated on every run,
+                // whether or not the RSS fetch succeeded. Revalidation is time/place based, never feed based.
+                val oldReports=runCatching { org.json.JSONArray(prefs.getString(reportsKey,"[]")) }.getOrDefault(org.json.JSONArray())
                 val revalidated=revalidateCapReports(oldReports,loc.district,loc.locality,loc.state,loc.latitude,loc.longitude,now)
                 val reports=mergeCapReports(revalidated,ordered,now)
                 prefs.edit().putString(reportsKey,reports.toString()).apply()
@@ -271,7 +274,10 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
                     prefs.edit().putString(lifeKey,org.json.JSONObject().put("severity",life.severity).put("expires",life.expires).put("token",life.token).toString()).apply()
                     deliver(identity,life.token,cap.msgType!="Cancel" && cap.severity in setOf("Severe","Extreme"),cap.event + " (NDMA SACHET)",cap.headline,cap.areaDesc)
                 }
-                if (imd == null && reports.length()==0) OfficialWeatherReports.clear(ctx)
+                if (imd == null && rss == null) {
+                    // Both sources failed: keep the previous verified snapshot untouched (its own "Checked"
+                    // timestamp stays honest and it expires on its own window). Nothing new was verified.
+                } else if (imd == null && reports.length()==0 && rss != null) OfficialWeatherReports.clear(ctx)
                 else {
                     val earliestExpiry = now + 45 * 60_000L
                     OfficialWeatherReports.save(ctx,OfficialReportSnapshot(areaVer,now,minOf(now + 45 * 60_000L,earliestExpiry), listOf(loc.district,loc.locality,loc.state).filter { it.isNotBlank() }.distinct().joinToString(", "),messages.joinToString("\n"),reports.toString()))
@@ -280,7 +286,7 @@ class SachetWatchWorker(context: Context, params: WorkerParameters) : CoroutineW
             }
             return if (committed) Result.success() else Result.retry()
         } catch (_: Exception) {
-            AlertArea.commitIfCurrent(ctx,areaVer) { OfficialWeatherReports.clear(ctx) }
+            // A failed check never erases the last verified report: it stays until its own validity ends.
             save("Unavailable: official alert check failed. Not an all-clear.")
             return Result.retry()
         }
