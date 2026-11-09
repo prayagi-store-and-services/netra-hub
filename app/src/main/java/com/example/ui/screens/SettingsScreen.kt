@@ -868,6 +868,53 @@ fun SettingsScreen(
             }
         }
 
+        // Keep screen on (opt-in; off by default to protect battery)
+        item {
+            val context = LocalContext.current
+            var keepTick by remember { mutableStateOf(0) }
+            @Suppress("UNUSED_VARIABLE") val keepRefresh = keepTick
+            val keepOn = com.example.monitoring.KeepScreenOnPreference.isEnabled(context)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(BentoCardBg)
+                    .border(1.dp, BentoBorder, RoundedCornerShape(24.dp))
+                    .padding(20.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Sensors, contentDescription = null, tint = BentoRed)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "KEEP SCREEN ON",
+                            color = BentoTextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Off by default. When on, the screen stays awake while this app is open. This uses more battery.",
+                            color = BentoTextSecondary,
+                            fontSize = 11.sp
+                        )
+                    }
+                    Switch(
+                        checked = keepOn,
+                        onCheckedChange = { on ->
+                            if (com.example.monitoring.KeepScreenOnPreference.setByUser(context, on)) {
+                                (context as? android.app.Activity)?.let { com.example.monitoring.KeepScreenOnPreference.apply(it) }
+                                keepTick++
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = BentoGreenVibrant,
+                            checkedTrackColor = BentoGreenPrimary.copy(alpha = 0.3f)
+                        )
+                    )
+                }
+            }
+        }
+
         // Developer Mode Toggle
         item {
             Box(
@@ -1583,7 +1630,7 @@ fun SettingsScreen(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Voice announcements will only occur when the device temperature reaches or exceeds the selected threshold. Temperatures below the selected limit will continue to be monitored silently.",
+                        text = "Voice announcements will only occur when the battery temperature reaches or exceeds the selected threshold. This is the phone battery's own temperature broadcast, not the exact internal temperature of the whole phone; no app can guarantee a specific internal temperature. Temperatures below the selected limit will continue to be monitored silently.",
                         color = BentoTextSecondary,
                         fontSize = 11.sp
                     )

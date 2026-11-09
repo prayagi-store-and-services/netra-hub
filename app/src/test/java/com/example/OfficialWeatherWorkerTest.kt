@@ -40,18 +40,32 @@ class OfficialWeatherWorkerTest {
   val io=OfficialWorkerIo(now,location,{u->if(u==IMD_WARNING_URL)imd else "<rss><channel/></rss>"},{_,_->false},{null},{_,done->s++;done(true)})
   run(io);assertEquals(1,s);assertTrue(OfficialWeatherReports.text(ctx,now).contains("Yellow"));run(io);assertEquals(1,s)
  }
- @Test fun mixedSourcesAndMultipleSafetyAlertsDispatchOnceAndFailureClearsReport(){
+ @Test fun mixedSourcesAndMultipleSafetyAlertsDispatchOnceAndFailurePreservesReport(){
   reset();val n=mutableListOf<String>();val spoken=mutableListOf<String>()
   val caps=listOf(cap("old","Flood","Severe","2026-10-29T07:00:00+05:30"),cap("new","Flood","Moderate","2026-10-29T08:00:00+05:30"),cap("fire","Fire","Severe","2026-10-29T08:00:00+05:30"),cap("chem","Chemical","Extreme","2026-10-29T08:00:00+05:30"),cap("weather","Rain","Severe","2026-10-29T08:00:00+05:30","Met"))
   var fail=false
   val io=OfficialWorkerIo(now,location,{u->if(fail)null else if(u==IMD_WARNING_URL)imd else if(u==SACHET_RSS)"<rss><channel>"+caps.indices.joinToString(""){"<item><guid>$it</guid><link>https://sachet.ndma.gov.in/$it</link></item>"}+"</channel></rss>" else caps[u.substringAfterLast('/').toInt()]},{e,_->n.add(e);true},{null},{e,done->spoken.add(e);done(true)})
   run(io);assertEquals(3,n.size);assertEquals(3,spoken.size);assertFalse(n.any{it.startsWith("Flood")});assertTrue(OfficialWeatherReports.text(ctx,now).contains("Moderate"))
   run(io);assertEquals(3,n.size);assertEquals(3,spoken.size)
-  fail=true;run(io);assertTrue(OfficialWeatherReports.text(ctx,now).contains("unavailable or expired"))
+  // A full feed failure keeps the last verified report instead of clearing it (no false "No Alert").
+  fail=true;run(io);assertTrue(OfficialWeatherReports.text(ctx,now).contains("Moderate"))
  }
- @Test fun invalidLocationClearsReportAndAreaMutationInvalidates(){
+ @Test fun invalidLocationPreservesReportAndAreaMutationInvalidates(){
   reset();val io=OfficialWorkerIo(now,location,{u->if(u==IMD_WARNING_URL)imd else "<rss><channel/></rss>"},{_,_->true},{null},{_,done->done(true)})
   run(io);assertTrue(OfficialWeatherReports.text(ctx,now).contains("Yellow"));AlertArea.clear(ctx);assertTrue(OfficialWeatherReports.text(ctx,now).contains("unavailable"))
-  run(io);run(io.copy(location=location.copy(locationStatus="PERMISSION_NOT_GRANTED")));assertTrue(OfficialWeatherReports.text(ctx,now).contains("unavailable"))
+  run(io)
+  // A location failure must never delete the last verified report.
+  run(io.copy(location=location.copy(locationStatus="PERMISSION_NOT_GRANTED")));assertTrue(OfficialWeatherReports.text(ctx,now).contains("Yellow"))
+ }
+ @Test fun feedOutageKeepsCachedCapReportsAndExceptionKeepsSnapshot(){
+  reset()
+  val caps=listOf(cap("a","Flood","Severe","2026-10-29T08:00:00+05:30"))
+  var outage=false;var explode=false
+  val io=OfficialWorkerIo(now,location,{u->if(explode)throw RuntimeException("boom") else if(outage)null else if(u==IMD_WARNING_URL)null else if(u==SACHET_RSS)"<rss><channel><item><guid>0</guid><link>https://sachet.ndma.gov.in/0</link></item></channel></rss>" else caps[0]},{_,_->true},{null},{_,done->done(true)})
+  run(io);assertTrue(OfficialWeatherReports.text(ctx,now).contains("Flood"))
+  // RSS outage: the cached CAP report is revalidated and kept, the snapshot is not refreshed.
+  outage=true;run(io);assertTrue(OfficialWeatherReports.text(ctx,now).contains("Flood"))
+  // Unexpected error: the last verified snapshot survives the failed check.
+  outage=false;explode=true;run(io);assertTrue(OfficialWeatherReports.text(ctx,now).contains("Flood"))
  }
 }

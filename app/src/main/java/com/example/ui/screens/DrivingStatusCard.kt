@@ -74,6 +74,7 @@ fun DrivingStatusCard(onOpenSos: () -> Unit) {
                 else -> "Motion sensor: %d samples, about %.0f a second, last %d s ago".format(live.samples, live.perSecond, (now - live.lastSampleAt) / 1000)
             } + (if (driving && live.lastFixAt > 0L) "; last GPS fix %d s ago".format((now - live.lastFixAt) / 1000) else ""), fontSize = 12.sp)
             Text("Driving mode starts at ${"%.0f".format(com.example.data.sensor.SpeedGate.DEFAULT_THRESHOLD_KMH)} km/h and ends after ${com.example.data.sensor.SpeedGate.DEFAULT_CLOSE_DELAY_MS / 1000} seconds below that. It needs location allowed all the time and battery optimisation off.", fontSize = 11.sp)
+            Text("The phone only senses speed and cannot tell whether you are driving or are a passenger in a moving vehicle.", fontSize = 11.sp)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text("Speak when driving mode turns on or off", fontSize = 13.sp, modifier = Modifier.weight(1f))
                 Switch(checked = announce, onCheckedChange = { announce = it; DrivingEvents.setAnnounceEnabled(context, it) }, modifier = Modifier.testTag("driving_announce_switch"))

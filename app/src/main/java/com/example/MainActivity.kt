@@ -3,7 +3,6 @@ package com.example
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -75,8 +74,8 @@ open class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         com.example.util.LoggingManager.init(applicationContext)
 
-        // Keep the screen on 24/7 while the application is active
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // The screen is kept on only when the user explicitly enabled it in Settings (default off).
+        com.example.monitoring.KeepScreenOnPreference.apply(this)
 
         // Start Foreground Service to keep app running in the background if permission is already granted
         val hasLocationPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
