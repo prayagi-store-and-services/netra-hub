@@ -51,6 +51,7 @@ class NetraForegroundService : Service() {
             true
         }
 
+        var foregroundStarted = false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
                 if (hasLocationPermission) {
@@ -58,13 +59,23 @@ class NetraForegroundService : Service() {
                 } else {
                     startForeground(1, notification)
                 }
+                foregroundStarted = true
             } catch (e: Exception) {
                 try {
                     startForeground(1, notification)
+                    foregroundStarted = true
                 } catch (_: Exception) {}
             }
         } else {
             startForeground(1, notification)
+            foregroundStarted = true
+        }
+
+        if (!foregroundStarted) {
+            // Foreground startup failed: do not claim continuous monitoring is running.
+            Log.e("NetraForegroundService", "startForeground failed; stopping instead of faking monitoring")
+            stopSelf(startId)
+            return START_NOT_STICKY
         }
 
         if (!isStarted) {
