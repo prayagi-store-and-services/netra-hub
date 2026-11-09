@@ -76,4 +76,9 @@ object SosLogic {
     }
 
     fun canTrigger(nowMs: Long, lastTriggerMs: Long): Boolean = lastTriggerMs <= 0L || nowMs - lastTriggerMs >= COOLDOWN_MS
+
+    const val MANUAL_HOLD_MS = 3000L  // press-and-hold time on the SOS button that starts the same cancel-first countdown as a shake
+
+    /** The manual button fires only after an unbroken hold of MANUAL_HOLD_MS; a tap or short press does nothing. */
+    fun manualHoldFires(heldMs: Long): Boolean = heldMs >= MANUAL_HOLD_MS
 }

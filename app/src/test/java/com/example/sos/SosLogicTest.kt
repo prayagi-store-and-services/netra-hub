@@ -72,3 +72,15 @@ class SosLogicTest {
         assertTrue(!SosLogic.smsBody("link", null, 150).contains("battery"))
     }
 }
+
+class SosManualHoldTest {
+    @Test fun tapOrShortPressNeverFires() {
+        org.junit.Assert.assertFalse(SosLogic.manualHoldFires(0L))
+        org.junit.Assert.assertFalse(SosLogic.manualHoldFires(1500L))
+        org.junit.Assert.assertFalse(SosLogic.manualHoldFires(SosLogic.MANUAL_HOLD_MS - 1))
+    }
+    @Test fun fullHoldFires() {
+        org.junit.Assert.assertTrue(SosLogic.manualHoldFires(SosLogic.MANUAL_HOLD_MS))
+        org.junit.Assert.assertTrue(SosLogic.manualHoldFires(SosLogic.MANUAL_HOLD_MS + 500))
+    }
+}

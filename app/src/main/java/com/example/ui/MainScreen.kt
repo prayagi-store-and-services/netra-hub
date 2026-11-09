@@ -149,6 +149,11 @@ fun MainScreen(
 ) {
     PermissionHandler()
 
+    // Startup splash (owner reference 9 Nov 2026): cosmetic only, fixed 1.2 s, hides no init failure.
+    var splashDone by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1200); splashDone = true }
+    if (!splashDone) { com.example.ui.screens.SplashScreen(); return }
+
     var selectedTab by remember { mutableStateOf(NavigationTab.DASHBOARD) }
     var showAuditScreen by remember { mutableStateOf(false) }
     var showPinChangeScreen by remember { mutableStateOf(false) }
@@ -462,10 +467,15 @@ fun MainScreen(
                             }
                         )
                         NavigationTab.ALERTS -> com.example.ui.screens.AlertsScreen(eventLogs = eventLogs)
-                        NavigationTab.REPORTS -> HistoryLogsContainerScreen(
-                            eventLogs = eventLogs,
-                            viewModel = viewModel
-                        )
+                        NavigationTab.REPORTS -> {
+                            // Journal read is small (<=500 entries) and re-read only when the tab opens.
+                            val drivingEntries = androidx.compose.runtime.remember(selectedTab) { com.example.driving.DrivingLog.list(context) }
+                            com.example.ui.screens.ReportsSummaryScreen(
+                                eventLogs = eventLogs,
+                                drivingEntries = drivingEntries,
+                                onOpenLogs = { selectedTab = NavigationTab.HISTORY_LOGS }
+                            )
+                        }
                         NavigationTab.DRIVING -> com.example.ui.screens.DrivingDetectionScreen(
                             onOpenSos = { selectedTab = NavigationTab.SOS }
                         )
