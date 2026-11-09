@@ -105,8 +105,8 @@ jobs:
           D=app/build/outputs/apk/release
           VNAME="$(sed -n 's/^ *versionName = "\(.*\)".*/\1/p' app/build.gradle.kts | head -1)"
           VCODE="$(sed -n 's/^ *versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -1)"
-          test "$VNAME" = "1.5.8"
-          test "$VCODE" = "84"
+          test "$VNAME" = "1.5.9"
+          test "$VCODE" = "85"
           test "$TAG" = "v$VNAME"
           # Named copy for people; stable app-release.apk name is consumed by Netra Ecosystem.
           NAMED="$D/netra-hub-$TAG.apk"
