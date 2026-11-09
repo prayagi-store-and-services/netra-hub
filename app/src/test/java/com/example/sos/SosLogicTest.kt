@@ -11,6 +11,23 @@ class SosLogicTest {
         val d = SosLogic.ShakeDetector()
         for (i in 0 until 100) assertFalse(d.onSample(0f, 0f, 9.81f, i * 20L))
     }
+    @Test fun singleHardShakeNeverTriggers() {
+        val d = SosLogic.ShakeDetector()
+        assertFalse(d.onSample(40f, 0f, 0f, 0L))
+        for (i in 1 until 100) assertFalse(d.onSample(0f, 0f, 9.81f, i * 20L))
+    }
+    @Test fun twoHardShakesNeverTrigger() {
+        val d = SosLogic.ShakeDetector()
+        assertFalse(d.onSample(40f, 0f, 0f, 0L))
+        assertFalse(d.onSample(-40f, 0f, 0f, 400L))
+        for (i in 30 until 100) assertFalse(d.onSample(0f, 0f, 9.81f, i * 20L))
+    }
+    @Test fun pocketJiggleBelowThresholdNeverTriggers() {
+        val d = SosLogic.ShakeDetector()
+        // Repeated moderate jolts under 2.7g must never add up to an SOS.
+        var t = 0L
+        repeat(200) { t += 100L; assertFalse(d.onSample(20f, 5f, 9.81f, t)) }
+    }
     @Test fun threeHardShakesTrigger() {
         val d = SosLogic.ShakeDetector()
         assertFalse(d.onSample(30f, 0f, 0f, 0L))
