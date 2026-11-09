@@ -1,3 +1,12 @@
+## 1.5.9 - Safety and reliability audit fixes
+
+- Official weather alerts survive outages: a SACHET/IMD feed failure, an unverified location or a check error no longer erases your last verified alert report. It stays until its own validity ends, and the app says "unavailable" instead of showing a false all-clear.
+- Removed a 15-minute background worker that had no alert feed connected and always reported "no feed" - official alerts keep coming from the real NDMA SACHET + IMD checks, with fewer wakeups.
+- The screen is no longer forced on. "Keep screen on" is now an opt-in switch in Settings (default off) to protect battery.
+- Location sampling adapts: frequent fixes while driving, slower fixes while not - driving detection keeps working in both.
+- The driving card now says plainly that the phone senses speed only and cannot tell whether you are driving or are a passenger.
+- Thermal settings text corrected: the value is the battery's own temperature, not the phone's exact internal temperature.
+
 ## 1.5.8 - Timely update notices, cleaner settings
 
 - Update checks now run at every app start and at most every 6 hours (was once a day), so a new version shows the in-app notice and notification the same day.
