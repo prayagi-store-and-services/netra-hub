@@ -145,7 +145,8 @@ class SosService : Service(), SensorEventListener {
 
     override fun onDestroy() {
         stopSiren(); sm?.unregisterListener(this); handler.removeCallbacksAndMessages(null); scope.cancel()
-        SosStore.setEnabled(this, false)
+        // Lifecycle teardown is not user intent: keep the saved SOS preference so a system
+        // kill or restart cannot silently switch off a feature the user enabled.
         super.onDestroy()
     }
 
