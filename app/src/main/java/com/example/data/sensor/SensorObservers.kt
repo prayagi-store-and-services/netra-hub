@@ -445,20 +445,35 @@ class SensorObservers(private val context: Context) {
             }
         }
         var updatesRequested = false
-        try {
-            val hasFine = androidx.core.content.ContextCompat.checkSelfPermission(
-                context, android.Manifest.permission.ACCESS_FINE_LOCATION
-            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            if (hasFine) {
-                val req = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5_000L).setMinUpdateIntervalMillis(3_000L).build()
+        var currentDriving: Boolean? = null
+        fun requestUpdates(driving: Boolean) {
+            try {
+                val hasFine = androidx.core.content.ContextCompat.checkSelfPermission(
+                    context, android.Manifest.permission.ACCESS_FINE_LOCATION
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                if (!hasFine) return
+                if (updatesRequested) fusedLocationClient.removeLocationUpdates(liveCallback)
+                // Adaptive sampling: frequent fixes while driving, slower fixes while not - but never wider
+                // than the speed gate's evidence gap, or driving detection would silently stop working.
+                val req = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, GpsAdaptivePolicy.intervalMs(driving))
+                    .setMinUpdateIntervalMillis(GpsAdaptivePolicy.minIntervalMs(driving)).build()
                 fusedLocationClient.requestLocationUpdates(req, liveCallback, Looper.getMainLooper())
                 updatesRequested = true
+                currentDriving = driving
+            } catch (_: Exception) {
             }
-        } catch (_: Exception) {
+        }
+        requestUpdates(com.example.data.sensor.DrivingState.driving.value)
+        // Re-request when driving mode flips so the interval actually adapts.
+        val drivingWatchJob = launch {
+            com.example.data.sensor.DrivingState.driving.collect { d ->
+                if (currentDriving != d) requestUpdates(d)
+            }
         }
 
         awaitClose {
             permissionPollerJob.cancel()
+            drivingWatchJob.cancel()
             if (updatesRequested) fusedLocationClient.removeLocationUpdates(liveCallback)
         }
     }
