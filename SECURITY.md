@@ -1,3 +1,7 @@
+## Unreleased - SOS profile encrypted at rest (NH-002)
+
+The SOS name, date of birth, blood group and emergency contacts are now stored AES-GCM encrypted under a device-only Android Keystore key instead of plaintext SharedPreferences; the on/off, crash-alert and last-trigger flags are not personal data and stay plaintext. Values saved by older versions migrate to the sealed form on first read. No data leaves the phone, no new permission, no new dependency, no server. Honest limits: if a device's Keystore is unusable the write falls back to the previous plaintext behaviour (warning logged) so the emergency path never breaks; a wiped or invalidated Keystore makes sealed values unreadable (they read back empty and can be re-entered).
+
 ## v1.5.8 - update notice cadence
 
 Presentation/cadence change only. Update checks remain metadata-only (one small GitHub releases read; artifact fields are never read, nothing downloads). Cadence rises to app start plus at most every 6 hours with the same backoff; the settings card hides update status unless a newer version verifies. The beta/testing disclaimer remains. No new permission, dependency, endpoint or stored data.
