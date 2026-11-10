@@ -6,15 +6,13 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import javax.crypto.KeyGenerator
 
 @RunWith(RobolectricTestRunner::class)
 class SosCryptoTest {
     private fun key(id: Int = 1): javax.crypto.SecretKey {
         // Deterministic software AES keys for the pure-JVM crypto path (device uses Android Keystore).
-        val kg = KeyGenerator.getInstance("AES")
-        kg.init(128, java.security.SecureRandom(byteArrayOf(id.toByte())))
-        return kg.generateKey()
+        // Seeded SecureRandom is NOT deterministic on Android's Conscrypt provider, so derive bytes directly.
+        return javax.crypto.spec.SecretKeySpec(ByteArray(16) { (id * 31 + it).toByte() }, "AES")
     }
 
     @Test fun roundtripPlainAscii() {
