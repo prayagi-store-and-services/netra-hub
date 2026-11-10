@@ -1,3 +1,8 @@
+## 1.5.10 - Reliability fixes
+
+- If background monitoring cannot start (for example right after a restart), the app now says so and stops instead of claiming it is monitoring while nothing is running.
+- A system stop or restart no longer silently switches off SOS: the setting you chose is kept.
+
 ## 1.5.9 - Safety and reliability audit fixes
 
 - Official weather alerts survive outages: a SACHET/IMD feed failure, an unverified location or a check error no longer erases your last verified alert report. It stays until its own validity ends, and the app says "unavailable" instead of showing a false all-clear.
