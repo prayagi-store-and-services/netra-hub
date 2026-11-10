@@ -94,7 +94,7 @@ jobs:
           name: signed-release-candidate
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 3
       - name: Stage draft release
         env:
           GH_TOKEN: ${{ github.token }}
