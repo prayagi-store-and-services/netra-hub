@@ -92,18 +92,43 @@ import com.example.ui.theme.BentoTextPrimary
 import com.example.ui.theme.BentoTextSecondary
 import com.example.ui.theme.BentoRed
 import com.example.ui.theme.BentoAmber
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Waves
+import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.ArrowBack
 
 enum class NavigationTab(val title: String, val icon: ImageVector) {
-    DASHBOARD("Home", Icons.Default.Dashboard),
+    // Bottom bar (per the owner's reference): Home, Alerts, Reports, Settings.
+    DASHBOARD("Home", Icons.Default.Home),
+    ALERTS("Alerts", Icons.Default.Notifications),
+    REPORTS("Reports", Icons.Default.Assessment),
+    SETTINGS("Settings", Icons.Default.Settings),
+    // Feature screens, reached from the Home grid with a back header.
+    DRIVING("Driving Detection", Icons.Default.DirectionsCar),
+    WEATHER("Weather Intelligence", Icons.Default.Cloud),
+    EARTHQUAKE("Earthquake Network", Icons.Default.Waves),
+    DEVICE_SAFETY("Device Safety", Icons.Default.PhoneAndroid),
+    SOS("SOS & Emergency", Icons.Default.Warning),
+    // Existing tools, kept reachable from Home > Advanced tools.
     SENSOR_CENTER("Sensors", Icons.Default.Sensors),
     LIVE_GRAPH("Graph", Icons.Default.Timeline),
     HISTORY_LOGS("Logs", Icons.Default.Analytics),
     SERVICE_MANAGER("Service", Icons.Default.Hub),
-    SETTINGS("Settings", Icons.Default.Settings),
-    /** Opened from the header button, not shown in the bottom bar. */
-    TRAVEL_CHECK("Travel Checking", Icons.Default.Videocam),
-    SOS("SOS shake", Icons.Default.Warning)
+    LEGACY_DASHBOARD("Status", Icons.Default.Dashboard),
+    TRAVEL_CHECK("Travel Checking", Icons.Default.Videocam)
 }
+
+/** Tabs shown in the bottom navigation bar; everything else gets a back header. */
+private val BOTTOM_TABS = setOf(
+    NavigationTab.DASHBOARD,
+    NavigationTab.ALERTS,
+    NavigationTab.REPORTS,
+    NavigationTab.SETTINGS
+)
 
 @Composable
 fun GeminiSummaryCard(viewModel: MainViewModel) {
@@ -123,6 +148,11 @@ fun MainScreen(
     modifier: Modifier = Modifier
 ) {
     PermissionHandler()
+
+    // Startup splash (owner reference 9 Nov 2026): cosmetic only, fixed 1.2 s, hides no init failure.
+    var splashDone by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1200); splashDone = true }
+    if (!splashDone) { com.example.ui.screens.SplashScreen(); return }
 
     var selectedTab by remember { mutableStateOf(NavigationTab.DASHBOARD) }
     var showAuditScreen by remember { mutableStateOf(false) }
@@ -212,7 +242,7 @@ fun MainScreen(
                     .border(androidx.compose.foundation.BorderStroke(1.dp, BentoBorder))
                     .navigationBarsPadding()
             ) {
-                NavigationTab.entries.filter { it != NavigationTab.TRAVEL_CHECK && it != NavigationTab.SOS }.forEach { tab ->
+                NavigationTab.entries.filter { it in BOTTOM_TABS }.forEach { tab ->
                     val isCritical = viewModel.systemSafetyStatus.collectAsStateWithLifecycle().value == com.example.data.engine.IntelligentSafetyStatusEngine.SystemSafetyStatus.CRITICAL
                     val showIndicator = isCritical && tab == NavigationTab.DASHBOARD
                     
@@ -304,9 +334,77 @@ fun MainScreen(
                     onBack = { showAuditScreen = false }
                 )
             } else {
+                Column(modifier = Modifier.fillMaxSize()) {
+                if (selectedTab !in BOTTOM_TABS) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { selectedTab = NavigationTab.DASHBOARD }, modifier = Modifier.testTag("feature_back")) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = BentoTextPrimary)
+                        }
+                        Text(text = selectedTab.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = BentoTextPrimary)
+                    }
+                }
                 Box(modifier = Modifier.fillMaxSize()) {
                     when (selectedTab) {
-                        NavigationTab.DASHBOARD -> DashboardScreen(
+                        NavigationTab.DASHBOARD -> com.example.ui.screens.HomeDashboardScreen(
+                            fusionState = fusionState,
+                            viewModel = viewModel,
+                            destinations = com.example.ui.screens.HomeDestinations(
+                                onDriving = { selectedTab = NavigationTab.DRIVING },
+                                onWeather = { selectedTab = NavigationTab.WEATHER },
+                                onEarthquake = { selectedTab = NavigationTab.EARTHQUAKE },
+                                onSos = { selectedTab = NavigationTab.SOS },
+                                onDeviceSafety = { selectedTab = NavigationTab.DEVICE_SAFETY },
+                                onSystemHealth = { showAuditScreen = true },
+                                onSensors = { selectedTab = NavigationTab.SENSOR_CENTER },
+                                onGraph = { selectedTab = NavigationTab.LIVE_GRAPH },
+                                onService = { selectedTab = NavigationTab.SERVICE_MANAGER },
+                                onStatus = { selectedTab = NavigationTab.LEGACY_DASHBOARD }
+                            ),
+                            headerContent = {
+                                PermanentLiveStatusHeader(
+                                    viewModel = viewModel,
+                                    location = officialLocation,
+                                    warning = officialWarning,
+                                    warningOnly = false
+                                )
+                                GeminiSummaryCard(viewModel)
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    androidx.compose.material3.TextButton(
+                                        onClick = { selectedTab = if (selectedTab == NavigationTab.SOS) NavigationTab.DASHBOARD else NavigationTab.SOS },
+                                        modifier = Modifier.testTag("header_sos")
+                                    ) {
+                                        Text(text = "SOS setup", color = BentoGreenPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                    }
+                                    androidx.compose.material3.TextButton(
+                                        onClick = {
+                                            shareScope.launch {
+                                                val info = shareLocationManager.refreshLocation()
+                                                val msg = com.example.share.LocationShare.message(info.latitude, info.longitude, info.accuracy, info.timestamp)
+                                                if (msg == null) {
+                                                    android.widget.Toast.makeText(context, "Location Unavailable - turn on location and allow it, then try again", android.widget.Toast.LENGTH_LONG).show()
+                                                } else {
+                                                    val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, msg) }
+                                                    context.startActivity(Intent.createChooser(send, "Share my location"))
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.testTag("header_share_location")
+                                    ) {
+                                        Text(text = "Share location", color = BentoGreenPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                    }
+                                    androidx.compose.material3.TextButton(
+                                        onClick = { selectedTab = NavigationTab.TRAVEL_CHECK },
+                                        modifier = Modifier.testTag("header_travel_checking")
+                                    ) {
+                                        Text(text = "Travel Checking", color = BentoGreenPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                    }
+                                }
+                            }
+                        )
+                        NavigationTab.LEGACY_DASHBOARD -> DashboardScreen(
                             capabilities = capabilities,
                             fusionState = fusionState,
                             riskAnalysis = riskAnalysis,
@@ -367,6 +465,27 @@ fun MainScreen(
                                 }
                                 }
                             }
+                        )
+                        NavigationTab.ALERTS -> com.example.ui.screens.AlertsScreen(eventLogs = eventLogs)
+                        NavigationTab.REPORTS -> {
+                            // Journal read is small (<=500 entries) and re-read only when the tab opens.
+                            val drivingEntries = androidx.compose.runtime.remember(selectedTab) { com.example.driving.DrivingLog.list(context) }
+                            com.example.ui.screens.ReportsSummaryScreen(
+                                eventLogs = eventLogs,
+                                drivingEntries = drivingEntries,
+                                onOpenLogs = { selectedTab = NavigationTab.HISTORY_LOGS }
+                            )
+                        }
+                        NavigationTab.DRIVING -> com.example.ui.screens.DrivingDetectionScreen(
+                            onOpenSos = { selectedTab = NavigationTab.SOS }
+                        )
+                        NavigationTab.WEATHER -> com.example.ui.screens.WeatherIntelligenceScreen()
+                        NavigationTab.EARTHQUAKE -> com.example.ui.screens.EarthquakeNetworkScreen()
+                        NavigationTab.DEVICE_SAFETY -> com.example.ui.screens.DeviceSafetyScreen(
+                            fusionState = fusionState,
+                            thermalThresholdC = thermalThresholdC,
+                            sensorsWorking = sensorDiagnostics.count { !it.isStale && !it.isInvalid && !it.isFaulty },
+                            sensorsTotal = sensorDiagnostics.size
                         )
                         NavigationTab.SENSOR_CENTER -> SensorCenterContainerScreen(
                             capabilities = capabilities,
@@ -469,6 +588,7 @@ fun MainScreen(
                             }
                         )
                     }
+                }
                 }
             }
         }
