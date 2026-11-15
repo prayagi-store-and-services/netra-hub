@@ -89,7 +89,7 @@ jobs:
           # app-release.apk decoded: code77; cert SHA256 independently extracted 26 Oct 2026.
           # A future release must explicitly review and advance this guard, never change signing identity.
       - name: Upload signed candidate for audit
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: signed-release-candidate
           path: app/build/outputs/apk/release/app-release.apk
