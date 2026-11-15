@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.media.AudioManager
 import android.speech.tts.TextToSpeech
+import com.example.util.MediaPlaybackGuard
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -48,7 +49,7 @@ object JayMataDi {
             if (!due(System.currentTimeMillis(), prefs.getBoolean(KEY, false))) return
             if (false) return
             val am = activity.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
-            if (!audible(am.ringerMode == AudioManager.RINGER_MODE_NORMAL, am.getStreamVolume(AudioManager.STREAM_MUSIC), am.isMusicActive)) return
+            if (!audible(am.ringerMode == AudioManager.RINGER_MODE_NORMAL, am.getStreamVolume(AudioManager.STREAM_MUSIC), MediaPlaybackGuard.isMediaPlaying(activity))) return
             prefs.edit().putBoolean(KEY, true).apply()
             Toast.makeText(activity, "Jay Mata Di", Toast.LENGTH_LONG).show()
             val appCtx = activity.applicationContext
@@ -65,6 +66,8 @@ object JayMataDi {
                     engine.language = Locale.US
                     text = "Jay Mata Di"
                 }
+                // Media may have started while the engine initialised: skip instead of interrupting.
+                if (MediaPlaybackGuard.isMediaPlaying(appCtx)) { engine.shutdown(); return@TextToSpeech }
                 engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "jay_mata_di")
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ engine.shutdown() }, 6000)
             }

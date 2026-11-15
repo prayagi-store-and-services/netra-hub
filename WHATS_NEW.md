@@ -1,3 +1,7 @@
+## 1.5.11 - Announcements no longer interrupt your media
+
+- When a video, song or any other media is playing, spoken announcements are now skipped instead of cutting in. Your media is never paused, ducked or taken over by the app.
+
 ## 1.5.10 - Reliability fixes
 
 - If background monitoring cannot start (for example right after a restart), the app now says so and stops instead of claiming it is monitoring while nothing is running.

@@ -12,6 +12,7 @@ import android.os.Handler
 import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import com.example.util.MediaPlaybackGuard
 import java.util.Locale
 
 /**
@@ -20,9 +21,11 @@ import java.util.Locale
  * Do Not Disturb in its default and "alarms only" modes. No app can override alarm volume zero or
  * a DND mode that blocks alarms; limitsStatus() says so honestly. Without a TTS voice the phone's
  * alarm ringtone plays instead. Controlled by a user-visible toggle (default ON).
- * Standing ecosystem rule (19 Oct 2026): while an announcement plays, other media must pause (audio
- * focus, not mute) and resume when it ends. Focus is requested before playback and abandoned when the
- * utterance finishes, errors, or the watchdog fires - never held open.
+ * Standing rule (Deepak, 15 Nov 2026): when any media (video/audio) is playing, the announcement is
+ * SKIPPED - never interrupt, pause, duck or request audio focus over the user's media. The detector
+ * fails closed (unsure means skip) and is consulted at admission and again right before playback.
+ * Focus is requested only when no media is detected, and abandoned when the utterance finishes,
+ * errors, or the watchdog fires - never held open.
  */
 object OfficialAlertAnnouncer {
     const val PREFS = "official_alert_announcer"
@@ -135,6 +138,7 @@ object OfficialAlertAnnouncer {
             am?.getStreamVolume(AudioManager.STREAM_ALARM) ?: 1
         )
         if (limit != null) return "Test announcement could not play. $limit"
+        if (MediaPlaybackGuard.isMediaPlaying(context)) return "Test announcement skipped: other media is playing."
         Handler(Looper.getMainLooper()).post { speak(context, TEST_TEXT) }
         return "Playing a test announcement now. It is only a test."
     }
@@ -149,6 +153,7 @@ object OfficialAlertAnnouncer {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
         val limit = limitsText(nm?.currentInterruptionFilter ?: NotificationManager.INTERRUPTION_FILTER_ALL, am?.getStreamVolume(AudioManager.STREAM_ALARM) ?: 1)
         if (limit != null) return limit
+        if (MediaPlaybackGuard.isMediaPlaying(context)) return "Announcement skipped: other media is playing."
         Handler(Looper.getMainLooper()).post { speak(context, text, utteranceId, onComplete) }
         return null
     }
@@ -170,6 +175,7 @@ object OfficialAlertAnnouncer {
             am?.getStreamVolume(AudioManager.STREAM_ALARM) ?: 1
         )
         if (limit != null) return // the honest limit is shown on the status card; nothing can override it
+        if (MediaPlaybackGuard.isMediaPlaying(context)) return // media playing: skip, never interrupt
         val text = announcementText(category, event, headline, areaDesc)
         // TextToSpeech needs a Looper; workers run on plain background threads.
         Handler(Looper.getMainLooper()).post { speak(context, text) }
@@ -261,6 +267,10 @@ object OfficialAlertAnnouncer {
                         val engine = engineRef
                         val lang = if (status == TextToSpeech.SUCCESS) engine?.setLanguage(Locale.ENGLISH) else null
                         if (engine == null || lang == null || lang == TextToSpeech.LANG_MISSING_DATA || lang == TextToSpeech.LANG_NOT_SUPPORTED) {
+                            if (MediaPlaybackGuard.isMediaPlaying(app)) {
+                                finishOnMain(false, "skipped: media is playing")
+                                return@init
+                            }
                             val fallbackAttrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
                                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
                             focus = acquireNoticeFocus(am, fallbackAttrs)
@@ -273,6 +283,11 @@ object OfficialAlertAnnouncer {
                                 watchdog = timer
                                 handler.postDelayed(timer, 8_000L)
                             }
+                            return@init
+                        }
+                        // Media may have started while the engine initialised: skip rather than interrupt.
+                        if (MediaPlaybackGuard.isMediaPlaying(app)) {
+                            finishOnMain(false, "skipped: media is playing")
                             return@init
                         }
                         val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
