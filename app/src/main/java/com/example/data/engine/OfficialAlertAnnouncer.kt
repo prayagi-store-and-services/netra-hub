@@ -21,11 +21,15 @@ import java.util.Locale
  * Do Not Disturb in its default and "alarms only" modes. No app can override alarm volume zero or
  * a DND mode that blocks alarms; limitsStatus() says so honestly. Without a TTS voice the phone's
  * alarm ringtone plays instead. Controlled by a user-visible toggle (default ON).
- * Standing rule (Deepak, 15 Nov 2026): when any media (video/audio) is playing, the announcement is
- * SKIPPED - never interrupt, pause, duck or request audio focus over the user's media. The detector
- * fails closed (unsure means skip) and is consulted at admission and again right before playback.
- * Focus is requested only when no media is detected, and abandoned when the utterance finishes,
- * errors, or the watchdog fires - never held open.
+ * Standing rule (Deepak, 15 Nov 2026): when any media (video/audio) is playing, announcements are
+ * SKIPPED - never interrupt, pause, duck or request audio focus over the user's media. EXEMPTION
+ * (owner decision, 15 Nov 2026 16:03 IST): official disaster/emergency alerts only - the NDMA SACHET
+ * and USGS earthquake announcements through announce() - may still speak while media plays, so a
+ * verified emergency warning is never silenced by a song or video. Every other announcement (spoken
+ * notices, driving on/off and test lines) skips. The detector fails closed (unsure means skip) and
+ * is consulted at admission and again right before playback. Focus is requested only when no media
+ * is detected or the alert is exempt, and abandoned when the utterance finishes, errors, or the
+ * watchdog fires - never held open.
  */
 object OfficialAlertAnnouncer {
     const val PREFS = "official_alert_announcer"
@@ -54,11 +58,18 @@ object OfficialAlertAnnouncer {
      * a quake/SACHET alert) and plays exactly once, in arrival order; nothing is ever superseded or dropped
      * here. The queue is unbounded by design: dropping a safety announcement is worse than queueing it. */
     private val speakBusy = java.util.concurrent.atomic.AtomicBoolean(false)
-    private data class QueuedSpeak(val context: Context, val text: String, val utteranceId: String, val onComplete: ((Boolean, String?) -> Unit)?)
+    private data class QueuedSpeak(val context: Context, val text: String, val utteranceId: String, val onComplete: ((Boolean, String?) -> Unit)?, val exemptFromMediaSkip: Boolean)
     private val speakQueue = java.util.concurrent.LinkedBlockingQueue<QueuedSpeak>()
 
+    /** Media-playing detection, swappable in tests. Production uses the fail-closed MediaPlaybackGuard. */
+    internal var mediaPlayingProbe: (Context) -> Boolean = { MediaPlaybackGuard.isMediaPlaying(it) }
+
     @androidx.annotation.VisibleForTesting
-    internal fun resetAnnouncerForTests() { speakBusy.set(false); speakQueue.clear() }
+    internal fun resetAnnouncerForTests() {
+        speakBusy.set(false)
+        speakQueue.clear()
+        mediaPlayingProbe = { MediaPlaybackGuard.isMediaPlaying(it) }
+    }
     const val KEY_ENABLED = "announce_enabled"
 
     /** Official categories only. Anything else never announces. */
@@ -138,7 +149,7 @@ object OfficialAlertAnnouncer {
             am?.getStreamVolume(AudioManager.STREAM_ALARM) ?: 1
         )
         if (limit != null) return "Test announcement could not play. $limit"
-        if (MediaPlaybackGuard.isMediaPlaying(context)) return "Test announcement skipped: other media is playing."
+        if (mediaPlayingProbe(context)) return "Test announcement skipped: other media is playing."
         Handler(Looper.getMainLooper()).post { speak(context, TEST_TEXT) }
         return "Playing a test announcement now. It is only a test."
     }
@@ -153,7 +164,7 @@ object OfficialAlertAnnouncer {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
         val limit = limitsText(nm?.currentInterruptionFilter ?: NotificationManager.INTERRUPTION_FILTER_ALL, am?.getStreamVolume(AudioManager.STREAM_ALARM) ?: 1)
         if (limit != null) return limit
-        if (MediaPlaybackGuard.isMediaPlaying(context)) return "Announcement skipped: other media is playing."
+        if (mediaPlayingProbe(context)) return "Announcement skipped: other media is playing."
         Handler(Looper.getMainLooper()).post { speak(context, text, utteranceId, onComplete) }
         return null
     }
@@ -175,25 +186,26 @@ object OfficialAlertAnnouncer {
             am?.getStreamVolume(AudioManager.STREAM_ALARM) ?: 1
         )
         if (limit != null) return // the honest limit is shown on the status card; nothing can override it
-        if (MediaPlaybackGuard.isMediaPlaying(context)) return // media playing: skip, never interrupt
+        // EXEMPT from the media-skip rule (owner decision, 15 Nov 2026 16:03 IST): official
+        // disaster/emergency alerts may speak even while media plays.
         val text = announcementText(category, event, headline, areaDesc)
         // TextToSpeech needs a Looper; workers run on plain background threads.
-        Handler(Looper.getMainLooper()).post { speak(context, text) }
+        Handler(Looper.getMainLooper()).post { speak(context, text, exemptFromMediaSkip = true) }
     }
 
-    private fun speak(context: Context, text: String, utteranceId: String = "official_alert", onComplete: ((Boolean, String?) -> Unit)? = null) {
+    private fun speak(context: Context, text: String, utteranceId: String = "official_alert", onComplete: ((Boolean, String?) -> Unit)? = null, exemptFromMediaSkip: Boolean = false) {
         val app = context.applicationContext
         // Single-owner rule: every transition happens on the main loop. Anything else is re-posted.
         if (Looper.myLooper() != Looper.getMainLooper()) {
-            Handler(Looper.getMainLooper()).post { speak(context, text, utteranceId, onComplete) }
+            Handler(Looper.getMainLooper()).post { speak(context, text, utteranceId, onComplete, exemptFromMediaSkip) }
             return
         }
         // One announcement at a time: a busy one keeps playing, later requests queue in FIFO order.
         if (speakBusy.get()) {
-            speakQueue.offer(QueuedSpeak(app, text, utteranceId, onComplete))
+            speakQueue.offer(QueuedSpeak(app, text, utteranceId, onComplete, exemptFromMediaSkip))
             return
         }
-        startSpeakOnMain(app, text, utteranceId, onComplete)
+        startSpeakOnMain(app, text, utteranceId, onComplete, exemptFromMediaSkip)
         return
     }
 
@@ -217,7 +229,7 @@ object OfficialAlertAnnouncer {
     /** Runs on the main loop only; keeps the busy flag held through the whole utterance lifetime and hands
      * it directly to the next queued request on completion, so a reentrant speak from inside onComplete
      * always lands BEHIND the already-queued work. */
-    private fun startSpeakOnMain(app: Context, text: String, utteranceId: String, onComplete: ((Boolean, String?) -> Unit)?) {
+    private fun startSpeakOnMain(app: Context, text: String, utteranceId: String, onComplete: ((Boolean, String?) -> Unit)?, exemptFromMediaSkip: Boolean) {
         speakBusy.set(true)
         val handler = Handler(Looper.getMainLooper())
         val am = amOf(app)
@@ -242,7 +254,7 @@ object OfficialAlertAnnouncer {
             val next = speakQueue.poll()
             if (next == null) speakBusy.set(false)
             try { onComplete?.invoke(ok, error) } catch (_: Exception) { }
-            if (next != null) startSpeakOnMain(next.context, next.text, next.utteranceId, next.onComplete)
+            if (next != null) startSpeakOnMain(next.context, next.text, next.utteranceId, next.onComplete, next.exemptFromMediaSkip)
         }
         fun armWatchdog(message: String) {
             watchdog?.let { handler.removeCallbacks(it) }
@@ -267,7 +279,7 @@ object OfficialAlertAnnouncer {
                         val engine = engineRef
                         val lang = if (status == TextToSpeech.SUCCESS) engine?.setLanguage(Locale.ENGLISH) else null
                         if (engine == null || lang == null || lang == TextToSpeech.LANG_MISSING_DATA || lang == TextToSpeech.LANG_NOT_SUPPORTED) {
-                            if (MediaPlaybackGuard.isMediaPlaying(app)) {
+                            if (!exemptFromMediaSkip && mediaPlayingProbe(app)) {
                                 finishOnMain(false, "skipped: media is playing")
                                 return@init
                             }
@@ -286,7 +298,7 @@ object OfficialAlertAnnouncer {
                             return@init
                         }
                         // Media may have started while the engine initialised: skip rather than interrupt.
-                        if (MediaPlaybackGuard.isMediaPlaying(app)) {
+                        if (!exemptFromMediaSkip && mediaPlayingProbe(app)) {
                             finishOnMain(false, "skipped: media is playing")
                             return@init
                         }

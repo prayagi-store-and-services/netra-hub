@@ -1,6 +1,7 @@
 ## 1.5.11 - Announcements no longer interrupt your media
 
 - When a video, song or any other media is playing, spoken announcements are now skipped instead of cutting in. Your media is never paused, ducked or taken over by the app.
+- Official disaster alerts (earthquakes and government emergency warnings) still speak even while media plays - deliberately, so a real warning is never missed.
 
 ## 1.5.10 - Reliability fixes
 
