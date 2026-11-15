@@ -255,4 +255,64 @@ class OfficialAlertAnnouncerTest {
         org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
         assertEquals(1, fake.spoken.size)
     }
+
+    // Media-skip exemption (owner decision, 15 Nov 2026 16:03 IST): official disaster alerts may
+    // speak while media plays; every other announcement skips. Both sides tested with the probe.
+
+    @Test fun quakeAlertSpeaksWhileMediaPlays() {
+        OfficialAlertAnnouncer.setEnabled(ctx, true)
+        OfficialAlertAnnouncer.mediaPlayingProbe = { true }
+        val res = results()
+        OfficialAlertAnnouncer.announce(ctx, "quake", "ev1", "M5.1 near Test City", "Test Area")
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(1, fake.spoken.size)
+        fake.listener?.onDone("official_alert")
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+    }
+
+    @Test fun sachetAlertSpeaksWhileMediaPlays() {
+        OfficialAlertAnnouncer.setEnabled(ctx, true)
+        OfficialAlertAnnouncer.mediaPlayingProbe = { true }
+        OfficialAlertAnnouncer.announce(ctx, "sachet", "ev2", "Severe weather warning", "Test District")
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(1, fake.spoken.size)
+    }
+
+    @Test fun noticeSkippedWhileMediaPlays() {
+        OfficialAlertAnnouncer.mediaPlayingProbe = { true }
+        val res = results()
+        val limit = OfficialAlertAnnouncer.speakNotice(ctx, "hello", "m1") { ok, err -> res.add(ok to err) }
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals("Announcement skipped: other media is playing.", limit)
+        assertTrue(fake.spoken.isEmpty())
+        assertTrue(res.isEmpty())
+    }
+
+    @Test fun testAnnouncementSkippedWhileMediaPlays() {
+        OfficialAlertAnnouncer.mediaPlayingProbe = { true }
+        val msg = OfficialAlertAnnouncer.sendTestAnnouncement(ctx)
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals("Test announcement skipped: other media is playing.", msg)
+        assertTrue(fake.spoken.isEmpty())
+    }
+
+    @Test fun mediaStartingDuringInitSkipsNoticeButNotOfficialAlert() {
+        // Admission passes with no media; media starts before the async init callback speaks.
+        var playing = false
+        OfficialAlertAnnouncer.mediaPlayingProbe = { playing }
+        val res = results()
+        OfficialAlertAnnouncer.speakNotice(ctx, "hello", "m2") { ok, err -> res.add(ok to err) }
+        playing = true
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(fake.spoken.isEmpty())
+        assertEquals(listOf(false to "skipped: media is playing"), res)
+
+        // The exempt official path still speaks in the same situation.
+        OfficialAlertAnnouncer.setEnabled(ctx, true)
+        playing = false
+        OfficialAlertAnnouncer.announce(ctx, "quake", "ev3", "M4.9 near Test City", "Test Area")
+        playing = true
+        org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(1, fake.spoken.size)
+    }
 }

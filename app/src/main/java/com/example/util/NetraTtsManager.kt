@@ -88,9 +88,15 @@ class NetraTtsManager(private val context: Context) : TextToSpeech.OnInitListene
             return // Silently drop prohibited battery voice announcements
         }
 
-        // Never speak into a phone call. Media is NOT suppressed here: the standing ecosystem rule
-        // (19 Oct 2026) is that other media pauses via audio focus while we speak, then resumes.
+        // Never speak into a phone call.
         if (isCallActive()) {
+            return
+        }
+
+        // Standing rule (Deepak, 15 Nov 2026): while any media (video/audio) plays, every
+        // announcement is SKIPPED - we never interrupt, pause, duck or request audio focus
+        // over the user's media. Fail-closed detector: when unsure, skip.
+        if (MediaPlaybackGuard.isMediaPlaying(context)) {
             return
         }
 
@@ -105,6 +111,11 @@ class NetraTtsManager(private val context: Context) : TextToSpeech.OnInitListene
         val params = android.os.Bundle()
         params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, id)
         val mode = if (isCriticalSafety) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
+        // Re-checked immediately before speaking (and before any focus request): media that
+        // started while this announcement was being admitted also wins.
+        if (MediaPlaybackGuard.isMediaPlaying(context)) {
+            return
+        }
         val focus = requestSpeechFocus()
         pendingFocus[id] = focus
         if (focus == null) tts?.speak(message, mode, params, id) else {
