@@ -1,0 +1,2152 @@
+[
+  {
+    "id": 422922758,
+    "tag_name": "v1.5.1",
+    "name": "v1.5.1",
+    "body": "Adds a persistent, explicit sensor-monitoring pause and guards boot, charging and recovery paths from restarting paused monitoring. Shared power-policy changes reduce source-level sensor restart and sampling waste; driving GPS cadence and thresholds stay unchanged. SOS shake and official-alert checks remain separate. Human Safety downloads, update checks and installer handoff stay paused with the heat/battery advisory. This release does not establish that the reported heat or battery drain is fixed: do not install or use Human Safety until a verified fix is approved. CI and native renders passed; physical-device heat and battery improvement are not verified. The activity screen-awake flag remains unchanged. Stability/quarantine change, not a security patch.",
+    "target_commitish": "02508d411cc3f9be07d9cda25c49bd0f698df25f",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 673051336,
+        "name": "app-release.apk",
+        "size": 4439483,
+        "digest": "sha256:718cf97020d88d52ca477fc73a7019f2d0809662a32fa064fefc005adb87bb5d"
+      },
+      {
+        "id": 673051335,
+        "name": "latest.json",
+        "size": 950,
+        "digest": "sha256:47a8c8c2a480c4ba332aa43d5b961f01e835b38873f582b0a3d60074ca655a02"
+      },
+      {
+        "id": 673051337,
+        "name": "netra-hub-v1.5.1.apk",
+        "size": 4439483,
+        "digest": "sha256:718cf97020d88d52ca477fc73a7019f2d0809662a32fa064fefc005adb87bb5d"
+      }
+    ]
+  },
+  {
+    "id": 422272803,
+    "tag_name": "v1.5.0",
+    "name": "v1.5.0",
+    "body": "- Choose a saved area or current location for automatic official alerts.\r\n- Saved-area checks reuse the place stored on your phone; automatic earthquake matching filters the public USGS feed locally.\r\n- Update or clear the saved area when you move.\r\n- Changing area starts separate alert tracking; already queued alerts may still arrive.\r\n- Manual Check now still sends coordinates to USGS.\r\n- Android may delay alerts; this is not early warning.\r\n- Physical-device/GPS/TTS/Doze testing is pending.",
+    "target_commitish": "bb66869a74764e07b39666bd6eb3a2645b0c5c1b",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 670286753,
+        "name": "app-release.apk",
+        "size": 4439483,
+        "digest": "sha256:72fc7113fe293145691d0a4a4866191bdfe0296ca9721b8f6f5fce6e4fb8944e"
+      },
+      {
+        "id": 670286752,
+        "name": "latest.json",
+        "size": 661,
+        "digest": "sha256:8d83723b6c36c12c6ec481bce12d14ab53ea394ad647c8424a39f6f75dcb390a"
+      },
+      {
+        "id": 670286746,
+        "name": "netra-hub-v1.5.0.apk",
+        "size": 4439483,
+        "digest": "sha256:72fc7113fe293145691d0a4a4866191bdfe0296ca9721b8f6f5fce6e4fb8944e"
+      }
+    ]
+  },
+  {
+    "id": 422021202,
+    "tag_name": "v1.4.32",
+    "name": "v1.4.32",
+    "body": "Temporary pause of automatic driving ON/OFF announcements. Other repair work continues; battery-drain improvement and physical-device verification are not claimed.",
+    "target_commitish": "7c382e58408f574cc5bf14bde33784ce84a99328",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 669585701,
+        "name": "app-release.apk",
+        "size": 4439483,
+        "digest": "sha256:91f81452081fe4ba5aff37d4fb311901f023240997371204f0b9b868e1ba6d04"
+      },
+      {
+        "id": 669585709,
+        "name": "latest.json",
+        "size": 348,
+        "digest": "sha256:f813a562a15f05ef6d3040fa5a91a5c1a2342e35c4ccbfde8e07cf637a822861"
+      },
+      {
+        "id": 669585708,
+        "name": "netra-hub-v1.4.32.apk",
+        "size": 4439483,
+        "digest": "sha256:91f81452081fe4ba5aff37d4fb311901f023240997371204f0b9b868e1ba6d04"
+      }
+    ]
+  },
+  {
+    "id": 421693837,
+    "tag_name": "v1.4.31",
+    "name": "v1.4.31",
+    "body": "Crash report consent: the Crash report card and its preview now name the destination - developer email via the FormSubmit service - before you tap Send. Sending still happens only when you choose it.",
+    "target_commitish": "198234dc1a3c57c12bb2af5f206eccfccdad504e",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 668727641,
+        "name": "app-release.apk",
+        "size": 4423095,
+        "digest": "sha256:c57418a04c7fb08417485224bc7264d6a865e44bb17fc3c77884c938a9ed0ac4"
+      },
+      {
+        "id": 668727637,
+        "name": "latest.json",
+        "size": 384,
+        "digest": "sha256:90885ed7e355add8aa045423210e15c492e0f3906ba4167c20db2753079705c0"
+      },
+      {
+        "id": 668727640,
+        "name": "netra-hub-v1.4.31.apk",
+        "size": 4423095,
+        "digest": "sha256:c57418a04c7fb08417485224bc7264d6a865e44bb17fc3c77884c938a9ed0ac4"
+      }
+    ]
+  },
+  {
+    "id": 421598971,
+    "tag_name": "v1.4.30",
+    "name": "v1.4.30",
+    "body": "Crash reports now stay on your phone until you choose to send them: after a crash, open the Crash report card, review exactly what will be sent and where, then tap Send. Nothing is uploaded automatically. Improvements and bug fixes.",
+    "target_commitish": "9f1f212a76ae57087ba6e3cff35abf27d3b65ffb",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 668459990,
+        "name": "app-release.apk",
+        "size": 4423095,
+        "digest": "sha256:4c5c03e4619b880c7a07b88659713e76dc1ab812c596c31185870be07a5f4e16"
+      },
+      {
+        "id": 668459987,
+        "name": "latest.json",
+        "size": 417,
+        "digest": "sha256:84dbcbd03743d73c78b8f022e769c8a01ff1e5b534ed53c97584b14864188ab0"
+      },
+      {
+        "id": 668459989,
+        "name": "netra-hub-v1.4.30.apk",
+        "size": 4423095,
+        "digest": "sha256:4c5c03e4619b880c7a07b88659713e76dc1ab812c596c31185870be07a5f4e16"
+      }
+    ]
+  },
+  {
+    "id": 420746463,
+    "tag_name": "v1.4.29",
+    "name": "v1.4.29",
+    "body": "- Fixed: a rare crash (NoSuchElementException) when the app read its live data list at the same moment it was being updated. The list is now copied safely.",
+    "target_commitish": "534f03f15a44cbf118d09227d1d746f74dfcb480",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 665937882,
+        "name": "app-release.apk",
+        "size": 4423099,
+        "digest": "sha256:ec54c37a4f3867b3e51bf12e81d124ca5b1fb3613d2c2038699a9b8c4d472c6b"
+      },
+      {
+        "id": 665937881,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:199681ed5f57bd15b095abb99f1a5d50ba6d1ca951307ff0b7ab2015eb0172c0"
+      },
+      {
+        "id": 665937884,
+        "name": "netra-hub-v1.4.29.apk",
+        "size": 4423099,
+        "digest": "sha256:ec54c37a4f3867b3e51bf12e81d124ca5b1fb3613d2c2038699a9b8c4d472c6b"
+      }
+    ]
+  },
+  {
+    "id": 420300168,
+    "tag_name": "v1.4.28",
+    "name": "v1.4.28",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "779c642d9851507779a792836fbeb4782ee022c7",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 664638413,
+        "name": "app-release.apk",
+        "size": 4423099,
+        "digest": "sha256:f5bcb33efb44bb2fd9020b384f8051da1c21a8ff3d71b5c4e7c4997251d275cf"
+      },
+      {
+        "id": 664638412,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:993d41e53c77d1396b800c9fe0e6d40e1fb7be476c3ecf28fab64c12fdd6e3b0"
+      },
+      {
+        "id": 664638411,
+        "name": "netra-hub-v1.4.28.apk",
+        "size": 4423099,
+        "digest": "sha256:f5bcb33efb44bb2fd9020b384f8051da1c21a8ff3d71b5c4e7c4997251d275cf"
+      }
+    ]
+  },
+  {
+    "id": 420277701,
+    "tag_name": "v1.4.27",
+    "name": "v1.4.27",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "ad5dc3dbb64cf4d6951613034caf82b37ff1d9a9",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 664553652,
+        "name": "app-release.apk",
+        "size": 4423099,
+        "digest": "sha256:3994d511d476a221478494b42e417b3cca83343c3c81af9ed1270bd6089f33ae"
+      },
+      {
+        "id": 664553654,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:95ddd99a95e0b1208343aa4b416dd4d55d95cc594bfde239b34a72007a2b54b7"
+      },
+      {
+        "id": 664553651,
+        "name": "netra-hub-v1.4.27.apk",
+        "size": 4423099,
+        "digest": "sha256:3994d511d476a221478494b42e417b3cca83343c3c81af9ed1270bd6089f33ae"
+      }
+    ]
+  },
+  {
+    "id": 420189504,
+    "tag_name": "v1.4.26",
+    "name": "v1.4.26",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "f9f9de686796db3e2562547f69a40889c881ad85",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 664220193,
+        "name": "app-release.apk",
+        "size": 4423099,
+        "digest": "sha256:94f1a16f6970525932ead99ab59c8f7aecd00254c1037eb132d8f4f69cddff7c"
+      },
+      {
+        "id": 664220189,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:19e36c259801948b1dc09ed36a6a31bf0765d7e5621a1a6dfe08789d04a3f4f5"
+      },
+      {
+        "id": 664220187,
+        "name": "netra-hub-v1.4.26.apk",
+        "size": 4423099,
+        "digest": "sha256:94f1a16f6970525932ead99ab59c8f7aecd00254c1037eb132d8f4f69cddff7c"
+      }
+    ]
+  },
+  {
+    "id": 420031254,
+    "tag_name": "v1.4.25",
+    "name": "v1.4.25",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "58b07247eb6d6dcd72db5189394f5ee2bc65a94d",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 663721807,
+        "name": "app-release.apk",
+        "size": 4423099,
+        "digest": "sha256:811af203d0af31eafcef23869e0ff97ab1a0d950a98abbbe045c4dc4d7917575"
+      },
+      {
+        "id": 663721808,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:7a693c1c6b5abd70ad03475c6569aee8f1cc505a5ba0b5140b7916c1c2242da5"
+      },
+      {
+        "id": 663721805,
+        "name": "netra-hub-v1.4.25.apk",
+        "size": 4423099,
+        "digest": "sha256:811af203d0af31eafcef23869e0ff97ab1a0d950a98abbbe045c4dc4d7917575"
+      }
+    ]
+  },
+  {
+    "id": 419946099,
+    "tag_name": "v1.4.24",
+    "name": "v1.4.24",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "5c41cf2ad5d3061edfa57f5bd7c62b1902088fa1",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 663509119,
+        "name": "app-release.apk",
+        "size": 4423099,
+        "digest": "sha256:2fa551032e7bbc01a79dd0908a1060c4c8c3d38f8378bb5b5eef16affc559703"
+      },
+      {
+        "id": 663509136,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:af01958fe59e79c9af087336aef7d77c709f25c4cbd1cbe86085d32910473e40"
+      },
+      {
+        "id": 663509092,
+        "name": "netra-hub-v1.4.24.apk",
+        "size": 4423099,
+        "digest": "sha256:2fa551032e7bbc01a79dd0908a1060c4c8c3d38f8378bb5b5eef16affc559703"
+      }
+    ]
+  },
+  {
+    "id": 419537605,
+    "tag_name": "v1.4.23",
+    "name": "v1.4.23",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "435bd1689034bc3d28018d2f14598de5fa3ad711",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 662455808,
+        "name": "app-release.apk",
+        "size": 4406715,
+        "digest": "sha256:3a0cc947d1e98aebeb018a8bc4ea5a4ed6ab2ccfcbcf64877799e0b25858d733"
+      },
+      {
+        "id": 662455812,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:e076ca79e65d55a30a4f6f2f452b72741fc1197b8fb869bd776ac66cae94e6f8"
+      },
+      {
+        "id": 662455807,
+        "name": "netra-hub-v1.4.23.apk",
+        "size": 4406715,
+        "digest": "sha256:3a0cc947d1e98aebeb018a8bc4ea5a4ed6ab2ccfcbcf64877799e0b25858d733"
+      }
+    ]
+  },
+  {
+    "id": 417984417,
+    "tag_name": "v1.4.22",
+    "name": "v1.4.22",
+    "body": "Clearly labelled TEST buttons for the spoken and notification alerts - try the real alert path safely, it is only a test. Improvements and bug fixes.",
+    "target_commitish": "9d18eba6afebcf0e67ae32189b4f29e7f96b0671",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 658206251,
+        "name": "app-release.apk",
+        "size": 4406471,
+        "digest": "sha256:b23f335339fa41e66c6e2ac80d8f303522c93a8e77404e70bd6b63bfc67a105b"
+      },
+      {
+        "id": 658206254,
+        "name": "latest.json",
+        "size": 334,
+        "digest": "sha256:6ae9941d85b8d3b7c177e86dab8f457a197f64bc6fb38d96974ae416675a4351"
+      },
+      {
+        "id": 658206253,
+        "name": "netra-hub-v1.4.22.apk",
+        "size": 4406471,
+        "digest": "sha256:b23f335339fa41e66c6e2ac80d8f303522c93a8e77404e70bd6b63bfc67a105b"
+      }
+    ]
+  },
+  {
+    "id": 417538824,
+    "tag_name": "v1.4.21",
+    "name": "v1.4.21",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "ee5363ab86eafba747dde97b57fc7f01b36bd966",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 656883900,
+        "name": "app-release.apk",
+        "size": 4406471,
+        "digest": "sha256:648210057f3dd90cd1d68b30272e605e3d6d106a78797c70faaf0b8b0262c5e4"
+      },
+      {
+        "id": 656883901,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:295ddd65f2b1d8f712054f31a43f2e3249a88ffd7cc3b6694250ea8f96a02159"
+      },
+      {
+        "id": 656883902,
+        "name": "netra-hub-v1.4.21.apk",
+        "size": 4406471,
+        "digest": "sha256:648210057f3dd90cd1d68b30272e605e3d6d106a78797c70faaf0b8b0262c5e4"
+      }
+    ]
+  },
+  {
+    "id": 416567426,
+    "tag_name": "v1.4.20",
+    "name": "v1.4.20",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "12560459f80c8861458aaa3818d78be73f7653cf",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 653937177,
+        "name": "app-release.apk",
+        "size": 4406471,
+        "digest": "sha256:9a0f8a087298c8c67f0928987fc9201a8e92988f6c8f60184df99c18a08c5216"
+      },
+      {
+        "id": 653937180,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:28fc586c34292ed9f43606530f02cf772dce0b262205dc3ae95e8911ef714758"
+      },
+      {
+        "id": 653937179,
+        "name": "netra-hub-v1.4.20.apk",
+        "size": 4406471,
+        "digest": "sha256:9a0f8a087298c8c67f0928987fc9201a8e92988f6c8f60184df99c18a08c5216"
+      }
+    ]
+  },
+  {
+    "id": 416509872,
+    "tag_name": "v1.4.19",
+    "name": "v1.4.19",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "0a9b6720c6a6a795ca75c6346e92fa4f4fbc7e19",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 653727085,
+        "name": "app-release.apk",
+        "size": 4406471,
+        "digest": "sha256:aff92f9bc8daf111963757fc0f7b6d53142d42cb3ab7056f382dc20989f9c576"
+      },
+      {
+        "id": 653727086,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:b5a978cbf71b3a96cf4b78aaaa78011516ba72a68abe3137bcc1ee2c171b8d83"
+      },
+      {
+        "id": 653727088,
+        "name": "netra-hub-v1.4.19.apk",
+        "size": 4406471,
+        "digest": "sha256:aff92f9bc8daf111963757fc0f7b6d53142d42cb3ab7056f382dc20989f9c576"
+      }
+    ]
+  },
+  {
+    "id": 415872275,
+    "tag_name": "v1.4.18",
+    "name": "v1.4.18",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "25350f52d7ea3a9457cc524f3ea27bd27e532aba",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 650782767,
+        "name": "app-release.apk",
+        "size": 4406463,
+        "digest": "sha256:123dd9fa7be719dc8a53531b2c37e6c14db0b14fd19d23a5dca7ec4f8b641762"
+      },
+      {
+        "id": 650782769,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:28a0692f5df8b4b5b05e4976cc92a02ed8286f981abf690dd5c12683b6aa3ccd"
+      },
+      {
+        "id": 650782770,
+        "name": "netra-hub-v1.4.18.apk",
+        "size": 4406463,
+        "digest": "sha256:123dd9fa7be719dc8a53531b2c37e6c14db0b14fd19d23a5dca7ec4f8b641762"
+      }
+    ]
+  },
+  {
+    "id": 415587731,
+    "tag_name": "v1.4.17",
+    "name": "v1.4.17",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "318a013cdbb169f2a95fea4f4d67f203e245e506",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 649564210,
+        "name": "app-release.apk",
+        "size": 4390079,
+        "digest": "sha256:bdf38a971e1f17920281b9a26e4d326a603b7d6003e6a66d9999d7077face3fe"
+      },
+      {
+        "id": 649564212,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:b4a9f637285bc16ee2a56b799fc046f50e68baf5080dafaf94fafd2b9b7b8db5"
+      },
+      {
+        "id": 649564211,
+        "name": "netra-hub-v1.4.17.apk",
+        "size": 4390079,
+        "digest": "sha256:bdf38a971e1f17920281b9a26e4d326a603b7d6003e6a66d9999d7077face3fe"
+      }
+    ]
+  },
+  {
+    "id": 415114345,
+    "tag_name": "v1.4.16",
+    "name": "v1.4.16",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "ea396cfca3a5b013e3844459bb381c750cd8e7df",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 647758611,
+        "name": "app-release.apk",
+        "size": 4390075,
+        "digest": "sha256:e92d0013e86290436e45b41da0504a6ad6ec55951eb671ebc21bd977f44602dd"
+      },
+      {
+        "id": 647758616,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:17f26ca98e61428ab48f88260cbd413901f63344ddf55373c8567f485e6bed3a"
+      },
+      {
+        "id": 647758613,
+        "name": "netra-hub-v1.4.16.apk",
+        "size": 4390075,
+        "digest": "sha256:e92d0013e86290436e45b41da0504a6ad6ec55951eb671ebc21bd977f44602dd"
+      }
+    ]
+  },
+  {
+    "id": 414029615,
+    "tag_name": "v1.4.15",
+    "name": "v1.4.15",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "b37f9a4cd0a4b2e1186394d9a177b787b60558bf",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 644455820,
+        "name": "app-release.apk",
+        "size": 4390079,
+        "digest": "sha256:8dd63f1298f551da2ccd745c286bd45e11ecf17fc69d764fa8a860e8467041c6"
+      },
+      {
+        "id": 644455818,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:2ad44a985d89deef4a19857c6ecb211b76db0493a4441928820e62b6c5866e93"
+      },
+      {
+        "id": 644455822,
+        "name": "netra-hub-v1.4.15.apk",
+        "size": 4390079,
+        "digest": "sha256:8dd63f1298f551da2ccd745c286bd45e11ecf17fc69d764fa8a860e8467041c6"
+      }
+    ]
+  },
+  {
+    "id": 413998707,
+    "tag_name": "v1.4.14",
+    "name": "v1.4.14",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "27f0abae5ed59c5c123d25150f7231b5ec5e1202",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 644367411,
+        "name": "app-release.apk",
+        "size": 4390079,
+        "digest": "sha256:00270fc766509baf35cc11e96a5e9874fd2993f343b597afdd76129b9b5e49a0"
+      },
+      {
+        "id": 644367413,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:5b807f80075ee1856ebe9cde56494f81a5679f54d9f2cf03e6883ee6580af462"
+      },
+      {
+        "id": 644367409,
+        "name": "netra-hub-v1.4.14.apk",
+        "size": 4390079,
+        "digest": "sha256:00270fc766509baf35cc11e96a5e9874fd2993f343b597afdd76129b9b5e49a0"
+      }
+    ]
+  },
+  {
+    "id": 412864105,
+    "tag_name": "v1.4.13",
+    "name": "v1.4.13",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "8163b38fd8fbb0ad67141b328da79c5a895a36fb",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 640760591,
+        "name": "app-release.apk",
+        "size": 4390079,
+        "digest": "sha256:76b4ad36ac0c6358a29f4e232f0dedb4c8a18c330f7ae3ae3fe6120ff31e4a5c"
+      },
+      {
+        "id": 640760589,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:62fb88abd24837e5cb3afc04a30b8adcd0def98a372b21928b422d968630810f"
+      },
+      {
+        "id": 640760587,
+        "name": "netra-hub-v1.4.13.apk",
+        "size": 4390079,
+        "digest": "sha256:76b4ad36ac0c6358a29f4e232f0dedb4c8a18c330f7ae3ae3fe6120ff31e4a5c"
+      }
+    ]
+  },
+  {
+    "id": 411721472,
+    "tag_name": "v1.4.12",
+    "name": "v1.4.12",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "16ee2bf09f9460b0b30e78ea15644f41d5eb43a2",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 637162595,
+        "name": "app-release.apk",
+        "size": 4390079,
+        "digest": "sha256:ec756eb3aecfaeee08947116db22a5f83f12c2b051f864a5ed70566cef95d87c"
+      },
+      {
+        "id": 637162603,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:1bef53db30efbf461d02cf92889cc7b7954a5a03ec717ba9dd7f7427fad82b69"
+      },
+      {
+        "id": 637162604,
+        "name": "netra-hub-v1.4.12.apk",
+        "size": 4390079,
+        "digest": "sha256:ec756eb3aecfaeee08947116db22a5f83f12c2b051f864a5ed70566cef95d87c"
+      }
+    ]
+  },
+  {
+    "id": 411703035,
+    "tag_name": "v1.4.11",
+    "name": "v1.4.11",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "2a1fa88f53d84eb7719603fa9fff1d5c87e7f6e3",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 637115095,
+        "name": "app-release.apk",
+        "size": 4390079,
+        "digest": "sha256:f5c05fa5b20a188eb5b018894e6f84a18789d8e54818ac2c9f2ecb47c6e51558"
+      },
+      {
+        "id": 637115094,
+        "name": "latest.json",
+        "size": 324,
+        "digest": "sha256:515381891a2450e94b37f72b616ad7e72d0ad62c46f0114ec8e0f9ca571096da"
+      },
+      {
+        "id": 637115092,
+        "name": "netra-hub-v1.4.11.apk",
+        "size": 4390079,
+        "digest": "sha256:f5c05fa5b20a188eb5b018894e6f84a18789d8e54818ac2c9f2ecb47c6e51558"
+      }
+    ]
+  },
+  {
+    "id": 411381096,
+    "tag_name": "v1.4.10",
+    "name": "v1.4.10",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "971781095f30f3edd13b098515035c2770c92394",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 636193793,
+        "name": "app-release.apk",
+        "size": 4390079,
+        "digest": "sha256:d41acb7638cb3cbccf92ab59e207737fc558350d1373a71625c1f1ff832d1665"
+      },
+      {
+        "id": 636193795,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:0188fa850776681ba142bdb51a8a244404965b3575afc12d223d151ef2410072"
+      },
+      {
+        "id": 636193787,
+        "name": "netra-hub-v1.4.10.apk",
+        "size": 4390079,
+        "digest": "sha256:d41acb7638cb3cbccf92ab59e207737fc558350d1373a71625c1f1ff832d1665"
+      }
+    ]
+  },
+  {
+    "id": 410849656,
+    "tag_name": "v1.4.9",
+    "name": "v1.4.9",
+    "body": "Sections with no data are now hidden instead of showing Unavailable. Location and safety status use the one real location fix.",
+    "target_commitish": "1e0f14185a71ab369a96a942a8b139556376d09c",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 634464305,
+        "name": "app-release.apk",
+        "size": 4390083,
+        "digest": "sha256:98d31d92749a1896dfea75fa8a72e8f397d250b05f2c0e8782a1deaf6d20a1a6"
+      },
+      {
+        "id": 634464308,
+        "name": "latest.json",
+        "size": 309,
+        "digest": "sha256:4a23bd660eaced11d18a43987d8e140bff0d115f59a149d92a1aa063e523b40e"
+      },
+      {
+        "id": 634464304,
+        "name": "netra-hub-v1.4.9.apk",
+        "size": 4390083,
+        "digest": "sha256:98d31d92749a1896dfea75fa8a72e8f397d250b05f2c0e8782a1deaf6d20a1a6"
+      }
+    ]
+  },
+  {
+    "id": 410813901,
+    "tag_name": "v1.4.8",
+    "name": "v1.4.8",
+    "body": "Removed placeholder values. Steps now come from the phone's step counter and match everywhere. Unmeasured items show Unavailable. Removed test buttons.",
+    "target_commitish": "adb88265133f20198256c68adfe1ee15d4d10d71",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 634348592,
+        "name": "app-release.apk",
+        "size": 4390083,
+        "digest": "sha256:7e115172369ce5f399ef85399f222e417f2d0544fea4afc179403f1fb0e4731d"
+      },
+      {
+        "id": 634348597,
+        "name": "latest.json",
+        "size": 334,
+        "digest": "sha256:86f301ed9ef4765f38ec800f124353738d6436288a04544057f93aac679a7b6c"
+      },
+      {
+        "id": 634348595,
+        "name": "netra-hub-v1.4.8.apk",
+        "size": 4390083,
+        "digest": "sha256:7e115172369ce5f399ef85399f222e417f2d0544fea4afc179403f1fb0e4731d"
+      }
+    ]
+  },
+  {
+    "id": 410580316,
+    "tag_name": "v1.4.7",
+    "name": "v1.4.7",
+    "body": "Security patch: the driving flag can now only be read by apps signed with the same key as Hub.",
+    "target_commitish": "17eb9e4ea83ac7eb1f20ab8dd84ca46e756b2f4d",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 633733583,
+        "name": "app-release.apk",
+        "size": 4439235,
+        "digest": "sha256:ab82567cccc50a13ada67132f5d0cce95c5fc4e5657a1aff3b2cbed2a2a6623e"
+      },
+      {
+        "id": 633733582,
+        "name": "latest.json",
+        "size": 277,
+        "digest": "sha256:a8c09cdb20dd39b4184699b36b1061ca7b45e67611847395031fcaf6ff0b534b"
+      },
+      {
+        "id": 633733590,
+        "name": "netra-hub-v1.4.7.apk",
+        "size": 4439235,
+        "digest": "sha256:ab82567cccc50a13ada67132f5d0cce95c5fc4e5657a1aff3b2cbed2a2a6623e"
+      }
+    ]
+  },
+  {
+    "id": 409362511,
+    "tag_name": "v1.4.6",
+    "name": "v1.4.6",
+    "body": "Fixed: informational voice alerts could cut off an emergency warning. Voice commands now prefer on-device recognition and need your opt-in.",
+    "target_commitish": "15dcecac537895da6f664560725dd9ae22512333",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 629609243,
+        "name": "app-release.apk",
+        "size": 4439187,
+        "digest": "sha256:92c3665ec6f99fcd6bd07a1699bed4f4ce49b10202aed70c95f288b02ba369e4"
+      },
+      {
+        "id": 629609241,
+        "name": "latest.json",
+        "size": 322,
+        "digest": "sha256:c2d75c2ae6f349cc3af88353411f55f11800d4e18cbfc4c6553a93e93f79d0cd"
+      },
+      {
+        "id": 629609242,
+        "name": "netra-hub-v1.4.6.apk",
+        "size": 4439187,
+        "digest": "sha256:92c3665ec6f99fcd6bd07a1699bed4f4ce49b10202aed70c95f288b02ba369e4"
+      }
+    ]
+  },
+  {
+    "id": 409329694,
+    "tag_name": "v1.4.5",
+    "name": "v1.4.5",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "02f1bb964eea11922798e8eccda5f845e555a810",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 629493064,
+        "name": "app-release.apk",
+        "size": 4422803,
+        "digest": "sha256:c7279cb095873a65b43bd6e8e50eda406260822a40e7ff0d1ff48ae3a4abbb92"
+      },
+      {
+        "id": 629493063,
+        "name": "latest.json",
+        "size": 210,
+        "digest": "sha256:a82d756e83fb30d751ee925a76167897a50d2b64fd71cf409bce16a6d987b48a"
+      },
+      {
+        "id": 629493062,
+        "name": "netra-hub-v1.4.5.apk",
+        "size": 4422803,
+        "digest": "sha256:c7279cb095873a65b43bd6e8e50eda406260822a40e7ff0d1ff48ae3a4abbb92"
+      }
+    ]
+  },
+  {
+    "id": 409172677,
+    "tag_name": "v1.4.4",
+    "name": "v1.4.4",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "a3afa58f1fc012965d1809e9d2a35f6a46ed6475",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 628865152,
+        "name": "app-release.apk",
+        "size": 4439187,
+        "digest": "sha256:c78290cb5092a252751e97010419605e5d7a2442ebe36969310297e29df8d29f"
+      },
+      {
+        "id": 628865149,
+        "name": "latest.json",
+        "size": 210,
+        "digest": "sha256:bc8af9c458abd87938cedcb5b9ab6216a109bc69c794d7bea9cc62fa0dab9f10"
+      },
+      {
+        "id": 628865159,
+        "name": "netra-hub-v1.4.4.apk",
+        "size": 4439187,
+        "digest": "sha256:c78290cb5092a252751e97010419605e5d7a2442ebe36969310297e29df8d29f"
+      }
+    ]
+  },
+  {
+    "id": 409053899,
+    "tag_name": "v1.4.3",
+    "name": "v1.4.3",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "ec945182191dcc8e1c2ccd1b19d432bbde42c21d",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 628389386,
+        "name": "app-release.apk",
+        "size": 4422827,
+        "digest": "sha256:2c4b4e375748c9a43e8b7fdc83ffd98f5e0ecf51009c67384e46e6a5447dbf51"
+      },
+      {
+        "id": 628389387,
+        "name": "latest.json",
+        "size": 210,
+        "digest": "sha256:5048fd024e96c4e0f7e93f91d79f730c122f23334b88048bd9858d319d1dafa1"
+      },
+      {
+        "id": 628389389,
+        "name": "netra-hub-v1.4.3.apk",
+        "size": 4422827,
+        "digest": "sha256:2c4b4e375748c9a43e8b7fdc83ffd98f5e0ecf51009c67384e46e6a5447dbf51"
+      }
+    ]
+  },
+  {
+    "id": 408779742,
+    "tag_name": "v1.4.2",
+    "name": "v1.4.2",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "2b04b2b54d2d78d772334826ddbb1caae2d10736",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 627341143,
+        "name": "app-release.apk",
+        "size": 4422827,
+        "digest": "sha256:895577b35859261de8667f640b54e0a73d7659904303e1da4083fb84aced1557"
+      },
+      {
+        "id": 627341142,
+        "name": "latest.json",
+        "size": 210,
+        "digest": "sha256:eaca97c14a9399e7093f804901eea9b3af9f0404e60811a045d67bf2c556e5be"
+      },
+      {
+        "id": 627341141,
+        "name": "netra-hub-v1.4.2.apk",
+        "size": 4422827,
+        "digest": "sha256:895577b35859261de8667f640b54e0a73d7659904303e1da4083fb84aced1557"
+      }
+    ]
+  },
+  {
+    "id": 408667480,
+    "tag_name": "v1.4.1",
+    "name": "v1.4.1",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "8793d3f292c74edffd33d024f8c5be1c157a04e1",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 627059884,
+        "name": "app-release.apk",
+        "size": 4422359,
+        "digest": "sha256:14753ac43f366f1817b5c4f45da74ba1eb429ab0a28af951ef69405fb2292591"
+      },
+      {
+        "id": 627059885,
+        "name": "latest.json",
+        "size": 210,
+        "digest": "sha256:63193e97a303c88aa02f0c0e31ed449619c652f769f4e5e3352b36d04700b638"
+      },
+      {
+        "id": 627059879,
+        "name": "netra-hub-v1.4.1.apk",
+        "size": 4422359,
+        "digest": "sha256:14753ac43f366f1817b5c4f45da74ba1eb429ab0a28af951ef69405fb2292591"
+      }
+    ]
+  },
+  {
+    "id": 408616834,
+    "tag_name": "v1.4.0",
+    "name": "v1.4.0",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "d8c8d075fdadd1b9cc3fb251a0c0f4efb1a3c03f",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 626930077,
+        "name": "app-release.apk",
+        "size": 4422335,
+        "digest": "sha256:fabed64f751011aabf670ed0f707d6bdb8d6929866eb9411be8897f1c8ad0abd"
+      },
+      {
+        "id": 626930076,
+        "name": "latest.json",
+        "size": 210,
+        "digest": "sha256:7465c3219313c1d0084d5a15501451d0a84521d9f5a2193e88a97d7c0447daa2"
+      },
+      {
+        "id": 626930075,
+        "name": "netra-hub-v1.4.0.apk",
+        "size": 4422335,
+        "digest": "sha256:fabed64f751011aabf670ed0f707d6bdb8d6929866eb9411be8897f1c8ad0abd"
+      }
+    ]
+  },
+  {
+    "id": 408580726,
+    "tag_name": "v1.3.0",
+    "name": "v1.3.0",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "c5b90489fd65fdddfc4bd60960ab89f3e62ddeff",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 626865970,
+        "name": "app-release.apk",
+        "size": 4422335,
+        "digest": "sha256:66abc31991a4ee3550c1e0be1c65b5f712a139f33156958f98a6039ed6a65ae6"
+      },
+      {
+        "id": 626865966,
+        "name": "latest.json",
+        "size": 210,
+        "digest": "sha256:7d2b1c45d935796e96a7ad067c3449c7ab17613656c114693077f61b893e7112"
+      },
+      {
+        "id": 626865967,
+        "name": "netra-hub-v1.3.0.apk",
+        "size": 4422335,
+        "digest": "sha256:66abc31991a4ee3550c1e0be1c65b5f712a139f33156958f98a6039ed6a65ae6"
+      }
+    ]
+  },
+  {
+    "id": 408372204,
+    "tag_name": "v1.1.25",
+    "name": "v1.1.25",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "b2e54965a7b90fbf09d35a615c0a216cc6960f59",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 626258246,
+        "name": "app-release.apk",
+        "size": 4422263,
+        "digest": "sha256:ddcfa0701938793493744ab0aca6b8b9903ce054b20ff08a3e770e0587feae32"
+      },
+      {
+        "id": 626258247,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:aa0cb6c6c7e34f2b4959f9020cbf9b560352ac7683ede5bf7412a8cb03c31808"
+      },
+      {
+        "id": 626258239,
+        "name": "netra-hub-v1.1.25.apk",
+        "size": 4422263,
+        "digest": "sha256:ddcfa0701938793493744ab0aca6b8b9903ce054b20ff08a3e770e0587feae32"
+      }
+    ]
+  },
+  {
+    "id": 408346683,
+    "tag_name": "v1.1.24",
+    "name": "v1.1.24",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "b96df488dd3d781a0fc6cc349705d9f9ffc3bd1f",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 626178223,
+        "name": "app-release.apk",
+        "size": 4422239,
+        "digest": "sha256:1cbd597ed4007c5f21d01a3cb4124b04b57da7c8e02089cfe8f8e44a1f7ee6d4"
+      },
+      {
+        "id": 626178224,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:3169ef627e1374cd655c0f07e005ef9e0396de1f179897920ac707aa9e391df0"
+      },
+      {
+        "id": 626178222,
+        "name": "netra-hub-v1.1.24.apk",
+        "size": 4422239,
+        "digest": "sha256:1cbd597ed4007c5f21d01a3cb4124b04b57da7c8e02089cfe8f8e44a1f7ee6d4"
+      }
+    ]
+  },
+  {
+    "id": 407919560,
+    "tag_name": "v1.1.23",
+    "name": "v1.1.23",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "e983ea67f1f58beff69d09baa83556a2dc1dba6d",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 624990473,
+        "name": "app-release.apk",
+        "size": 4421795,
+        "digest": "sha256:c3773155a73463e0d0124cd0d491e2edad8885ff3de3f88e2f3424a2b275e6f7"
+      },
+      {
+        "id": 624990478,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:4f4a4afc1fcbd0abd233c2ea98ead6929c2bc80751866f0bea132144464acf03"
+      },
+      {
+        "id": 624990477,
+        "name": "netra-hub-v1.1.23.apk",
+        "size": 4421795,
+        "digest": "sha256:c3773155a73463e0d0124cd0d491e2edad8885ff3de3f88e2f3424a2b275e6f7"
+      }
+    ]
+  },
+  {
+    "id": 407893516,
+    "tag_name": "v1.1.22",
+    "name": "v1.1.22",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "dfd8458de7e9585e51b784fce98258468380c48a",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 624912928,
+        "name": "app-release.apk",
+        "size": 4421795,
+        "digest": "sha256:7f9ae018d057fda4b992119e4d7796ea25b15c3a5644969d9884754196d36a90"
+      },
+      {
+        "id": 624912930,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:9a1cd6c18bc9edab22e10e771fe35c2ed0b4556a971a05095581dcdfaae24d34"
+      },
+      {
+        "id": 624912931,
+        "name": "netra-hub-v1.1.22.apk",
+        "size": 4421795,
+        "digest": "sha256:7f9ae018d057fda4b992119e4d7796ea25b15c3a5644969d9884754196d36a90"
+      }
+    ]
+  },
+  {
+    "id": 407859473,
+    "tag_name": "v1.1.21",
+    "name": "v1.1.21",
+    "body": "Improvements and bug fixes.",
+    "target_commitish": "2df813dca2bcd252ab315bc1fe50586ac7df3553",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 624812179,
+        "name": "app-release.apk",
+        "size": 4421795,
+        "digest": "sha256:1bcc5a84a46814d0413de55873370b6ce6a1b4dce2d3ef479b2a7daa1532f3f9"
+      },
+      {
+        "id": 624812184,
+        "name": "latest.json",
+        "size": 212,
+        "digest": "sha256:7a802744848056dbd619a4a7d7c7da0712622005d80ecec22c7cd41be850c7b6"
+      },
+      {
+        "id": 624812181,
+        "name": "netra-hub-v1.1.21.apk",
+        "size": 4421795,
+        "digest": "sha256:1bcc5a84a46814d0413de55873370b6ce6a1b4dce2d3ef479b2a7daa1532f3f9"
+      }
+    ]
+  },
+  {
+    "id": 407793019,
+    "tag_name": "v1.1.20",
+    "name": "v1.1.20",
+    "body": "Added: optional crash alert while driving, off by default. Improvements and bug fixes.",
+    "target_commitish": "29ccb6520a6661dfb1cd24d4790e6ee61d95325b",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 624604791,
+        "name": "app-release.apk",
+        "size": 4421795,
+        "digest": "sha256:46682275ffda39ffbbdc4faf540ffdb3e905165e2de6f3f60d18a0f795d2166c"
+      },
+      {
+        "id": 624604790,
+        "name": "latest.json",
+        "size": 271,
+        "digest": "sha256:3e300a8c9c881dc040de2573a06a7fc3c728bc115fed8b804a2a35c35a5fd58d"
+      },
+      {
+        "id": 624604786,
+        "name": "netra-hub-v1.1.20.apk",
+        "size": 4421795,
+        "digest": "sha256:46682275ffda39ffbbdc4faf540ffdb3e905165e2de6f3f60d18a0f795d2166c"
+      }
+    ]
+  },
+  {
+    "id": 404916519,
+    "tag_name": "v1.1.19",
+    "name": "v1.1.19",
+    "body": "Installer files older than one hour are removed when the app opens.",
+    "target_commitish": "073f087e1e9644ad31e2a3844d91838db928fad5",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 615993843,
+        "name": "app-release.apk",
+        "size": 4421795,
+        "digest": "sha256:63d1e9a7f11ab678e14fd579fd201dd37bb2a16341d24c0076b07e24fb597f68"
+      },
+      {
+        "id": 615993842,
+        "name": "latest.json",
+        "size": 252,
+        "digest": "sha256:ab2419f2d3f0d710f9d45e5b462d46b123c7ac66a19bcf236552d0f3ee954e73"
+      },
+      {
+        "id": 615993845,
+        "name": "netra-hub-v1.1.19.apk",
+        "size": 4421795,
+        "digest": "sha256:63d1e9a7f11ab678e14fd579fd201dd37bb2a16341d24c0076b07e24fb597f68"
+      }
+    ]
+  },
+  {
+    "id": 404872320,
+    "tag_name": "v1.1.18",
+    "name": "v1.1.18",
+    "body": "Update download now shows real progress: percent downloaded, MB, bar, time left. Install button stays if the installer is closed.",
+    "target_commitish": "ed70ad0b60e29998c029e0287842a0a7a98eedd8",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 615869942,
+        "name": "app-release.apk",
+        "size": 4421795,
+        "digest": "sha256:0e6f45a63ff086379a8fefe6a411b5a3bd5fcb784bb72c446c4847f8f81d7884"
+      },
+      {
+        "id": 615869946,
+        "name": "latest.json",
+        "size": 314,
+        "digest": "sha256:7e55aeffe4f88731d47b985ed402fcb5fb91c8e22cda553c046778933ea9bbe4"
+      },
+      {
+        "id": 615869943,
+        "name": "netra-hub-v1.1.18.apk",
+        "size": 4421795,
+        "digest": "sha256:0e6f45a63ff086379a8fefe6a411b5a3bd5fcb784bb72c446c4847f8f81d7884"
+      }
+    ]
+  },
+  {
+    "id": 404794356,
+    "tag_name": "v1.1.17",
+    "name": "v1.1.17",
+    "body": "Update alert: a notification appears when a new version is out. Tap it to download and install.",
+    "target_commitish": "201bccc5cc954db2af3bfb119a3aeaaed9b0b06b",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 615693232,
+        "name": "app-release.apk",
+        "size": 4421795,
+        "digest": "sha256:337c2b71e8aea69bb382402eb69bcbb1354c4a7a7e6e770ed928ae7107f6f7aa"
+      },
+      {
+        "id": 615693226,
+        "name": "latest.json",
+        "size": 280,
+        "digest": "sha256:be66f5f725fcff1359ea7068944b11fa7e5acee286ea61a9bc3bd04eac2c34db"
+      },
+      {
+        "id": 615693229,
+        "name": "netra-hub-v1.1.17.apk",
+        "size": 4421795,
+        "digest": "sha256:337c2b71e8aea69bb382402eb69bcbb1354c4a7a7e6e770ed928ae7107f6f7aa"
+      }
+    ]
+  },
+  {
+    "id": 404521358,
+    "tag_name": "v1.1.16",
+    "name": "v1.1.16",
+    "body": "Failed update downloads now show one plain sentence instead of raw system text. No new permission.",
+    "target_commitish": "d55610964d9d488ec8c5157331ccdf4cfcb559ed",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 615041093,
+        "name": "app-release.apk",
+        "size": 4421795,
+        "digest": "sha256:6e570fa75997acde2cf1f0d774457443fd19726e4ab74ee8d09aec063045d2c7"
+      },
+      {
+        "id": 615041094,
+        "name": "latest.json",
+        "size": 283,
+        "digest": "sha256:1dba299722eec25bd9737ed34591d3ea87ef6a2be18b8e81942e5071bd9f6863"
+      },
+      {
+        "id": 615041096,
+        "name": "netra-hub-v1.1.16.apk",
+        "size": 4421795,
+        "digest": "sha256:6e570fa75997acde2cf1f0d774457443fd19726e4ab74ee8d09aec063045d2c7"
+      }
+    ]
+  },
+  {
+    "id": 403972734,
+    "tag_name": "v1.1.15",
+    "name": "v1.1.15",
+    "body": "Two internal words on screen replaced by plain text. New automatic UI standard check on every pull request.",
+    "target_commitish": "09218ffe0678eb6d76275c8fff2a2792629835a8",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 613249580,
+        "name": "app-release.apk",
+        "size": 4421795,
+        "digest": "sha256:8385c36753a8bd2b1634d7856691f11b2439f63a7b6239ddafa97fb9df468608"
+      },
+      {
+        "id": 613249577,
+        "name": "latest.json",
+        "size": 292,
+        "digest": "sha256:c5ea0234668b0128e1a6fd3f4834f85ae7d277f48a9d582d541da6a4ddfeb38b"
+      },
+      {
+        "id": 613249576,
+        "name": "netra-hub-v1.1.15.apk",
+        "size": 4421795,
+        "digest": "sha256:8385c36753a8bd2b1634d7856691f11b2439f63a7b6239ddafa97fb9df468608"
+      }
+    ]
+  },
+  {
+    "id": 403921040,
+    "tag_name": "v1.1.14",
+    "name": "v1.1.14",
+    "body": "UI cleanup step 3 - Microphone row and Absolute Truth footer removed, tab labels one line, Settings search slim, no new permission",
+    "target_commitish": "c01163e792e998df6ffaf1fbd75deb5e75c4d472",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 613101048,
+        "name": "app-release.apk",
+        "size": 4421795,
+        "digest": "sha256:9191c68645be879b85e9261715378c57eef09e615afd8e62c5513d8528dde537"
+      },
+      {
+        "id": 613101053,
+        "name": "latest.json",
+        "size": 315,
+        "digest": "sha256:f054f48305df730ae8702e10f9df55d08766c2d500bb4c459bd923bdeb8d7ed9"
+      },
+      {
+        "id": 613101050,
+        "name": "netra-hub-v1.1.14.apk",
+        "size": 4421795,
+        "digest": "sha256:9191c68645be879b85e9261715378c57eef09e615afd8e62c5513d8528dde537"
+      }
+    ]
+  },
+  {
+    "id": 403905147,
+    "tag_name": "v1.1.13",
+    "name": "v1.1.13",
+    "body": "UI cleanup step 2 - Live Graph light theme, internal text removed, no new permission",
+    "target_commitish": "a5384cc8a1e4896f6c8c3e7dc1997e1f4bfa68e8",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 613053361,
+        "name": "app-release.apk",
+        "size": 4421795,
+        "digest": "sha256:103463f700f0c6e11797f255d4e88f9d84b38a0b5ff88b1eb75b7b265dea8b4d"
+      },
+      {
+        "id": 613053358,
+        "name": "latest.json",
+        "size": 269,
+        "digest": "sha256:e156bdd0bfa3510a63233fb882c913f3f36d45a91daeb23309cfaa46fe4c8eac"
+      },
+      {
+        "id": 613053365,
+        "name": "netra-hub-v1.1.13.apk",
+        "size": 4421795,
+        "digest": "sha256:103463f700f0c6e11797f255d4e88f9d84b38a0b5ff88b1eb75b7b265dea8b4d"
+      }
+    ]
+  },
+  {
+    "id": 403876080,
+    "tag_name": "v1.1.12",
+    "name": "v1.1.12",
+    "body": "UI cleanup step 1. The fixed block under the header is gone from every tab. Home scrolls. Shorter bottom bar names. No new permission.",
+    "target_commitish": "a226c9fb2814e68021a30d6ba3da6abfc1fb3824",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 612967961,
+        "name": "app-release.apk",
+        "size": 4421795,
+        "digest": "sha256:ec15ba4c16724d060bd36d6cef656bf7a47a7003fb7d3e13fdb84a80f1869762"
+      },
+      {
+        "id": 612967956,
+        "name": "latest.json",
+        "size": 319,
+        "digest": "sha256:7142ff3336b45b5d3b3d91b08f7005a08de8d97539a5438624f6f815d83825cb"
+      },
+      {
+        "id": 612967958,
+        "name": "netra-hub-v1.1.12.apk",
+        "size": 4421795,
+        "digest": "sha256:ec15ba4c16724d060bd36d6cef656bf7a47a7003fb7d3e13fdb84a80f1869762"
+      }
+    ]
+  },
+  {
+    "id": 403748350,
+    "tag_name": "v1.1.11",
+    "name": "v1.1.11",
+    "body": "Hub now also reads the official NDMA SACHET alert list automatically about every 30 minutes and notifies you of a Severe or Extreme alert whose area text names your district, locality or state. Matched by area name only, not coordinates; Unavailable if no location. No new permission.",
+    "target_commitish": "0dbbe4f371d1276895ff857b75750dbb0b3a6e9c",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 612674255,
+        "name": "app-release.apk",
+        "size": 4421795,
+        "digest": "sha256:a10a18760f1489faf640fc944947c0c90bdad0418a763ddcf7f511a9d0245f82"
+      },
+      {
+        "id": 612674256,
+        "name": "latest.json",
+        "size": 469,
+        "digest": "sha256:d48dfed24a853a2a764950e31aaf34d6a821b57853aa9f1cc2e9d7e155ac11f4"
+      },
+      {
+        "id": 612674254,
+        "name": "netra-hub-v1.1.11.apk",
+        "size": 4421795,
+        "digest": "sha256:a10a18760f1489faf640fc944947c0c90bdad0418a763ddcf7f511a9d0245f82"
+      }
+    ]
+  },
+  {
+    "id": 403731258,
+    "tag_name": "v1.1.10",
+    "name": "v1.1.10",
+    "body": "Hub now checks USGS earthquakes automatically about every 30 minutes and notifies you of a new quake of magnitude 2.5 or more within 200 km. Uses your last known location; Unavailable if none. Not an official warning. No new permission.",
+    "target_commitish": "323250f26d9faaf9b8257fff51c786cc61d11080",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 612631248,
+        "name": "app-release.apk",
+        "size": 4421795,
+        "digest": "sha256:54a37fce3bc7f464fa2edc6a9f975dd1e68f91f4d46b2311c279ffe97bbe5945"
+      },
+      {
+        "id": 612631257,
+        "name": "latest.json",
+        "size": 421,
+        "digest": "sha256:ed3d088bb3f91b6f085d3a9f5dd8a338cd89c5ff592217b5434aea6b8febc96c"
+      },
+      {
+        "id": 612631259,
+        "name": "netra-hub-v1.1.10.apk",
+        "size": 4421795,
+        "digest": "sha256:54a37fce3bc7f464fa2edc6a9f975dd1e68f91f4d46b2311c279ffe97bbe5945"
+      }
+    ]
+  },
+  {
+    "id": 403700330,
+    "tag_name": "v1.1.9",
+    "name": "v1.1.9",
+    "body": "Safety screen has an Earthquakes near you card: earthquakes of magnitude 2.5 or more within 200 km in the last 7 days from the USGS public feed, read only when you tap Check now. Not an official warning. No new permission.",
+    "target_commitish": "1f586bcb7f0a9219625db75d59396f3cca87bb10",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 612545880,
+        "name": "app-release.apk",
+        "size": 4405415,
+        "digest": "sha256:16d2bbc12daa095568856746dc900700d957156e058b78dff54aba42b8b7ec05"
+      },
+      {
+        "id": 612545877,
+        "name": "latest.json",
+        "size": 405,
+        "digest": "sha256:646f6d9cd33ec92f92db793171e31182192a45b7bd72da46c051431f6a0bf0b8"
+      },
+      {
+        "id": 612545878,
+        "name": "netra-hub-v1.1.9.apk",
+        "size": 4405415,
+        "digest": "sha256:16d2bbc12daa095568856746dc900700d957156e058b78dff54aba42b8b7ec05"
+      }
+    ]
+  },
+  {
+    "id": 403423158,
+    "tag_name": "v1.1.8",
+    "name": "v1.1.8",
+    "body": "Truth fix: the Dashboard no longer says Device Camera Lockout or Device Mic Lockout is Verified Secure. Hub cannot verify a lockout, so the camera row now says Camera found (lockout not checked) and the microphone row says Unavailable because Hub does not use the microphone. No new permission.",
+    "target_commitish": "78d64c8510c5b1e4383e732beabe502bffef8da2",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 611718271,
+        "name": "app-release.apk",
+        "size": 4405415,
+        "digest": "sha256:895123772beafeb00363e6f5077536c61e3c5fc01770c566c7cf7c28ea6e132a"
+      },
+      {
+        "id": 611718272,
+        "name": "latest.json",
+        "size": 477,
+        "digest": "sha256:1524779ec03c9654fae035fe858b898cf31c957ad1bf00da80e5f9941da6d034"
+      },
+      {
+        "id": 611718270,
+        "name": "netra-hub-v1.1.8.apk",
+        "size": 4405415,
+        "digest": "sha256:895123772beafeb00363e6f5077536c61e3c5fc01770c566c7cf7c28ea6e132a"
+      }
+    ]
+  },
+  {
+    "id": 403408469,
+    "tag_name": "v1.1.7",
+    "name": "v1.1.7",
+    "body": "Fixed wrong text: the Permissions list and first-run dialog no longer say the camera is used for Travel Checking or that Hub records audio. Each permission now states its real use. Skipping the first-run dialog is remembered. No new permission.",
+    "target_commitish": "e36081c40e662784c19983a794dc7fd8ce6c77a5",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 611667898,
+        "name": "app-release.apk",
+        "size": 4405415,
+        "digest": "sha256:567c14c157f3d5ef6bc24609075b1be8628c90a4ad8f3fd41b053b463a454aff"
+      },
+      {
+        "id": 611667888,
+        "name": "latest.json",
+        "size": 427,
+        "digest": "sha256:8ed73c18a371b33afbded2a9b21c7ebe591ff0cf31581f0587fe37cd42cbaaca"
+      },
+      {
+        "id": 611667885,
+        "name": "netra-hub-v1.1.7.apk",
+        "size": 4405415,
+        "digest": "sha256:567c14c157f3d5ef6bc24609075b1be8628c90a4ad8f3fd41b053b463a454aff"
+      }
+    ]
+  },
+  {
+    "id": 403379742,
+    "tag_name": "v1.1.6",
+    "name": "v1.1.6",
+    "body": "New Permissions list in Settings: Location, SMS, Camera, Physical activity, Notifications, Bluetooth, Usage access, Exact alarms, Battery, Install apps, with the reason and live status for each. Tap a row to open the Android page. No new permission.",
+    "target_commitish": "52ee994f5a0e9c834481e14e551652c25099638a",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 611551460,
+        "name": "app-release.apk",
+        "size": 4405415,
+        "digest": "sha256:f0fa0b67579c93ee397f5b72f0159be092af754c0d158edf4a97ab55ecfb339f"
+      },
+      {
+        "id": 611551457,
+        "name": "latest.json",
+        "size": 432,
+        "digest": "sha256:9d61add4842df98bf3dfd5d4f6785f89a2345fd983839b359e05e0e9236eb397"
+      },
+      {
+        "id": 611551461,
+        "name": "netra-hub-v1.1.6.apk",
+        "size": 4405415,
+        "digest": "sha256:f0fa0b67579c93ee397f5b72f0159be092af754c0d158edf4a97ab55ecfb339f"
+      }
+    ]
+  },
+  {
+    "id": 403317150,
+    "tag_name": "v1.1.5",
+    "name": "v1.1.5",
+    "body": "Hub widget now shows battery temperature with charging state, plus steps today and your daily target from the Steps card. Anything not known shows Unavailable. Steps update when Hub is open. No new permission.",
+    "target_commitish": "64ed077dd73a6234c2ba23105b0f435c3425d1dd",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 611251007,
+        "name": "app-release.apk",
+        "size": 4405415,
+        "digest": "sha256:b3efd112345599de90f72429a2f8947a904602ecc66b4b110df266148750fcd1"
+      },
+      {
+        "id": 611251009,
+        "name": "latest.json",
+        "size": 392,
+        "digest": "sha256:f034df539858ccde7b1b7586716bdd3eb74039034841e291c1981f10a850fa0c"
+      },
+      {
+        "id": 611251010,
+        "name": "netra-hub-v1.1.5.apk",
+        "size": 4405415,
+        "digest": "sha256:b3efd112345599de90f72429a2f8947a904602ecc66b4b110df266148750fcd1"
+      }
+    ]
+  },
+  {
+    "id": 403256849,
+    "tag_name": "v1.1.4",
+    "name": "v1.1.4",
+    "body": "Hub 1.1.4 - Steps today card now has an optional date of birth, a daily step target from published research (ages 6-19: 12000, 20-64: 10000, otherwise Unavailable) and a Target reached message. Date of birth stays on the phone. No new permission.",
+    "target_commitish": "c60d15319e1e3c13a1e6a5d9ee5b3eea3be784a8",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 610951058,
+        "name": "app-release.apk",
+        "size": 4405415,
+        "digest": "sha256:35a0d81192ef19fa7554519360367e085787b34c8238e18928dc597193f10b77"
+      },
+      {
+        "id": 610951055,
+        "name": "latest.json",
+        "size": 429,
+        "digest": "sha256:47e7c9d80ce64ac40aebcfc3e19e0c20f51679adf85d40e292bf6f35716510a8"
+      },
+      {
+        "id": 610951057,
+        "name": "netra-hub-v1.1.4.apk",
+        "size": 4405415,
+        "digest": "sha256:35a0d81192ef19fa7554519360367e085787b34c8238e18928dc597193f10b77"
+      }
+    ]
+  },
+  {
+    "id": 403249569,
+    "tag_name": "v1.1.3",
+    "name": "v1.1.3",
+    "body": "Hub 1.1.3 - new Steps today card on Home from the phone step counter. Needs the Physical activity permission and shows Unavailable without it. Counted since the first reading of the day. No other change.",
+    "target_commitish": "e408080ea8430d929b5d46eae707ed40b6b9b490",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 610906492,
+        "name": "app-release.apk",
+        "size": 4405415,
+        "digest": "sha256:20b8f94257e500be1de441cde287d5adaf820df58df64e0af37a676e389ca9ff"
+      },
+      {
+        "id": 610906491,
+        "name": "latest.json",
+        "size": 386,
+        "digest": "sha256:42937898df88a4b1f180e062123790c622959f6f737f21b2ec52c7b528548365"
+      },
+      {
+        "id": 610906489,
+        "name": "netra-hub-v1.1.3.apk",
+        "size": 4405415,
+        "digest": "sha256:20b8f94257e500be1de441cde287d5adaf820df58df64e0af37a676e389ca9ff"
+      }
+    ]
+  },
+  {
+    "id": 403156628,
+    "tag_name": "v1.1.2",
+    "name": "v1.1.2",
+    "body": "Settings has a new Send crash report button that shows the exact text before anything is sent, or share it instead. Automatic crash reports now count as sent only when the service confirms. Nothing personal is included.",
+    "target_commitish": "d8437d0a8f7584b68a71e89eab84844f310491fd",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 610406680,
+        "name": "app-release.apk",
+        "size": 4405383,
+        "digest": "sha256:8e46bb0e7c0c6d0c15ac591a16fbc6163a5f3b18993d135ea521dcdf8f56f9d1"
+      },
+      {
+        "id": 610406684,
+        "name": "latest.json",
+        "size": 402,
+        "digest": "sha256:ecfd26cc7d5f267a2f41e18c8ce8fa178486fe1ec2c231438c1bef390811d6fc"
+      },
+      {
+        "id": 610406682,
+        "name": "netra-hub-v1.1.2.apk",
+        "size": 4405383,
+        "digest": "sha256:8e46bb0e7c0c6d0c15ac591a16fbc6163a5f3b18993d135ea521dcdf8f56f9d1"
+      }
+    ]
+  },
+  {
+    "id": 403019941,
+    "tag_name": "v1.1.1",
+    "name": "v1.1.1",
+    "body": "What is new in 1.1.1: the header is now the Netra standard, 56 dp tall, showing only the app name, the installed version and the date and time. The SOS setup, Share location and Travel Checking buttons moved to the top of the scrolling Dashboard. The bottom bar stays fixed. SECURITY.md updated. No new permission or library.",
+    "target_commitish": "2c7b3a7252440e010cbcdb54fa6561f2c58f4880",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 609843130,
+        "name": "app-release.apk",
+        "size": 4388999,
+        "digest": "sha256:00e642eb47ca40e7a3f3c24ebe3fd03f188b9e007a4f2811a04e76a57de5c566"
+      },
+      {
+        "id": 609843128,
+        "name": "latest.json",
+        "size": 508,
+        "digest": "sha256:dee319b6e377dcdcb95623f829369ea2e138661489f50f846dec2141709822ba"
+      },
+      {
+        "id": 609843127,
+        "name": "netra-hub-v1.1.1.apk",
+        "size": 4388999,
+        "digest": "sha256:00e642eb47ca40e7a3f3c24ebe3fd03f188b9e007a4f2811a04e76a57de5c566"
+      }
+    ]
+  },
+  {
+    "id": 403005052,
+    "tag_name": "v1.1.0",
+    "name": "v1.1.0",
+    "body": "What is new in 1.1.0: the header now shows the installed version. The always green status dot and the account icon are removed because nothing real was behind them. The header SOS button is renamed SOS setup because it opens the SOS settings and does not send an SOS. The SOS tab icon is now a warning sign. SECURITY.md updated. No new permission or library.",
+    "target_commitish": "21d51e916971b37282501e34005df8a99f308ee2",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 609796307,
+        "name": "app-release.apk",
+        "size": 4388999,
+        "digest": "sha256:f9ecd58225fe41e19f82881531d54483d6a09d9a11e78b57c0a242595effaa91"
+      },
+      {
+        "id": 609796303,
+        "name": "latest.json",
+        "size": 541,
+        "digest": "sha256:85e6a04012cb24ef39a4c5019ee8d8a545ae0079a9b4d84414537d5579462082"
+      },
+      {
+        "id": 609796304,
+        "name": "netra-hub-v1.1.0.apk",
+        "size": 4388999,
+        "digest": "sha256:f9ecd58225fe41e19f82881531d54483d6a09d9a11e78b57c0a242595effaa91"
+      }
+    ]
+  },
+  {
+    "id": 402816846,
+    "tag_name": "v1.0.14",
+    "name": "v1.0.14",
+    "body": "Patch: drive detection shown as not available instead of Idle",
+    "target_commitish": "f9701cbfced58b85a0e9f19cb0e47324ee5c5d17",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 609079669,
+        "name": "app-release.apk",
+        "size": 4388999,
+        "digest": "sha256:dc0f0a315c40f7d2a1fbfa474d559a793b100a5dddb9020037e29e01ab32d0ca"
+      },
+      {
+        "id": 609079668,
+        "name": "latest.json",
+        "size": 246,
+        "digest": "sha256:b6b77fb8d424cb424c00210991a4495b2f1cfc3f9f04e9323d26661a8922d085"
+      },
+      {
+        "id": 609079667,
+        "name": "netra-hub-v1.0.14.apk",
+        "size": 4388999,
+        "digest": "sha256:dc0f0a315c40f7d2a1fbfa474d559a793b100a5dddb9020037e29e01ab32d0ca"
+      }
+    ]
+  },
+  {
+    "id": 402813064,
+    "tag_name": "v1.0.13",
+    "name": "v1.0.13",
+    "body": "Patch: honest self-audit and recovery jobs, a failed service shows STOPPED, no fake recovered or complete logs",
+    "target_commitish": "6ab470db501aa22e5bb1c1006a3f3de54958f8bf",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 609058848,
+        "name": "app-release.apk",
+        "size": 4388995,
+        "digest": "sha256:70bfe7be03dcf73055ae7d9e29b99a69506ce3f46483499d4dbc72d560508348"
+      },
+      {
+        "id": 609058847,
+        "name": "latest.json",
+        "size": 295,
+        "digest": "sha256:8e77abb0b73b9fa079a0e5be0a5aa7901c57e2ed72cbee5d9fdda2b9a8b34c0a"
+      },
+      {
+        "id": 609058849,
+        "name": "netra-hub-v1.0.13.apk",
+        "size": 4388995,
+        "digest": "sha256:70bfe7be03dcf73055ae7d9e29b99a69506ce3f46483499d4dbc72d560508348"
+      }
+    ]
+  },
+  {
+    "id": 402803802,
+    "tag_name": "v1.0.12",
+    "name": "v1.0.12",
+    "body": "Patch: compliance audit - no third-party coordinate call, honest encryption and backup claims, unknown security items shown as unknown, unused permissions removed",
+    "target_commitish": "6c5b4afe71de8fc7606b13933312a607e9c743ff",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 609029226,
+        "name": "app-release.apk",
+        "size": 4388995,
+        "digest": "sha256:3d2fc8c5371ad42788843b692f147a821a01d01f9087c2b3db010a95a5aa66bd"
+      },
+      {
+        "id": 609029225,
+        "name": "latest.json",
+        "size": 347,
+        "digest": "sha256:5103c066fd9395ccd7c557bb1ffc1b48cf0d75007151df00ca7ccc724dfbc0c3"
+      },
+      {
+        "id": 609029227,
+        "name": "netra-hub-v1.0.12.apk",
+        "size": 4388995,
+        "digest": "sha256:3d2fc8c5371ad42788843b692f147a821a01d01f9087c2b3db010a95a5aa66bd"
+      }
+    ]
+  },
+  {
+    "id": 402799461,
+    "tag_name": "v1.0.11",
+    "name": "v1.0.11",
+    "body": "Patch: never invent a location (15 min max age), no Base64-as-encryption, 112 India shortcut",
+    "target_commitish": "975e190358a436eba331d5c01857a59a662683c9",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 609011479,
+        "name": "app-release.apk",
+        "size": 4405619,
+        "digest": "sha256:74798570b2952a65804713fdf4fc42a383dbb1cd58b94957420f9713bb40506f"
+      },
+      {
+        "id": 609011477,
+        "name": "latest.json",
+        "size": 277,
+        "digest": "sha256:7e7769993311c989957615c659a4415ccf31d6d35ff96d0bbbd5483b593023ea"
+      },
+      {
+        "id": 609011481,
+        "name": "netra-hub-v1.0.11.apk",
+        "size": 4405619,
+        "digest": "sha256:74798570b2952a65804713fdf4fc42a383dbb1cd58b94957420f9713bb40506f"
+      }
+    ]
+  },
+  {
+    "id": 402783439,
+    "tag_name": "v1.0.10",
+    "name": "v1.0.10",
+    "body": "Patch: optional emergency profile (name, age, blood group) and battery percent in the SOS SMS",
+    "target_commitish": "20c27f217764b32036ec8b7b25457600f0ee84be",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 608951385,
+        "name": "app-release.apk",
+        "size": 4405555,
+        "digest": "sha256:2ba1bc9a1bc329a2cf6610ae32b672c9bd287ffb1db91af08b08313b79ec3ac4"
+      },
+      {
+        "id": 608951384,
+        "name": "latest.json",
+        "size": 278,
+        "digest": "sha256:6c65d18aabf4a814db1de943789f7c6390f9ff3451e495250480fa3a7b1136a7"
+      },
+      {
+        "id": 608951383,
+        "name": "netra-hub-v1.0.10.apk",
+        "size": 4405555,
+        "digest": "sha256:2ba1bc9a1bc329a2cf6610ae32b672c9bd287ffb1db91af08b08313b79ec3ac4"
+      }
+    ]
+  },
+  {
+    "id": 402647475,
+    "tag_name": "v1.0.9",
+    "name": "v1.0.9",
+    "body": "Patch: SOS shake - OFF by default; hard 3-shake starts a 10 second cancel countdown, then SMS with location link to your saved contacts. Needs SMS permission.",
+    "target_commitish": "888dc3000f5c3476f5351df23d0ef5d94d4b121d",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 608346663,
+        "name": "app-release.apk",
+        "size": 4405551,
+        "digest": "sha256:548bc89e3e6c68fd58f747f3b68edc33bd12168ba1084ae2376bf8ad1203234b"
+      },
+      {
+        "id": 608346660,
+        "name": "latest.json",
+        "size": 341,
+        "digest": "sha256:13c60c53582ae28006c976ebbcadca0ef195039c2e6fa48516d613be06183630"
+      },
+      {
+        "id": 608346659,
+        "name": "netra-hub-v1.0.9.apk",
+        "size": 4405551,
+        "digest": "sha256:548bc89e3e6c68fd58f747f3b68edc33bd12168ba1084ae2376bf8ad1203234b"
+      }
+    ]
+  },
+  {
+    "id": 402642560,
+    "tag_name": "v1.0.8",
+    "name": "v1.0.8",
+    "body": "Patch: Share location button in the header - one-tap snapshot of your current location (Google Maps link) through the Android share sheet. Not a live track.",
+    "target_commitish": "708402fbd6017f56137250ebbe45760d919b65e7",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 608326435,
+        "name": "app-release.apk",
+        "size": 4389087,
+        "digest": "sha256:5c357589a82e82481c73ab98f68511b32f7ae48ad4b51681762045ecc5e47800"
+      },
+      {
+        "id": 608326436,
+        "name": "latest.json",
+        "size": 338,
+        "digest": "sha256:514d8df12c1b22a6de11111fe82f7eb7ea010120b8882ece1122844288f90f7b"
+      },
+      {
+        "id": 608326425,
+        "name": "netra-hub-v1.0.8.apk",
+        "size": 4389087,
+        "digest": "sha256:5c357589a82e82481c73ab98f68511b32f7ae48ad4b51681762045ecc5e47800"
+      }
+    ]
+  },
+  {
+    "id": 402634629,
+    "tag_name": "v1.0.7",
+    "name": "v1.0.7",
+    "body": "Patch: Travel Checking - manual mode opened from a header button: magnetic meter, torch lens finder, IR guide, Wi-Fi device scan, room checklist. No background use.",
+    "target_commitish": "103fbfc1d7e450f8f065c6073a63f96f175ab626",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 608294516,
+        "name": "app-release.apk",
+        "size": 4389087,
+        "digest": "sha256:6981ff0fc6a8f3d78462e2c72a49eeb723c9d2d16ce43168ab6416d49627b33e"
+      },
+      {
+        "id": 608294519,
+        "name": "latest.json",
+        "size": 346,
+        "digest": "sha256:f6efaa0b6868cccb8ce66ccdc51a8204ac3623028b99d748092a2cdf51203b01"
+      },
+      {
+        "id": 608294518,
+        "name": "netra-hub-v1.0.7.apk",
+        "size": 4389087,
+        "digest": "sha256:6981ff0fc6a8f3d78462e2c72a49eeb723c9d2d16ce43168ab6416d49627b33e"
+      }
+    ]
+  },
+  {
+    "id": 402476115,
+    "tag_name": "v1.0.6",
+    "name": "v1.0.6",
+    "body": "Patch: new Check for update button in Settings (shows latest or update available), and the downloaded installer file is now deleted after an in-app update so nothing is left in storage.",
+    "target_commitish": "a1b47e1d7ba78c8da9b7ccbf40a3494753b8fe1c",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 607680919,
+        "name": "app-release.apk",
+        "size": 4372703,
+        "digest": "sha256:e4cfdffafcb1096b6f2356a5789a19084aeee1ab6d8ca88fdef29bcb442ec5ce"
+      },
+      {
+        "id": 607680916,
+        "name": "latest.json",
+        "size": 367,
+        "digest": "sha256:cbba1e375248eaff0912c8d4df3e6b98a88b54180cf7ab414a54fb7c3de48133"
+      },
+      {
+        "id": 607680911,
+        "name": "netra-hub-v1.0.6.apk",
+        "size": 4372703,
+        "digest": "sha256:e4cfdffafcb1096b6f2356a5789a19084aeee1ab6d8ca88fdef29bcb442ec5ce"
+      }
+    ]
+  },
+  {
+    "id": 402391578,
+    "tag_name": "v1.0.5",
+    "name": "v1.0.5",
+    "body": "Patch: project moved to the Prayagi Store and Services GitHub organization; update check now uses the new address",
+    "target_commitish": "218a45968551b6ecf742ccb133f7f17037c8e848",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 607382078,
+        "name": "app-release.apk",
+        "size": 4372703,
+        "digest": "sha256:d143126557b78555823362b27c78bb6dc5b9bcb8596f45066863b80dadb009ef"
+      },
+      {
+        "id": 607382081,
+        "name": "latest.json",
+        "size": 295,
+        "digest": "sha256:eee17ea1a41473f6c273b13f052c619d25528058337b850e72d579eeb535a7a7"
+      },
+      {
+        "id": 607382082,
+        "name": "netra-hub-v1.0.5.apk",
+        "size": 4372703,
+        "digest": "sha256:d143126557b78555823362b27c78bb6dc5b9bcb8596f45066863b80dadb009ef"
+      }
+    ]
+  },
+  {
+    "id": 402334867,
+    "tag_name": "v1.0.4",
+    "name": "v1.0.4",
+    "body": "Patch: automatic crash reports. If the app crashes, the next open sends the report by itself (app, phone model, Android and app version, code locations only; no personal data).",
+    "target_commitish": "520d0579be101f0be550c05cd51d5c07cd882c4c",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 607172453,
+        "name": "app-release.apk",
+        "size": 4372703,
+        "digest": "sha256:d60196419df4386058899754f337e2cb1591df602320540e082dc8de9d5a4131"
+      },
+      {
+        "id": 607172451,
+        "name": "latest.json",
+        "size": 358,
+        "digest": "sha256:716e43027e19fe6b0dfd5ac798e7772bc7e77803113aa5a9c661e9275ec096a1"
+      },
+      {
+        "id": 607172452,
+        "name": "netra-hub-v1.0.4.apk",
+        "size": 4372703,
+        "digest": "sha256:d60196419df4386058899754f337e2cb1591df602320540e082dc8de9d5a4131"
+      }
+    ]
+  },
+  {
+    "id": 402330468,
+    "tag_name": "v1.0.3",
+    "name": "v1.0.3",
+    "body": "Patch: anonymous active-user count (once a day, no IDs, switch in Settings, on by default).",
+    "target_commitish": "932c91ba8be19b77026c8b757f111c04b58b0d84",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 607150721,
+        "name": "app-release.apk",
+        "size": 4372703,
+        "digest": "sha256:083ed05709c91f7110cebf6dd6108ad3f3c69ae03548294fd813b2773c2b5a22"
+      },
+      {
+        "id": 607150717,
+        "name": "latest.json",
+        "size": 273,
+        "digest": "sha256:c862e83636caa28780d73c443cf17bb5bfde1332c58421e874db9de484e8426a"
+      },
+      {
+        "id": 607150714,
+        "name": "netra-hub-v1.0.3.apk",
+        "size": 4372703,
+        "digest": "sha256:083ed05709c91f7110cebf6dd6108ad3f3c69ae03548294fd813b2773c2b5a22"
+      }
+    ]
+  },
+  {
+    "id": 402322992,
+    "tag_name": "v1.0.2",
+    "name": "v1.0.2",
+    "body": "New: one-tap fix buttons in Settings for battery, alarms, notifications and autostart. Background sensors now listen only above 30 km/h.",
+    "target_commitish": "f5f87dc81380fde8464d32e3b6b3b12bfe4e97c2",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 607123835,
+        "name": "app-release.apk",
+        "size": 4372703,
+        "digest": "sha256:d804b28728060728c041ffbb11c40cf3dfcd14c8d14efa592671016c4da41588"
+      },
+      {
+        "id": 607123839,
+        "name": "latest.json",
+        "size": 318,
+        "digest": "sha256:a12b0ac320feee0e7ec803b365b6ec5f99116d0b5aecbcabe4a568148e7e212f"
+      },
+      {
+        "id": 607123840,
+        "name": "netra-hub-v1.0.2.apk",
+        "size": 4372703,
+        "digest": "sha256:d804b28728060728c041ffbb11c40cf3dfcd14c8d14efa592671016c4da41588"
+      }
+    ]
+  },
+  {
+    "id": 402295340,
+    "tag_name": "v1.0.1",
+    "name": "v1.0.1",
+    "body": "New: updates now show inside the app. Open the app, tap Update when a new version is available.",
+    "target_commitish": "839ade354705d648a45c11edb064d4ebacd1344d",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 607021509,
+        "name": "app-release.apk",
+        "size": 4356239,
+        "digest": "sha256:5dbb93c145e83759a19f8840b841d573b3c2d32b1bfd3d3b42b439c81c76103b"
+      },
+      {
+        "id": 607021508,
+        "name": "latest.json",
+        "size": 277,
+        "digest": "sha256:e9570825a115d823dccbec3e8026ed8652b1bc42ba2ff64f372d95deed92b8ad"
+      },
+      {
+        "id": 607021510,
+        "name": "netra-hub-v1.0.1.apk",
+        "size": 4356239,
+        "digest": "sha256:5dbb93c145e83759a19f8840b841d573b3c2d32b1bfd3d3b42b439c81c76103b"
+      }
+    ]
+  },
+  {
+    "id": 402023764,
+    "tag_name": "v1.0.0",
+    "name": "v1.0.0",
+    "body": "First signed release. Download app-release.apk below.",
+    "target_commitish": "407657271f1a716eca35be9cfb4afa62a2e64d95",
+    "prerelease": false,
+    "assets": [
+      {
+        "id": 606128629,
+        "name": "app-release.apk",
+        "size": 4355858,
+        "digest": "sha256:4d28d92fc904283a6ef3f72986b2725146cbdb07fbc0cdbabe645efb3bdf8940"
+      },
+      {
+        "id": 606994784,
+        "name": "netra-hub-v1.0.0.apk",
+        "size": 4355858,
+        "digest": "sha256:4d28d92fc904283a6ef3f72986b2725146cbdb07fbc0cdbabe645efb3bdf8940"
+      }
+    ]
+  }
+        ]

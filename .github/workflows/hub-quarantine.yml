@@ -1,0 +1,33 @@
+name: Approved reversible Hub APK quarantine
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Exact confirmation for approved 77-release draft-only quarantine
+        required: true
+        type: string
+permissions:
+  contents: write
+concurrency:
+  group: hub-release-publication
+  cancel-in-progress: false
+jobs:
+  quarantine:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate allowlist and change only draft status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CONFIRM: ${{ inputs.confirmation }}
+        run: python3 scripts/quarantine.py
+      - name: Preserve before, progress, after and summary even after failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hub-quarantine-evidence
+          path: quarantine-evidence/
+          if-no-files-found: error
+          retention-days: 90
