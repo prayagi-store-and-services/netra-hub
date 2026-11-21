@@ -1,17 +1,21 @@
 package com.example.ui.theme
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val NetraBentoColorScheme = lightColorScheme(
+// Single dark navy scheme (owner UI series 9 Nov 2026). Both historical scheme names
+// resolve to it so the RedesignGate branch keeps compiling; the gate no longer changes colors.
+private val HubDarkNavyScheme = darkColorScheme(
     primary = BentoGreenPrimary,
-    onPrimary = Color.White,
+    onPrimary = Color(0xFF0A0E1A),
     secondary = BentoGreenVibrant,
-    onSecondary = BentoTextPrimary,
+    onSecondary = Color(0xFF0A0E1A),
     tertiary = BentoAmber,
+    onTertiary = Color(0xFF0A0E1A),
     error = BentoRed,
+    onError = Color(0xFF0A0E1A),
     background = BentoBackground,
     onBackground = BentoTextPrimary,
     surface = BentoCardBg,
@@ -21,21 +25,8 @@ private val NetraBentoColorScheme = lightColorScheme(
     outline = BentoBorder
 )
 
-private val NewHubColorScheme = lightColorScheme(
-    primary = Color(0xFF1A237E),
-    onPrimary = Color.White,
-    secondary = Color(0xFF00897B),
-    onSecondary = Color.White,
-    tertiary = BentoAmber,
-    error = BentoRed,
-    background = Color(0xFFF3F4FB),
-    onBackground = Color(0xFF191B2E),
-    surface = Color.White,
-    onSurface = Color(0xFF191B2E),
-    surfaceVariant = Color(0xFFE6E8F7),
-    onSurfaceVariant = Color(0xFF4A4E6B),
-    outline = Color(0xFFC5C9E3)
-)
+private val NetraBentoColorScheme = HubDarkNavyScheme
+private val NewHubColorScheme = HubDarkNavyScheme
 
 @Composable
 fun NetraTheme(

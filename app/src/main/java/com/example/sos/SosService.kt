@@ -57,6 +57,14 @@ class SosService : Service(), SensorEventListener {
         when (intent?.action) {
             ACTION_STOP -> { stopSelf(); return START_NOT_STICKY }
             ACTION_CANCEL -> { counting = false; stopSiren(); handler.removeCallbacks(tick); detector.reset(); show(idle(), ONGOING); return START_STICKY }
+            ACTION_MANUAL_TRIGGER -> {
+                // Press-and-hold button: the exact shake path (same 10 s cancel-first countdown, same SMS pipeline, no siren).
+                // Gated the same way: contacts must exist and the cooldown must have passed.
+                if (!counting && SosStore.contacts(this).isNotEmpty() && SosLogic.canTrigger(System.currentTimeMillis(), SosStore.lastTrigger(this))) {
+                    counting = true; left = SosLogic.COUNTDOWN_S; detector.reset()
+                    show(countdown(left), ONGOING); handler.postDelayed(tick, 1000)
+                }
+            }
         }
         ensureChannel()
         try {
@@ -153,6 +161,7 @@ class SosService : Service(), SensorEventListener {
     companion object {
         const val CH = "sos_shake"; const val ONGOING = 7301; const val RESULT = 7302
         const val ACTION_STOP = "com.example.sos.STOP"; const val ACTION_CANCEL = "com.example.sos.CANCEL"
+        const val ACTION_MANUAL_TRIGGER = "com.example.sos.MANUAL_TRIGGER"
         fun start(c: Context) = ContextCompat.startForegroundService(c, Intent(c, SosService::class.java))
         fun stop(c: Context) { c.stopService(Intent(c, SosService::class.java)) }
     }

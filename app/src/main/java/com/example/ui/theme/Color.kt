@@ -2,24 +2,27 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Bento Grid Theme Palette
-val BentoBackground = Color(0xFFF7FBF4)
-val BentoCardBg = Color(0xFFF1F3F0)
-val BentoHeroCardBg = Color(0xFFD8E7DB)
-val BentoDarkCardBg = Color(0xFF191C1A)
-val BentoBorder = Color(0xFFE1E3E0)
+// Dark Navy Theme Palette (owner UI series 9 Nov 2026; reference image-fc4ed414.jpg)
+// Deep navy background, navy cards, blue primary accent, green/amber/red status semantics.
+val BentoBackground = Color(0xFF0A0E1A)
+val BentoCardBg = Color(0xFF151B2E)
+val BentoHeroCardBg = Color(0xFF1B2440)
+val BentoDarkCardBg = Color(0xFF0D1322)
+val BentoBorder = Color(0xFF263050)
 
-val BentoGreenPrimary = Color(0xFF006D40)
-val BentoGreenVibrant = Color(0xFF38E07F)
-val BentoAmber = Color(0xFFD97706)
-val BentoYellow = Color(0xFFEAB308)
-val BentoBlue = Color(0xFF2563EB)
-val BentoPurple = Color(0xFF7C3AED)
-val BentoRed = Color(0xFFDC2626)
+// Primary brand accent is the reference blue (name kept for compatibility).
+val BentoGreenPrimary = Color(0xFF4F8DFF)
+// Status semantics: green = normal/active, amber = warning, red = critical/SOS.
+val BentoGreenVibrant = Color(0xFF22C55E)
+val BentoAmber = Color(0xFFF59E0B)
+val BentoYellow = Color(0xFFFBBF24)
+val BentoBlue = Color(0xFF60A5FA)
+val BentoPurple = Color(0xFFA78BFA)
+val BentoRed = Color(0xFFEF4444)
 
-val BentoTextPrimary = Color(0xFF002112)
-val BentoTextSecondary = Color(0xFF404943)
-val BentoTextMuted = Color(0xFF707973)
+val BentoTextPrimary = Color(0xFFF1F5F9)
+val BentoTextSecondary = Color(0xFF94A3B8)
+val BentoTextMuted = Color(0xFF64748B)
 
 // Backward Compatibility Aliases for components
 val CyberObsidian = BentoBackground
@@ -37,11 +40,11 @@ val TextSecondary = BentoTextSecondary
 val TextMuted = BentoTextMuted
 
 // Dark Premium Theme Additions
-// Names kept for compatibility. The Live Graph now uses the same light palette as every other screen.
-val NetraDarkBackground = Color(0xFFF7FBF4)
-val NetraDarkSurface = Color(0xFFF1F3F0)
-val NetraDarkSurfaceElevated = Color(0xFFD8E7DB)
-val NetraDarkBorder = Color(0xFFE1E3E0)
-val NetraDarkTextPrimary = Color(0xFF002112)
-val NetraDarkTextSecondary = Color(0xFF404943)
-val NetraDarkTextMuted = Color(0xFF707973)
+// Names kept for compatibility; all map to the dark navy palette.
+val NetraDarkBackground = BentoBackground
+val NetraDarkSurface = BentoCardBg
+val NetraDarkSurfaceElevated = BentoHeroCardBg
+val NetraDarkBorder = BentoBorder
+val NetraDarkTextPrimary = BentoTextPrimary
+val NetraDarkTextSecondary = BentoTextSecondary
+val NetraDarkTextMuted = BentoTextMuted
